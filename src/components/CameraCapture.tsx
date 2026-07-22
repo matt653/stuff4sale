@@ -507,111 +507,121 @@ export default function CameraCapture({
         )}
       </div>
 
-      {/* Multi-Photo Thumbnail Strip Gallery */}
+      {/* Multi-Photo Thumbnail Strip Gallery & Ordering Controls */}
       {photos.length > 0 && (
-        <div className="mt-3.5 space-y-2">
-          <div className="flex items-center justify-between text-xs text-slate-500">
-            <span className="font-semibold text-slate-700 text-[11px] uppercase tracking-wider">
-              Item Photo Gallery ({photos.length})
-            </span>
-            <span className="text-[10px] text-slate-400">Click a thumbnail to preview • ★ = Main Cover</span>
+        <div className="mt-4 bg-slate-50 border border-slate-200/80 rounded-2xl p-3.5 space-y-2.5 shadow-xs" id="photo-ordering-gallery">
+          <div className="flex items-center justify-between text-xs">
+            <div className="flex items-center gap-1.5">
+              <span className="font-extrabold text-slate-800 text-xs">
+                📸 Photo Gallery Order ({photos.length})
+              </span>
+              <span className="text-[10px] bg-amber-100 text-amber-900 border border-amber-300 font-extrabold px-2 py-0.5 rounded-full">
+                First Pic = Primary Cover
+              </span>
+            </div>
+            <span className="text-[10px] text-slate-400 font-medium hidden sm:inline">Use arrows to re-order sequence</span>
           </div>
 
-          <div className="flex items-center gap-2.5 overflow-x-auto pb-1.5 scrollbar-thin">
+          <div className="flex items-start gap-3 overflow-x-auto pb-2 scrollbar-thin">
             {photos.map((imgSrc, idx) => (
               <div
                 key={idx}
-                onClick={() => setActivePhotoIndex(idx)}
-                className={`relative w-16 h-16 rounded-xl overflow-hidden shrink-0 border-2 transition cursor-pointer group ${
-                  activePhotoIndex === idx
-                    ? "border-indigo-600 ring-2 ring-indigo-300 shadow-md scale-105"
-                    : "border-slate-200 hover:border-indigo-400 opacity-80 hover:opacity-100"
-                }`}
+                className="flex flex-col items-center gap-1 shrink-0 group"
               >
-                <img
-                  src={imgSrc}
-                  alt={`Thumbnail ${idx + 1}`}
-                  referrerPolicy="no-referrer"
-                  className="w-full h-full object-cover"
-                />
+                {/* Thumbnail Image Box */}
+                <div
+                  onClick={() => setActivePhotoIndex(idx)}
+                  className={`relative w-20 h-20 rounded-xl overflow-hidden border-2 transition cursor-pointer shadow-xs ${
+                    idx === 0
+                      ? "border-amber-500 ring-2 ring-amber-300 shadow-md"
+                      : activePhotoIndex === idx
+                      ? "border-indigo-600 ring-2 ring-indigo-200"
+                      : "border-slate-200 hover:border-indigo-400 opacity-90 hover:opacity-100"
+                  }`}
+                >
+                  <img
+                    src={imgSrc}
+                    alt={`Photo ${idx + 1}`}
+                    referrerPolicy="no-referrer"
+                    className="w-full h-full object-cover"
+                  />
 
-                {/* Primary Photo Star Badge */}
-                {idx === 0 && (
-                  <div className="absolute top-1 left-1 bg-amber-500 text-white rounded-full p-0.5 shadow-sm" title="Main Cover Photo">
-                    <Star size={10} className="fill-white stroke-none" />
+                  {/* Explicit Order Number Badge */}
+                  <div
+                    className={`absolute top-1 left-1 px-1.5 py-0.5 rounded-md text-[9px] font-black shadow-sm flex items-center gap-0.5 ${
+                      idx === 0
+                        ? "bg-amber-500 text-white"
+                        : "bg-slate-900/80 text-white backdrop-blur-xs"
+                    }`}
+                  >
+                    {idx === 0 ? <Star size={9} className="fill-white" /> : null}
+                    #{idx + 1} {idx === 0 ? "COVER" : ""}
                   </div>
-                )}
 
-                {/* Hover Actions: Re-order, Set Primary & Delete */}
-                <div className="absolute inset-0 bg-slate-900/75 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-0.5 p-0.5">
-                  {idx > 0 && (
-                    <button
-                      type="button"
-                      onClick={(e) => handleMovePhotoLeft(idx, e)}
-                      className="p-1 bg-slate-800 hover:bg-indigo-600 text-white rounded text-[11px] font-black shadow leading-none"
-                      title="Move Left"
-                    >
-                      ‹
-                    </button>
-                  )}
-
-                  {idx !== 0 && (
-                    <button
-                      type="button"
-                      onClick={(e) => handleSetPrimaryPhoto(idx, e)}
-                      className="p-1 bg-amber-500 hover:bg-amber-600 text-white rounded shadow transition"
-                      title="Set as Main Cover Photo"
-                    >
-                      <Star size={10} className="fill-white" />
-                    </button>
-                  )}
-
-                  {idx < photos.length - 1 && (
-                    <button
-                      type="button"
-                      onClick={(e) => handleMovePhotoRight(idx, e)}
-                      className="p-1 bg-slate-800 hover:bg-indigo-600 text-white rounded text-[11px] font-black shadow leading-none"
-                      title="Move Right"
-                    >
-                      ›
-                    </button>
-                  )}
-
+                  {/* Delete Button Badge */}
                   <button
                     type="button"
                     onClick={(e) => handleRemovePhoto(idx, e)}
-                    className="p-1 bg-rose-600 hover:bg-rose-700 text-white rounded shadow transition"
+                    className="absolute top-1 right-1 p-1 bg-rose-600 hover:bg-rose-700 text-white rounded-md shadow transition opacity-80 hover:opacity-100"
                     title="Remove Photo"
                   >
                     <Trash2 size={10} />
                   </button>
                 </div>
+
+                {/* 1-Tap Ordering Control Buttons */}
+                <div className="flex items-center gap-1 mt-0.5">
+                  <button
+                    type="button"
+                    disabled={idx === 0}
+                    onClick={(e) => handleMovePhotoLeft(idx, e)}
+                    className="w-6 h-6 bg-white hover:bg-indigo-50 border border-slate-200 text-slate-700 hover:text-indigo-600 disabled:opacity-30 rounded-lg flex items-center justify-center text-xs font-black transition shadow-2xs cursor-pointer disabled:cursor-not-allowed"
+                    title="Move Left (Earlier in Order)"
+                  >
+                    ‹
+                  </button>
+
+                  {idx !== 0 ? (
+                    <button
+                      type="button"
+                      onClick={(e) => handleSetPrimaryPhoto(idx, e)}
+                      className="px-1.5 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-[9px] font-extrabold flex items-center gap-0.5 transition shadow-2xs cursor-pointer"
+                      title="Make Photo #1 Primary Cover"
+                    >
+                      <Star size={9} className="fill-white" />
+                      Set #1
+                    </button>
+                  ) : (
+                    <span className="px-1.5 py-1 bg-amber-100 text-amber-900 border border-amber-300 rounded-lg text-[9px] font-extrabold flex items-center gap-0.5">
+                      <Star size={9} className="fill-amber-600 stroke-none" />
+                      Cover
+                    </span>
+                  )}
+
+                  <button
+                    type="button"
+                    disabled={idx === photos.length - 1}
+                    onClick={(e) => handleMovePhotoRight(idx, e)}
+                    className="w-6 h-6 bg-white hover:bg-indigo-50 border border-slate-200 text-slate-700 hover:text-indigo-600 disabled:opacity-30 rounded-lg flex items-center justify-center text-xs font-black transition shadow-2xs cursor-pointer disabled:cursor-not-allowed"
+                    title="Move Right (Later in Order)"
+                  >
+                    ›
+                  </button>
+                </div>
               </div>
             ))}
 
-            {/* Quick Add Photo Button in Thumbnail Strip */}
-            <div className="flex items-center gap-1 shrink-0">
+            {/* Quick Add Photo Button */}
+            <div className="flex flex-col items-center justify-center shrink-0">
               <button
                 type="button"
                 onClick={() => startCamera(selectedDeviceId)}
-                className="w-16 h-16 rounded-xl border-2 border-dashed border-indigo-300 hover:border-indigo-500 bg-indigo-50/50 hover:bg-indigo-100/50 flex flex-col items-center justify-center text-indigo-600 text-[10px] font-bold gap-0.5 transition"
+                className="w-20 h-20 rounded-xl border-2 border-dashed border-indigo-300 hover:border-indigo-500 bg-white hover:bg-indigo-50/50 flex flex-col items-center justify-center text-indigo-600 text-[10px] font-bold gap-1 transition shadow-2xs cursor-pointer"
                 title="Take another photo"
               >
-                <Camera size={16} />
-                <span>Camera</span>
+                <Camera size={18} />
+                <span>+ Camera</span>
               </button>
-
-              <label className="w-16 h-16 rounded-xl border-2 border-dashed border-slate-300 hover:border-indigo-500 bg-slate-100/50 hover:bg-indigo-50/50 flex flex-col items-center justify-center text-slate-600 hover:text-indigo-600 text-[10px] font-bold gap-0.5 transition cursor-pointer">
-                <Plus size={16} />
-                <span>Upload</span>
-                <input
-                  type="file"
-                  multiple
-                  accept="image/*"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                />
-              </label>
             </div>
           </div>
         </div>
