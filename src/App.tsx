@@ -180,8 +180,28 @@ export default function App() {
         throw new Error(errJson.error || "Failed to complete market research.");
       }
 
-      const result = await response.json();
+      const result: AIResearchResult = await response.json();
       setAiResult(result);
+
+      // Auto-fill Box 2 ("Add New Item") fields from Gemini AI identification
+      if (result.suggestedTitle) {
+        setItemName(result.suggestedTitle);
+      }
+      if (result.category) {
+        setItemCategory(result.category);
+      }
+      if (result.estimatedValueMin && result.estimatedValueMax) {
+        const midpoint = Math.round((result.estimatedValueMin + result.estimatedValueMax) / 2);
+        setListedPrice(midpoint.toString());
+      }
+      
+      let descriptionText = result.suggestedDescription || "";
+      if (result.cleaningInstructions && result.cleaningInstructions.length > 0) {
+        descriptionText += "\n\n🧼 Cleaning & Prep Steps:\n" + result.cleaningInstructions.map((s: string) => `• ${s}`).join("\n");
+      }
+      if (descriptionText) {
+        setNotes(descriptionText);
+      }
     } catch (err: any) {
       console.error("AI Research error:", err);
       setAiError(err.message || "Something went wrong while contacting the AI research center.");
@@ -688,9 +708,19 @@ export default function App() {
               </button>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              {/* Left Column: Capture and AI Panel */}
-              <div className="lg:col-span-5 space-y-4">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+              {/* BOX 1: What is it? (Sourcing Identification & AI Valuation) */}
+              <div className="lg:col-span-6 bg-indigo-50/40 border border-indigo-100 p-5 rounded-2xl space-y-4 shadow-xs" id="box-1-what-is-it">
+                <div className="flex items-center justify-between pb-2 border-b border-indigo-100">
+                  <div className="flex items-center gap-2">
+                    <span className="w-6 h-6 bg-indigo-600 text-white rounded-lg text-xs font-black flex items-center justify-center">1</span>
+                    <h3 className="font-extrabold text-sm text-indigo-950">What Is It? (Snap Pictures & AI Check)</h3>
+                  </div>
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full">
+                    Step 1
+                  </span>
+                </div>
+
                 {/* Visual Capture Camera Component */}
                 <CameraCapture 
                   onPhotoCaptured={(base64) => setPhotoUrl(base64 || null)} 
@@ -704,38 +734,39 @@ export default function App() {
                   initialVideoUrl={videoUrl}
                 />
 
-                {/* AI Research Hub Widget */}
-                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3.5 shadow-inner">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                      <Sparkles size={14} className="text-indigo-600 fill-indigo-200 animate-pulse" />
-                      Gemini Co-Pilot
-                    </span>
-                    <button
-                      type="button"
-                      disabled={aiLoading || (!itemName && !photoUrl)}
-                      onClick={handleAiResearch}
-                      className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400 text-white font-bold text-[11px] rounded-lg flex items-center gap-1 transition shadow-sm"
-                      id="btn-trigger-ai-research"
-                    >
-                      {aiLoading ? <RefreshCw size={11} className="animate-spin" /> : <Sparkles size={11} />}
-                      {aiLoading ? "Researching..." : "Research with AI"}
-                    </button>
-                  </div>
-                  
-                  {/* Research Panel View */}
-                  <AIResearchView 
-                    research={aiResult} 
-                    onApplyAll={handleApplyAllAi} 
-                    onApplyField={handleApplyAiField}
-                    isLoading={aiLoading} 
-                    error={aiError} 
-                  />
-                </div>
+                {/* Big "Gemini Find It!" Identification Button */}
+                <button
+                  type="button"
+                  disabled={aiLoading || (photos.length === 0 && !itemName && !photoUrl)}
+                  onClick={handleAiResearch}
+                  className="w-full py-3.5 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 disabled:from-slate-200 disabled:to-slate-300 text-white font-extrabold text-xs rounded-xl flex items-center justify-center gap-2 shadow-md shadow-indigo-200 transition active:scale-95 cursor-pointer"
+                  id="btn-trigger-ai-research"
+                >
+                  {aiLoading ? <RefreshCw size={16} className="animate-spin" /> : <Sparkles size={16} className="animate-bounce" />}
+                  {aiLoading ? "Gemini is Identifying Item & Researching Comps..." : "✨ Gemini Find It! (Auto-Fill Form)"}
+                </button>
+
+                {/* Research Results Panel View */}
+                <AIResearchView 
+                  research={aiResult} 
+                  onApplyAll={handleApplyAllAi} 
+                  onApplyField={handleApplyAiField}
+                  isLoading={aiLoading} 
+                  error={aiError} 
+                />
               </div>
 
-              {/* Right Column: Physical Details form */}
-              <form onSubmit={handleSubmitItem} className="lg:col-span-7 space-y-4">
+              {/* BOX 2: Add New Item Record (Auto-populated by Gemini) */}
+              <form onSubmit={handleSubmitItem} className="lg:col-span-6 bg-slate-50/80 border border-slate-200 p-5 rounded-2xl space-y-4 shadow-xs" id="box-2-add-new">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-200">
+                  <div className="flex items-center gap-2">
+                    <span className="w-6 h-6 bg-slate-800 text-white rounded-lg text-xs font-black flex items-center justify-center">2</span>
+                    <h3 className="font-extrabold text-sm text-slate-900">Add New Item Record</h3>
+                  </div>
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full">
+                    Step 2
+                  </span>
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Name field */}
                   <div className="md:col-span-2">
