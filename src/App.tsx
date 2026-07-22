@@ -83,14 +83,41 @@ export default function App() {
   // Real-time Firestore subscription
   useEffect(() => {
     setLoading(true);
-    const q = query(collection(db, "inventory"), orderBy("createdAt", "desc"));
+    const q = collection(db, "inventory");
     
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
         const fetchedItems: InventoryItem[] = [];
         snapshot.forEach((doc) => {
-          fetchedItems.push({ id: doc.id, ...doc.data() } as InventoryItem);
+          const data = doc.data();
+          fetchedItems.push({ 
+            id: doc.id, 
+            name: data.name || "Untitled Item",
+            category: data.category || "General Item",
+            status: data.status || "inventory",
+            purchasePrice: Number(data.purchasePrice) || 0,
+            purchaseDate: data.purchaseDate || new Date().toISOString().split("T")[0],
+            purchaseLocation: data.purchaseLocation || "",
+            salePrice: data.salePrice !== undefined && data.salePrice !== null ? Number(data.salePrice) : null,
+            saleDate: data.saleDate || null,
+            salePlatform: data.salePlatform || null,
+            listedPrice: data.listedPrice !== undefined && data.listedPrice !== null ? Number(data.listedPrice) : null,
+            listedPlatform: data.listedPlatform || null,
+            notes: data.notes || "",
+            photoUrl: data.photoUrl || (data.photos && data.photos[0]) || null,
+            photos: data.photos || (data.photoUrl ? [data.photoUrl] : []),
+            stockNumber: data.stockNumber || undefined,
+            bundleId: data.bundleId || undefined,
+            bundleTitle: data.bundleTitle || undefined,
+            bundledItemIds: data.bundledItemIds || undefined,
+            videoUrl: data.videoUrl || null,
+            research: data.research || null,
+            createdAt: data.createdAt || new Date().toISOString(),
+            updatedAt: data.updatedAt || new Date().toISOString(),
+            buyerInquiriesCount: data.buyerInquiriesCount || 0,
+            lastInquiryAt: data.lastInquiryAt || undefined,
+          } as InventoryItem);
         });
         setItems(fetchedItems);
         setLoading(false);
@@ -488,11 +515,12 @@ export default function App() {
   // Filter and sort computation
   const filteredItems = items.filter((item) => {
     const matchesSearch = 
-      item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (item.stockNumber && item.stockNumber.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (item.category && item.category.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (item.purchaseLocation && item.purchaseLocation.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (item.notes && item.notes.toLowerCase().includes(searchQuery.toLowerCase()));
+      (item.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (item.stockNumber || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (item.bundleTitle || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (item.category || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (item.purchaseLocation || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (item.notes || "").toLowerCase().includes(searchQuery.toLowerCase());
     
     const matchesCategory = selectedCategory === "All" || item.category === selectedCategory;
     const matchesStatus = selectedStatus === "all" 
