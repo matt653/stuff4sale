@@ -14,6 +14,7 @@ import CameraCapture from "./components/CameraCapture";
 import AIResearchView from "./components/AIResearchView";
 import FBMarketplacePostingTool from "./components/FBMarketplacePostingTool";
 import AIIntakeInspector from "./components/AIIntakeInspector";
+import FBLeadSyncModal from "./components/FBLeadSyncModal";
 
 const COMMON_CATEGORIES = [
   "Clothing & Apparel",
@@ -47,6 +48,7 @@ export default function App() {
   // Form states
   const [showAddForm, setShowAddForm] = useState(false);
   const [showInspector, setShowInspector] = useState(false);
+  const [showLeadModal, setShowLeadModal] = useState(false);
   const [showMobileModal, setShowMobileModal] = useState(false);
   const [showFBTool, setShowFBTool] = useState(false);
   const [fbSelectedItem, setFbSelectedItem] = useState<InventoryItem | null>(null);
@@ -646,6 +648,20 @@ export default function App() {
               <p className="text-slate-500 text-sm">Manage your sourcing and sales pipeline in real-time.</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowLeadModal(true)}
+                className="px-3.5 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 hover:text-blue-800 rounded-xl text-xs font-bold flex items-center gap-1.5 border border-blue-200 shadow-sm transition active:scale-95 cursor-pointer"
+                id="btn-show-lead-sync"
+              >
+                💬 FB Lead Alerts
+                {items.reduce((sum, i) => sum + (i.buyerInquiriesCount || 0), 0) > 0 && (
+                  <span className="bg-blue-600 text-white text-[10px] font-extrabold px-1.5 py-0.2 rounded-full">
+                    {items.reduce((sum, i) => sum + (i.buyerInquiriesCount || 0), 0)}
+                  </span>
+                )}
+              </button>
+
               <button
                 type="button"
                 onClick={() => {
@@ -1525,6 +1541,15 @@ export default function App() {
               />
             </div>
           </div>
+        )}
+
+        {/* FB Messenger Lead Sync & Alert Tracker Modal Overlay */}
+        {showLeadModal && (
+          <FBLeadSyncModal
+            items={items}
+            onStatusChange={handleQuickStatusUpdate}
+            onClose={() => setShowLeadModal(false)}
+          />
         )}
         </main>
       </div>

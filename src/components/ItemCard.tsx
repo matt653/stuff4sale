@@ -175,6 +175,13 @@ export default function ItemCard({ item, onEdit, onDelete, onStatusChange, onFBP
           </div>
         )}
 
+        {/* FB Buyer Inquiry Notification Badge */}
+        {item.buyerInquiriesCount && item.buyerInquiriesCount > 0 ? (
+          <div className="absolute top-10 left-2.5 bg-blue-600 text-white rounded-full px-2.5 py-0.5 text-[10px] font-extrabold flex items-center gap-1 shadow-lg border border-blue-400/50 animate-bounce">
+            💬 {item.buyerInquiriesCount} FB {item.buyerInquiriesCount === 1 ? "Inquiry" : "Inquiries"}
+          </div>
+        ) : null}
+
         {/* Quick listing banner */}
         {item.status === "listed" && item.listedPlatform && (
           <div className="absolute bottom-0 inset-x-0 bg-indigo-600/90 backdrop-blur-sm text-white py-1 px-3 text-[10px] font-bold tracking-wide flex items-center justify-between">
@@ -280,19 +287,35 @@ export default function ItemCard({ item, onEdit, onDelete, onStatusChange, onFBP
             )}
 
             {item.status === "listed" && (
-              <button
-                type="button"
-                onClick={() => onStatusChange(item.id, { 
-                  status: "inventory", 
-                  listedPlatform: null,
-                  updatedAt: new Date().toISOString()
-                })}
-                className="text-[10px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-1.5 rounded-lg transition"
-                id={`btn-quick-unlist-${item.id}`}
-                title="Mark as Not Posted Yet"
-              >
-                Unlist
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={() => onStatusChange(item.id, { 
+                    buyerInquiriesCount: (item.buyerInquiriesCount || 0) + 1,
+                    lastInquiryAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
+                  })}
+                  className="text-[10px] font-extrabold bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-2 py-1.5 rounded-lg transition flex items-center gap-0.5 cursor-pointer"
+                  id={`btn-log-lead-${item.id}`}
+                  title="Log incoming Facebook Messenger inquiry for this item"
+                >
+                  💬 +1 FB Lead
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => onStatusChange(item.id, { 
+                    status: "inventory", 
+                    listedPlatform: null,
+                    updatedAt: new Date().toISOString()
+                  })}
+                  className="text-[10px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-1.5 rounded-lg transition"
+                  id={`btn-quick-unlist-${item.id}`}
+                  title="Mark as Not Posted Yet"
+                >
+                  Unlist
+                </button>
+              </>
             )}
 
             {(item.status === "inventory" || item.status === "listed") && (

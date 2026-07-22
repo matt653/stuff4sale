@@ -36,6 +36,8 @@ export interface InventoryItem {
   research: AIResearchResult | null;
   createdAt: string;
   updatedAt: string;
+  buyerInquiriesCount?: number; // Tracks FB Messenger buyer inquiries
+  lastInquiryAt?: string;
 }
 
 export interface DashboardStats {
