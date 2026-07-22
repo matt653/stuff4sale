@@ -264,21 +264,55 @@ export default function CameraCapture({
   return (
     <div className="w-full bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 p-4 relative" id="camera-capture-container">
       {/* Title / Header Bar */}
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-sm font-semibold text-slate-700 flex items-center gap-1.5">
-          <Camera size={16} className="text-indigo-600" />
-          Listing Pictures ({photos.length}) {videoPreviewUrl ? "+ Video" : ""}
-        </span>
-        {(photos.length > 0 || videoPreviewUrl) && (
-          <button
-            type="button"
-            onClick={handleClearAllMedia}
-            className="text-xs text-rose-600 hover:text-rose-800 font-semibold flex items-center gap-1 transition"
-            id="btn-remove-all-media"
-          >
-            <X size={12} /> Clear All ({photos.length})
-          </button>
-        )}
+      <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+            <Camera size={16} className="text-indigo-600" />
+            Listing Pictures ({photos.length}) {videoPreviewUrl ? "+ Video" : ""}
+          </span>
+          {photos.length > 0 && (
+            <span className="text-[10px] bg-indigo-50 text-indigo-700 font-bold px-2 py-0.5 rounded-full border border-indigo-200">
+              Multi-Photo Active
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2">
+          {photos.length > 0 && (
+            <>
+              <button
+                type="button"
+                onClick={() => startCamera(selectedDeviceId)}
+                className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow-xs transition active:scale-95"
+                title="Take another photo"
+              >
+                <Camera size={12} /> Snap Photo
+              </button>
+
+              <label className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-100 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer shadow-xs transition active:scale-95">
+                <Plus size={12} /> Add Pictures
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+              </label>
+            </>
+          )}
+
+          {(photos.length > 0 || videoPreviewUrl) && (
+            <button
+              type="button"
+              onClick={handleClearAllMedia}
+              className="text-xs text-rose-600 hover:text-rose-800 font-semibold flex items-center gap-1 transition ml-1"
+              id="btn-remove-all-media"
+            >
+              <X size={12} /> Clear All
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Main Large Preview Area */}
@@ -304,6 +338,20 @@ export default function CameraCapture({
               ) : (
                 <span>Photo {activePhotoIndex + 1} of {photos.length}</span>
               )}
+            </div>
+
+            {/* Floating Overlay Add Picture Button */}
+            <div className="absolute top-2 right-2 flex items-center gap-1.5">
+              <label className="px-3 py-1.5 bg-slate-900/85 hover:bg-slate-900 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-md backdrop-blur-sm transition active:scale-95 border border-slate-700">
+                <Plus size={14} className="text-indigo-400" /> Add More Pictures
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+              </label>
             </div>
 
             <div className="absolute bottom-2 right-2 bg-emerald-600 text-white text-xs px-2.5 py-1 rounded-full flex items-center gap-1 shadow-md">
