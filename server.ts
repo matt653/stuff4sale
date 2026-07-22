@@ -66,6 +66,14 @@ The JSON response MUST match this exact schema:
   "demandScore": 7, (An integer from 1 to 10 indicating sell-through rate. 1 = extremely hard to sell, 10 = sells within hours)
   "worthSelling": "YES", (Choose one strictly: "YES" if estimated profit/value is good and item sells easily, "MARGINAL" if low profit margin $5-$15 or slow seller, "NO" if item has low value under $10 or is not worth flipping)
   "triageReason": "A clear, punchy 1-sentence sourcing verdict advising the user why this item is worth reselling or why they should pass/scrap it",
+  "cleaningInstructions": [
+    "Cleaning step 1: Specific advice on how to clean, restore, or test this exact item to maximize selling price.",
+    "Cleaning step 2..."
+  ], (Provide 2 to 3 specific item cleaning and restoration instructions)
+  "prepChecklist": [
+    "Prep step 1: What to test or photograph before listing.",
+    "Prep step 2..."
+  ], (Provide 2 to 3 practical steps to prepare this item for listing)
   "targetPlatforms": [
     "eBay - Great for reach and global audience.",
     "Facebook Marketplace - Best for local pickup, avoiding shipping costs."

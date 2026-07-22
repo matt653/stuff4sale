@@ -180,7 +180,7 @@ export default function CameraCapture({
     const newUploadedPhotos: string[] = [];
     let processedCount = 0;
 
-    files.forEach((file) => {
+    (files as File[]).forEach((file: File) => {
       const reader = new FileReader();
       reader.onload = (event) => {
         const img = new Image();

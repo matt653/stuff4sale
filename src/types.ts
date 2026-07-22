@@ -12,6 +12,8 @@ export interface AIResearchResult {
   keywords: string[];
   worthSelling?: 'YES' | 'MARGINAL' | 'NO';
   triageReason?: string;
+  cleaningInstructions?: string[];
+  prepChecklist?: string[];
 }
 
 export interface InventoryItem {

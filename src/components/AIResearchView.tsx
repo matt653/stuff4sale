@@ -74,6 +74,9 @@ export default function AIResearchView({ research, onApplyAll, onApplyField, isL
     return "Low Demand (Patience Needed)";
   };
 
+  // Determine verdict badge
+  const verdict = research.worthSelling || (research.estimatedValueMin >= 20 && research.demandScore >= 5 ? "YES" : research.estimatedValueMin >= 10 ? "MARGINAL" : "NO");
+
   return (
     <div className="bg-gradient-to-br from-indigo-50/40 via-purple-50/10 to-white border border-indigo-100 rounded-2xl p-5 shadow-sm space-y-4" id="ai-research-view">
       {/* Header */}
@@ -83,7 +86,7 @@ export default function AIResearchView({ research, onApplyAll, onApplyField, isL
             <Sparkles size={16} />
           </div>
           <div>
-            <h4 className="text-sm font-bold text-slate-800">Gemini Market Analysis</h4>
+            <h4 className="text-sm font-bold text-slate-800">Gemini Sourcing & Market Valuation</h4>
             <span className="text-[10px] text-indigo-600 font-semibold tracking-wider uppercase">Live Reseller Intelligence</span>
           </div>
         </div>
@@ -92,12 +95,44 @@ export default function AIResearchView({ research, onApplyAll, onApplyField, isL
           <button
             type="button"
             onClick={() => onApplyAll(research)}
-            className="text-xs bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-1.5 px-3 rounded-lg flex items-center gap-1 transition-all shadow-sm active:scale-95"
+            className="text-xs bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1.5 px-3 rounded-lg flex items-center gap-1 transition-all shadow-sm active:scale-95 cursor-pointer"
             id="btn-apply-all-research"
           >
             Apply All AI Suggestions
           </button>
         )}
+      </div>
+
+      {/* Sourcing Verdict Card: SCRAP OR SELL */}
+      <div className={`p-4 rounded-2xl border flex items-center justify-between shadow-sm ${
+        verdict === "YES"
+          ? "bg-emerald-50 border-emerald-200 text-emerald-900"
+          : verdict === "MARGINAL"
+          ? "bg-amber-50 border-amber-200 text-amber-900"
+          : "bg-rose-50 border-rose-200 text-rose-900"
+      }`}>
+        <div className="space-y-0.5">
+          <span className="text-[10px] font-extrabold uppercase tracking-wider block opacity-75">
+            Sourcing Verdict
+          </span>
+          <h4 className="font-extrabold text-sm">
+            {verdict === "YES"
+              ? "🚀 WORTH SELLING! (Great Flip Opportunity)"
+              : verdict === "MARGINAL"
+              ? "⚠️ MARGINAL FIND - Low Margin / Slower Sale"
+              : "🛑 SCRAP / PASS IT - Low Value / Bulky to Ship"}
+          </h4>
+          {research.triageReason && (
+            <p className="text-xs font-medium opacity-90 mt-1">
+              {research.triageReason}
+            </p>
+          )}
+        </div>
+
+        <div className="text-right shrink-0 ml-2">
+          <span className="text-[10px] font-bold uppercase tracking-wider block opacity-75">Demand</span>
+          <span className="text-base font-extrabold">{research.demandScore}/10</span>
+        </div>
       </div>
 
       {/* Price Range & Demand Grid */}
@@ -250,6 +285,43 @@ export default function AIResearchView({ research, onApplyAll, onApplyField, isL
           </ul>
         </div>
       </div>
+
+      {/* Item Cleaning & Preparation Checklist Section */}
+      {((research.cleaningInstructions && research.cleaningInstructions.length > 0) || (research.prepChecklist && research.prepChecklist.length > 0)) && (
+        <div className="bg-indigo-50/50 border border-indigo-100 rounded-xl p-3.5 space-y-3">
+          <h5 className="text-xs font-bold text-indigo-950 flex items-center gap-1.5">
+            🧼 Cleaning, Maintenance & Listing Prep Guide
+          </h5>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+            {research.cleaningInstructions && research.cleaningInstructions.length > 0 && (
+              <div className="space-y-1">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Cleaning & Restoration</span>
+                <ul className="space-y-1">
+                  {research.cleaningInstructions.map((step, idx) => (
+                    <li key={idx} className="bg-white border border-indigo-100/60 rounded-lg px-2.5 py-1.5 text-[11px] text-slate-700 font-medium">
+                      🧽 {step}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {research.prepChecklist && research.prepChecklist.length > 0 && (
+              <div className="space-y-1">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Listing Prep Checklist</span>
+                <ul className="space-y-1">
+                  {research.prepChecklist.map((step, idx) => (
+                    <li key={idx} className="bg-white border border-indigo-100/60 rounded-lg px-2.5 py-1.5 text-[11px] text-slate-700 font-medium">
+                      📋 {step}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Keywords / Search Tags */}
       {research.keywords && research.keywords.length > 0 && (

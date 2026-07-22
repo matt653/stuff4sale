@@ -61,6 +61,12 @@ The JSON response MUST match this exact schema:
   "demandScore": 7,
   "worthSelling": "YES",
   "triageReason": "Clear 1-sentence verdict on whether to flip this find or pass/scrap it.",
+  "cleaningInstructions": [
+    "Step 1: Specific cleaning/testing tip for this item."
+  ],
+  "prepChecklist": [
+    "Step 1: Specific prep/photo tip."
+  ],
   "targetPlatforms": [
     "eBay - Great for reach.",
     "Facebook Marketplace - Best for local pickup."
