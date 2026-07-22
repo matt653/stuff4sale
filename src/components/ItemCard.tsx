@@ -110,8 +110,19 @@ export default function ItemCard({ item, onEdit, onDelete, onStatusChange, onFBP
   return (
     <div className="bg-white border border-slate-150 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col justify-between group" id={`item-card-${item.id}`}>
       
-      {/* Top Media & Badge Block */}
-      <div className="relative aspect-[4/3] w-full bg-slate-100 border-b border-slate-100 overflow-hidden flex items-center justify-center group/media">
+      {/* Top Media & Badge Block (Clickable to Edit) */}
+      <div 
+        onClick={() => onEdit(item)}
+        className="relative aspect-[4/3] w-full bg-slate-100 border-b border-slate-100 overflow-hidden flex items-center justify-center group/media cursor-pointer" 
+        title="Click photo to edit item details"
+        id={`item-card-media-${item.id}`}
+      >
+        {/* Click to edit overlay hint on hover */}
+        <div className="absolute inset-0 bg-slate-900/30 opacity-0 group-hover/media:opacity-100 transition-opacity z-1 flex items-center justify-center pointer-events-none">
+          <span className="bg-slate-900/90 text-white text-[10px] font-extrabold px-2.5 py-1 rounded-full backdrop-blur-md shadow-md flex items-center gap-1">
+            <Edit size={11} /> Click photo to edit
+          </span>
+        </div>
         {item.videoUrl ? (
           <video
             src={item.videoUrl}

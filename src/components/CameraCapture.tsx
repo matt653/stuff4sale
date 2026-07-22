@@ -264,6 +264,28 @@ export default function CameraCapture({
     setActivePhotoIndex(0);
   };
 
+  const handleMovePhotoLeft = (index: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (index <= 0) return;
+    const copy = [...photos];
+    const temp = copy[index - 1];
+    copy[index - 1] = copy[index];
+    copy[index] = temp;
+    updatePhotos(copy);
+    setActivePhotoIndex(index - 1);
+  };
+
+  const handleMovePhotoRight = (index: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (index >= photos.length - 1) return;
+    const copy = [...photos];
+    const temp = copy[index + 1];
+    copy[index + 1] = copy[index];
+    copy[index] = temp;
+    updatePhotos(copy);
+    setActivePhotoIndex(index + 1);
+  };
+
   const handleClearAllMedia = () => {
     updatePhotos([]);
     setVideoPreviewUrl(null);
@@ -520,25 +542,48 @@ export default function CameraCapture({
                   </div>
                 )}
 
-                {/* Hover Actions: Set Primary & Delete */}
-                <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
+                {/* Hover Actions: Re-order, Set Primary & Delete */}
+                <div className="absolute inset-0 bg-slate-900/75 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-0.5 p-0.5">
+                  {idx > 0 && (
+                    <button
+                      type="button"
+                      onClick={(e) => handleMovePhotoLeft(idx, e)}
+                      className="p-1 bg-slate-800 hover:bg-indigo-600 text-white rounded text-[11px] font-black shadow leading-none"
+                      title="Move Left"
+                    >
+                      ‹
+                    </button>
+                  )}
+
                   {idx !== 0 && (
                     <button
                       type="button"
                       onClick={(e) => handleSetPrimaryPhoto(idx, e)}
-                      className="p-1 bg-amber-500 hover:bg-amber-600 text-white rounded-md shadow transition"
+                      className="p-1 bg-amber-500 hover:bg-amber-600 text-white rounded shadow transition"
                       title="Set as Main Cover Photo"
                     >
-                      <Star size={11} className="fill-white" />
+                      <Star size={10} className="fill-white" />
                     </button>
                   )}
+
+                  {idx < photos.length - 1 && (
+                    <button
+                      type="button"
+                      onClick={(e) => handleMovePhotoRight(idx, e)}
+                      className="p-1 bg-slate-800 hover:bg-indigo-600 text-white rounded text-[11px] font-black shadow leading-none"
+                      title="Move Right"
+                    >
+                      ›
+                    </button>
+                  )}
+
                   <button
                     type="button"
                     onClick={(e) => handleRemovePhoto(idx, e)}
-                    className="p-1 bg-rose-600 hover:bg-rose-700 text-white rounded-md shadow transition"
+                    className="p-1 bg-rose-600 hover:bg-rose-700 text-white rounded shadow transition"
                     title="Remove Photo"
                   >
-                    <Trash2 size={11} />
+                    <Trash2 size={10} />
                   </button>
                 </div>
               </div>
