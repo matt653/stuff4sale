@@ -1,0 +1,10 @@
+{
+  "name": "Side Hustle Inventory Tracker",
+  "description": "A live inventory tracking and AI-powered research assistant for reselling and side hustles.",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

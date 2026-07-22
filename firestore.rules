@@ -1,0 +1,10 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Enable simple open read/write access for the shared live workspace
+    match /inventory/{document} {
+      allow read, write: if true;
+    }
+  }
+}
