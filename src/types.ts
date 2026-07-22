@@ -10,6 +10,8 @@ export interface AIResearchResult {
   sellingTips: string[];
   category: string;
   keywords: string[];
+  worthSelling?: 'YES' | 'MARGINAL' | 'NO';
+  triageReason?: string;
 }
 
 export interface InventoryItem {

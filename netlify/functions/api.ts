@@ -59,6 +59,8 @@ The JSON response MUST match this exact schema:
   "estimatedValueMin": 15,
   "estimatedValueMax": 45,
   "demandScore": 7,
+  "worthSelling": "YES",
+  "triageReason": "Clear 1-sentence verdict on whether to flip this find or pass/scrap it.",
   "targetPlatforms": [
     "eBay - Great for reach.",
     "Facebook Marketplace - Best for local pickup."

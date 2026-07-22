@@ -13,6 +13,7 @@ import ItemCard from "./components/ItemCard";
 import CameraCapture from "./components/CameraCapture";
 import AIResearchView from "./components/AIResearchView";
 import FBMarketplacePostingTool from "./components/FBMarketplacePostingTool";
+import AIIntakeInspector from "./components/AIIntakeInspector";
 
 const COMMON_CATEGORIES = [
   "Clothing & Apparel",
@@ -45,6 +46,7 @@ export default function App() {
 
   // Form states
   const [showAddForm, setShowAddForm] = useState(false);
+  const [showInspector, setShowInspector] = useState(false);
   const [showMobileModal, setShowMobileModal] = useState(false);
   const [showFBTool, setShowFBTool] = useState(false);
   const [fbSelectedItem, setFbSelectedItem] = useState<InventoryItem | null>(null);
@@ -585,7 +587,22 @@ export default function App() {
 
             <button
               onClick={() => {
+                setShowInspector(true);
+                setShowAddForm(false);
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+              className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-left font-medium transition-colors ${
+                showInspector ? "bg-indigo-500/10 text-indigo-400 font-bold" : "hover:bg-slate-800 text-slate-300"
+              }`}
+            >
+              <Sparkles size={18} className="text-indigo-400" />
+              <span>AI Sourcing Check-In</span>
+            </button>
+
+            <button
+              onClick={() => {
                 setShowAddForm(true);
+                setShowInspector(false);
                 // Set to edit/create state with AI
                 const el = document.getElementById("form-drawer-container");
                 if (el) el.scrollIntoView({ behavior: "smooth" });
@@ -594,8 +611,8 @@ export default function App() {
                 showAddForm ? "bg-indigo-500/10 text-indigo-400" : "hover:bg-slate-800 text-slate-300"
               }`}
             >
-              <Sparkles size={18} />
-              <span>Research Labs</span>
+              <Tag size={18} />
+              <span>Research & Manual Entry</span>
             </button>
           </div>
 
@@ -627,6 +644,19 @@ export default function App() {
               <button
                 type="button"
                 onClick={() => {
+                  setShowInspector(!showInspector);
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+                className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white rounded-xl text-xs font-extrabold flex items-center gap-2 shadow-md shadow-indigo-200 transition active:scale-95 cursor-pointer"
+                id="btn-toggle-inspector"
+              >
+                <Sparkles size={14} className="animate-pulse" />
+                {showInspector ? "Close AI Check-In" : "AI Sourcing Check-In"}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
                   setFbSelectedItem(items[0] || null);
                   setShowFBTool(true);
                 }}
@@ -648,6 +678,19 @@ export default function App() {
               </button>
             </div>
           </header>
+
+          {/* AI Sourcing Check-In & Valuation Inspector */}
+          {showInspector && (
+            <div className="mb-6">
+              <AIIntakeInspector 
+                onAddToInventory={async (itemData) => {
+                  const collectionRef = collection(db, "inventory");
+                  await addDoc(collectionRef, itemData);
+                }}
+                onClose={() => setShowInspector(false)}
+              />
+            </div>
+          )}
 
           {/* Error Feedback */}
           {errorMessage && (
