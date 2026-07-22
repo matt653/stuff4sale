@@ -136,7 +136,7 @@ export default function AIIntakeInspector({ onAddToInventory, onClose }: AIIntak
               </span>
             </h3>
             <p className="text-xs text-slate-500">
-              Snap photos of what you found -> Gemini AI evaluates if it's worth selling, predicts profit, then you choose to <b>Add</b> or <b>Scrap</b> it!
+              Snap photos of what you found → Gemini AI evaluates if it's worth selling, predicts profit, then you choose to <b>Add</b> or <b>Scrap</b> it!
             </p>
           </div>
         </div>
