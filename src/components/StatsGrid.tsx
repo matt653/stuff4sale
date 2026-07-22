@@ -21,7 +21,14 @@ export default function StatsGrid({ items }: StatsGridProps) {
   // Active items calculations
   const activeItems = items.filter((item) => item.status === "inventory" || item.status === "listed");
   const activeInventoryCostValue = activeItems.reduce((sum, item) => sum + (item.purchasePrice || 0), 0);
-  const activeListedValue = activeItems.reduce((sum, item) => sum + (item.listedPrice || item.purchasePrice || 0), 0);
+  const activeEstimatedResaleValue = activeItems.reduce((sum, item) => {
+    if (item.listedPrice && item.listedPrice > 0) return sum + item.listedPrice;
+    if (item.research && item.research.estimatedValueMax) {
+      const midpoint = Math.round((item.research.estimatedValueMin + item.research.estimatedValueMax) / 2);
+      return sum + midpoint;
+    }
+    return sum + (item.purchasePrice * 2 || 35);
+  }, 0);
 
   // Return on Investment: (Realized Net Profit / Cost of Sold Items) * 100
   const roi = costOfSoldItems > 0 ? (realizedNetProfit / costOfSoldItems) * 100 : 0;
@@ -86,10 +93,26 @@ export default function StatsGrid({ items }: StatsGridProps) {
         </div>
       </div>
 
-      {/* Active Inventory Cost Value */}
+      {/* Stock Est Value Card */}
       <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col justify-between" id="stat-inventory-cost">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-xs font-semibold text-slate-500 tracking-wide uppercase">Active Stock Cost</span>
+          <span className="text-xs font-extrabold text-slate-700 tracking-wide uppercase">Stock Est. Value</span>
+          <div className="p-1.5 bg-indigo-50 text-indigo-600 rounded-lg">
+            <Tag size={16} />
+          </div>
+        </div>
+        <div>
+          <span className="text-2xl font-extrabold text-indigo-900 tracking-tight">
+            {formatCurrency(activeEstimatedResaleValue)}
+          </span>
+          <p className="text-[10px] text-slate-400 mt-1">{activeItems.length} active items in stock</p>
+        </div>
+      </div>
+
+      {/* Capital Invested in Stock Card */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col justify-between col-span-2 lg:col-span-1" id="stat-total-invested">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs font-semibold text-slate-500 tracking-wide uppercase">Capital Invested</span>
           <div className="p-1.5 bg-amber-50 text-amber-600 rounded-lg">
             <Package size={16} />
           </div>
@@ -98,23 +121,7 @@ export default function StatsGrid({ items }: StatsGridProps) {
           <span className="text-2xl font-bold text-slate-800 tracking-tight">
             {formatCurrency(activeInventoryCostValue)}
           </span>
-          <p className="text-[10px] text-slate-400 mt-1">{activeItems.length} active items in stock</p>
-        </div>
-      </div>
-
-      {/* Active Inventory Expected List Price Value */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col justify-between col-span-2 lg:col-span-1" id="stat-total-invested">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-xs font-semibold text-slate-500 tracking-wide uppercase">Active Est. Value</span>
-          <div className="p-1.5 bg-purple-50 text-purple-600 rounded-lg">
-            <Tag size={16} />
-          </div>
-        </div>
-        <div>
-          <span className="text-2xl font-bold text-slate-800 tracking-tight">
-            {formatCurrency(activeListedValue)}
-          </span>
-          <p className="text-[10px] text-slate-400 mt-1">{listedCount} items currently listed</p>
+          <p className="text-[10px] text-slate-400 mt-1">Total purchase cost in stock</p>
         </div>
       </div>
     </div>
