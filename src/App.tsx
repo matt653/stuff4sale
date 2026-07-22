@@ -6,7 +6,7 @@ import {
   Edit, Trash2, TrendingUp, Smartphone, Cloud, Share2, Clock, CheckCircle
 } from "lucide-react";
 import { collection, onSnapshot, addDoc, updateDoc, doc, deleteDoc, query, orderBy } from "firebase/firestore";
-import { db } from "./firebase";
+import { db, dbDefault, dbCustom } from "./firebase";
 import { InventoryItem, ItemStatus, AIResearchResult } from "./types";
 import StatsGrid from "./components/StatsGrid";
 import ItemCard from "./components/ItemCard";
@@ -107,65 +107,99 @@ export default function App() {
     }
   };
 
-  // Real-time Firestore subscription with Local Storage Vault Fallback
+  // Real-time Firestore subscription with Dual Database Listener & Local Storage Vault Fallback
   useEffect(() => {
     setLoading(true);
-    const q = collection(db, "inventory");
-    
-    const unsubscribe = onSnapshot(
-      q,
+    const defaultItemsMap = new Map<string, InventoryItem>();
+    const customItemsMap = new Map<string, InventoryItem>();
+
+    const parseDoc = (doc: any): InventoryItem => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        name: data.name || "Untitled Item",
+        category: data.category || "General Item",
+        status: data.status || "inventory",
+        purchasePrice: Number(data.purchasePrice) || 0,
+        purchaseDate: data.purchaseDate || new Date().toISOString().split("T")[0],
+        purchaseLocation: data.purchaseLocation || "",
+        salePrice: data.salePrice !== undefined && data.salePrice !== null ? Number(data.salePrice) : null,
+        saleDate: data.saleDate || null,
+        salePlatform: data.salePlatform || null,
+        listedPrice: data.listedPrice !== undefined && data.listedPrice !== null ? Number(data.listedPrice) : null,
+        listedPlatform: data.listedPlatform || null,
+        notes: data.notes || "",
+        photoUrl: data.photoUrl || (data.photos && data.photos[0]) || null,
+        photos: data.photos || (data.photoUrl ? [data.photoUrl] : []),
+        stockNumber: data.stockNumber || undefined,
+        bundleId: data.bundleId || undefined,
+        bundleTitle: data.bundleTitle || undefined,
+        bundledItemIds: data.bundledItemIds || undefined,
+        videoUrl: data.videoUrl || null,
+        research: data.research || null,
+        createdAt: data.createdAt || new Date().toISOString(),
+        updatedAt: data.updatedAt || new Date().toISOString(),
+        buyerInquiriesCount: data.buyerInquiriesCount || 0,
+        lastInquiryAt: data.lastInquiryAt || undefined,
+      };
+    };
+
+    const syncCombinedItems = () => {
+      const mergedMap = new Map<string, InventoryItem>();
+      defaultItemsMap.forEach((v, k) => mergedMap.set(k, v));
+      customItemsMap.forEach((v, k) => mergedMap.set(k, v));
+
+      const mergedList = Array.from(mergedMap.values());
+      setItems(mergedList);
+      saveLocalVault(mergedList);
+      setLoading(false);
+      setErrorMessage(null);
+      setIsOfflineVault(false);
+    };
+
+    // 1. Subscribe to Default Firestore Database
+    const unsubDefault = onSnapshot(
+      collection(dbDefault, "inventory"),
       (snapshot) => {
-        const fetchedItems: InventoryItem[] = [];
+        defaultItemsMap.clear();
         snapshot.forEach((doc) => {
-          const data = doc.data();
-          fetchedItems.push({ 
-            id: doc.id, 
-            name: data.name || "Untitled Item",
-            category: data.category || "General Item",
-            status: data.status || "inventory",
-            purchasePrice: Number(data.purchasePrice) || 0,
-            purchaseDate: data.purchaseDate || new Date().toISOString().split("T")[0],
-            purchaseLocation: data.purchaseLocation || "",
-            salePrice: data.salePrice !== undefined && data.salePrice !== null ? Number(data.salePrice) : null,
-            saleDate: data.saleDate || null,
-            salePlatform: data.salePlatform || null,
-            listedPrice: data.listedPrice !== undefined && data.listedPrice !== null ? Number(data.listedPrice) : null,
-            listedPlatform: data.listedPlatform || null,
-            notes: data.notes || "",
-            photoUrl: data.photoUrl || (data.photos && data.photos[0]) || null,
-            photos: data.photos || (data.photoUrl ? [data.photoUrl] : []),
-            stockNumber: data.stockNumber || undefined,
-            bundleId: data.bundleId || undefined,
-            bundleTitle: data.bundleTitle || undefined,
-            bundledItemIds: data.bundledItemIds || undefined,
-            videoUrl: data.videoUrl || null,
-            research: data.research || null,
-            createdAt: data.createdAt || new Date().toISOString(),
-            updatedAt: data.updatedAt || new Date().toISOString(),
-            buyerInquiriesCount: data.buyerInquiriesCount || 0,
-            lastInquiryAt: data.lastInquiryAt || undefined,
-          } as InventoryItem);
+          defaultItemsMap.set(doc.id, parseDoc(doc));
         });
-        setItems(fetchedItems);
-        saveLocalVault(fetchedItems);
-        setLoading(false);
-        setErrorMessage(null);
-        setIsOfflineVault(false);
+        syncCombinedItems();
       },
       (err) => {
-        console.error("Firestore subscription error:", err);
+        console.warn("dbDefault listener error:", err);
         const hasLocalData = loadLocalVault();
         setIsOfflineVault(true);
         if (!hasLocalData) {
           setErrorMessage("Running in Local Vault Mode. Add items to save your inventory locally!");
-        } else {
-          setErrorMessage(null);
         }
         setLoading(false);
       }
     );
 
-    return () => unsubscribe();
+    // 2. Subscribe to Custom Firestore Database (if configured)
+    let unsubCustom = () => {};
+    if (dbCustom) {
+      unsubCustom = onSnapshot(
+        collection(dbCustom, "inventory"),
+        (snapshot) => {
+          customItemsMap.clear();
+          snapshot.forEach((doc) => {
+            customItemsMap.set(doc.id, parseDoc(doc));
+          });
+          syncCombinedItems();
+        },
+        (err) => {
+          console.warn("dbCustom listener warning:", err);
+        }
+      );
+    }
+
+    return () => {
+      unsubDefault();
+      unsubCustom();
+    };
   }, []);
 
   // Handle Form triggers
