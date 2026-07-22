@@ -8,13 +8,14 @@ import { InventoryItem, ItemStatus } from "../types";
 interface ItemCardProps {
   key?: string;
   item: InventoryItem;
+  allItems?: InventoryItem[];
   onEdit: (item: InventoryItem) => void;
   onDelete: (id: string) => void;
   onStatusChange: (id: string, updates: Partial<InventoryItem>) => void;
   onFBPost?: (item: InventoryItem) => void;
 }
 
-export default function ItemCard({ item, onEdit, onDelete, onStatusChange, onFBPost }: ItemCardProps) {
+export default function ItemCard({ item, allItems = [], onEdit, onDelete, onStatusChange, onFBPost }: ItemCardProps) {
   const [showStatusModal, setShowStatusModal] = useState<"list" | "sell" | null>(null);
   
   // Status form states
@@ -23,6 +24,15 @@ export default function ItemCard({ item, onEdit, onDelete, onStatusChange, onFBP
   const [salePrice, setSalePrice] = useState(item.salePrice || item.listedPrice || item.purchasePrice * 2 || 0);
   const [salePlatform, setSalePlatform] = useState(item.salePlatform || item.listedPlatform || "eBay");
   const [saleDate, setSaleDate] = useState(item.saleDate || new Date().toISOString().split("T")[0]);
+
+  // Find other items in the same bundle
+  const otherBundleItems = allItems.filter(
+    (other) =>
+      other.id !== item.id &&
+      ((item.bundleId && other.bundleId === item.bundleId) ||
+        (item.bundledItemIds && item.bundledItemIds.includes(other.id)) ||
+        (other.bundledItemIds && other.bundledItemIds.includes(item.id)))
+  );
 
   const formatCurrency = (val: number | null) => {
     if (val === null) return "$0.00";
@@ -238,6 +248,49 @@ export default function ItemCard({ item, onEdit, onDelete, onStatusChange, onFBP
           <h3 className="font-bold text-sm text-slate-800 leading-tight tracking-tight mb-2 line-clamp-2">
             {item.name}
           </h3>
+
+          {/* Bundled Item Indicator & Linked Sibling Items List */}
+          {(item.bundleId || item.bundleTitle || (otherBundleItems && otherBundleItems.length > 0)) && (
+            <div className="mb-3 bg-purple-50/80 border border-purple-200/80 rounded-xl p-2.5 space-y-1.5" id={`bundle-info-${item.id}`}>
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider bg-purple-600 text-white px-2 py-0.5 rounded-md shadow-2xs">
+                  📦 BUNDLED ITEM
+                </span>
+                {item.bundleTitle && (
+                  <span className="text-[10px] text-purple-900 font-extrabold truncate max-w-[140px]">
+                    {item.bundleTitle}
+                  </span>
+                )}
+              </div>
+
+              {otherBundleItems.length > 0 && (
+                <div className="space-y-1 pt-1 border-t border-purple-100">
+                  <span className="text-[9px] font-extrabold text-purple-800 uppercase tracking-wider block">
+                    Bundled With ({otherBundleItems.length} items):
+                  </span>
+                  <div className="flex flex-wrap gap-1">
+                    {otherBundleItems.map((bItem) => (
+                      <span
+                        key={bItem.id}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const el = document.getElementById(`item-card-${bItem.id}`);
+                          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }}
+                        className="bg-white hover:bg-purple-100 border border-purple-200 text-purple-950 text-[10px] font-bold px-2 py-0.5 rounded-lg flex items-center gap-1 transition shadow-2xs cursor-pointer"
+                        title="Click to locate this bundled item"
+                      >
+                        {bItem.photoUrl && (
+                          <img src={bItem.photoUrl} alt="" className="w-3.5 h-3.5 rounded object-cover" />
+                        )}
+                        <span className="truncate max-w-[110px]">{bItem.name}</span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Core financial numbers */}
           <div className="grid grid-cols-2 gap-2 mb-3 bg-slate-50/80 rounded-xl p-2.5 border border-slate-100 text-xs">

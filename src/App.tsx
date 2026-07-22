@@ -58,6 +58,7 @@ export default function App() {
   const [itemName, setItemName] = useState("");
   const [itemCategory, setItemCategory] = useState("Clothing & Apparel");
   const [stockNumber, setStockNumber] = useState("");
+  const [bundleTitle, setBundleTitle] = useState("");
   const [purchasePrice, setPurchasePrice] = useState("");
   const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().split("T")[0]);
   const [purchaseLocation, setPurchaseLocation] = useState("");
@@ -110,6 +111,7 @@ export default function App() {
     setItemName("");
     setItemCategory("Clothing & Apparel");
     setStockNumber("");
+    setBundleTitle("");
     setPurchasePrice("");
     setPurchaseDate(new Date().toISOString().split("T")[0]);
     setPurchaseLocation("");
@@ -133,6 +135,7 @@ export default function App() {
     setItemName(item.name);
     setItemCategory(item.category);
     setStockNumber(item.stockNumber || "");
+    setBundleTitle(item.bundleTitle || "");
     setPurchasePrice(item.purchasePrice.toString());
     setPurchaseDate(item.purchaseDate);
     setPurchaseLocation(item.purchaseLocation || "");
@@ -262,6 +265,9 @@ export default function App() {
         name: itemName,
         category: itemCategory,
         stockNumber: stockNumber.trim() || null as any,
+        bundleId: editingItem?.bundleId || (bundleTitle.trim() ? "BUNDLE-" + Date.now().toString().slice(-4) : null as any),
+        bundleTitle: bundleTitle.trim() || null as any,
+        bundledItemIds: editingItem?.bundledItemIds || null as any,
         status: itemStatus,
         purchasePrice: pPrice,
         purchaseDate,
@@ -489,7 +495,11 @@ export default function App() {
       (item.notes && item.notes.toLowerCase().includes(searchQuery.toLowerCase()));
     
     const matchesCategory = selectedCategory === "All" || item.category === selectedCategory;
-    const matchesStatus = selectedStatus === "all" || item.status === selectedStatus;
+    const matchesStatus = selectedStatus === "all" 
+      ? true 
+      : selectedStatus === ("bundles" as any) 
+      ? Boolean(item.bundleId || item.bundleTitle || (item.bundledItemIds && item.bundledItemIds.length > 0))
+      : item.status === selectedStatus;
 
     return matchesSearch && matchesCategory && matchesStatus;
   }).sort((a, b) => {
@@ -846,6 +856,25 @@ export default function App() {
                     </div>
                   </div>
 
+                  {/* Bundle Name / Group Field */}
+                  <div>
+                    <label className="text-xs font-bold text-purple-900 uppercase tracking-wide flex items-center justify-between mb-1.5">
+                      <span>Bundle Group / Name</span>
+                      <span className="text-[9px] text-slate-400 font-normal">Optional</span>
+                    </label>
+                    <div className="relative">
+                      <Layers size={13} className="absolute left-3.5 top-3 text-purple-600" />
+                      <input
+                        type="text"
+                        placeholder="e.g. Gaming Setup Bundle, Stereo Set..."
+                        value={bundleTitle}
+                        onChange={(e) => setBundleTitle(e.target.value)}
+                        className="w-full text-xs border border-purple-200 bg-purple-50/30 rounded-xl pl-9 pr-3.5 py-2.5 focus:outline-none focus:ring-1 focus:ring-purple-500 text-slate-900 font-bold"
+                        id="form-item-bundle-title"
+                      />
+                    </div>
+                  </div>
+
                   {/* Purchase Location */}
                   <div>
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wide block mb-1.5">Where'd you buy it?</label>
@@ -1198,6 +1227,7 @@ export default function App() {
               { id: "all", label: "All Items" },
               { id: "inventory", label: "In Stock" },
               { id: "listed", label: "Listed" },
+              { id: "bundles", label: "📦 Bundles" },
               { id: "sold", label: "Sold" },
               { id: "archived", label: "Archived" }
             ].map((tab) => (
@@ -1284,6 +1314,7 @@ export default function App() {
               <ItemCard
                 key={item.id}
                 item={item}
+                allItems={items}
                 onEdit={handleEditClick}
                 onDelete={handleDeleteItem}
                 onStatusChange={handleQuickStatusUpdate}
@@ -1327,9 +1358,16 @@ export default function App() {
                               )}
                             </div>
                             <div className="min-w-0">
-                              <span className="font-bold text-slate-800 block truncate" title={item.name}>
-                                {item.name}
-                              </span>
+                              <div className="flex items-center gap-1.5 truncate">
+                                <span className="font-bold text-slate-800 truncate" title={item.name}>
+                                  {item.name}
+                                </span>
+                                {(item.bundleId || item.bundleTitle) && (
+                                  <span className="bg-purple-100 text-purple-900 text-[9px] font-extrabold px-1.5 py-0.2 rounded shrink-0">
+                                    📦 BUNDLE
+                                  </span>
+                                )}
+                              </div>
                               <span className="text-[10px] text-slate-400 block truncate">
                                 {item.notes || "No notes"}
                               </span>

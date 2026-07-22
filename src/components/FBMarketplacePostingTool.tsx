@@ -209,6 +209,26 @@ export default function FBMarketplacePostingTool({
     }
   };
 
+  const handleSaveAndLinkBundle = () => {
+    if (selectedBundleItemIds.length < 2) return;
+    const bId = `BUNDLE-${Date.now().toString().slice(-4)}`;
+    const bTitle = `Bundle (${selectedBundleItems.length} Items): ${selectedBundleItems.map(i => i.name).join(" + ").slice(0, 45)}...`;
+
+    selectedBundleItemIds.forEach(id => {
+      onStatusChange(id, {
+        bundleId: bId,
+        bundleTitle: bTitle,
+        bundledItemIds: selectedBundleItemIds,
+        status: "listed",
+        listedPlatform: "Facebook Marketplace",
+        updatedAt: new Date().toISOString()
+      });
+    });
+
+    setIsListedSuccess(true);
+    setTimeout(() => setIsListedSuccess(false), 3000);
+  };
+
   // Open Facebook Marketplace in new tab
   const handleLaunchFBMarketplace = () => {
     window.open("https://www.facebook.com/marketplace/create/item", "_blank");
@@ -407,6 +427,17 @@ export default function FBMarketplacePostingTool({
                       <span className="text-xs font-extrabold">Save ${currentBundleSavings}</span>
                     </div>
                   </div>
+
+                  <button
+                    type="button"
+                    disabled={selectedBundleItemIds.length < 2}
+                    onClick={handleSaveAndLinkBundle}
+                    className="w-full mt-2 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-slate-200 text-white font-extrabold text-xs rounded-xl flex items-center justify-center gap-1.5 transition shadow-xs cursor-pointer"
+                    id="btn-link-bundle-inventory"
+                  >
+                    <Layers size={14} />
+                    🔗 Save & Link Selected {selectedBundleItemIds.length} Items as Bundle
+                  </button>
                 </div>
               )}
             </div>
