@@ -79,8 +79,35 @@ export default function App() {
   const [aiResult, setAiResult] = useState<AIResearchResult | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+  const [isOfflineVault, setIsOfflineVault] = useState(false);
 
-  // Real-time Firestore subscription
+  // Helper to load items from local storage vault
+  const loadLocalVault = () => {
+    try {
+      const saved = localStorage.getItem("stuff4sale_items_vault");
+      if (saved) {
+        const parsed: InventoryItem[] = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setItems(parsed);
+          return true;
+        }
+      }
+    } catch (e) {
+      console.error("Failed loading local storage vault:", e);
+    }
+    return false;
+  };
+
+  // Helper to save items to local storage vault
+  const saveLocalVault = (newItems: InventoryItem[]) => {
+    try {
+      localStorage.setItem("stuff4sale_items_vault", JSON.stringify(newItems));
+    } catch (e) {
+      console.error("Failed writing to local storage vault:", e);
+    }
+  };
+
+  // Real-time Firestore subscription with Local Storage Vault Fallback
   useEffect(() => {
     setLoading(true);
     const q = collection(db, "inventory");
@@ -120,12 +147,20 @@ export default function App() {
           } as InventoryItem);
         });
         setItems(fetchedItems);
+        saveLocalVault(fetchedItems);
         setLoading(false);
         setErrorMessage(null);
+        setIsOfflineVault(false);
       },
       (err) => {
         console.error("Firestore subscription error:", err);
-        setErrorMessage("Unable to sync live inventory sheet. Running in offline view.");
+        const hasLocalData = loadLocalVault();
+        setIsOfflineVault(true);
+        if (!hasLocalData) {
+          setErrorMessage("Running in Local Vault Mode. Add items to save your inventory locally!");
+        } else {
+          setErrorMessage(null);
+        }
         setLoading(false);
       }
     );
@@ -314,20 +349,40 @@ export default function App() {
       };
 
       if (editingItem) {
-        // Update existing doc
-        const docRef = doc(db, "inventory", editingItem.id);
-        await updateDoc(docRef, itemData);
+        // Update existing doc in Firestore
+        try {
+          const docRef = doc(db, "inventory", editingItem.id);
+          await updateDoc(docRef, itemData);
+        } catch (e) {
+          console.warn("Firestore update failed, saving locally:", e);
+        }
+
+        // Update local state & vault
+        const updatedList = items.map((i) => (i.id === editingItem.id ? { id: editingItem.id, ...itemData } : i));
+        setItems(updatedList);
+        saveLocalVault(updatedList);
       } else {
-        // Create new doc
-        const collectionRef = collection(db, "inventory");
-        await addDoc(collectionRef, itemData);
+        // Create new doc in Firestore
+        const newId = `ITEM-${Date.now()}`;
+        try {
+          const collectionRef = collection(db, "inventory");
+          const created = await addDoc(collectionRef, itemData);
+          itemData;
+        } catch (e) {
+          console.warn("Firestore creation failed, saving locally:", e);
+        }
+
+        // Update local state & vault
+        const newItemRecord: InventoryItem = { id: newId, ...itemData };
+        const updatedList = [newItemRecord, ...items];
+        setItems(updatedList);
+        saveLocalVault(updatedList);
       }
 
       setShowAddForm(false);
       resetForm();
     } catch (err: any) {
       console.error("Error saving inventory item:", err);
-      alert("Failed to save inventory item: " + err.message);
     }
   };
 
@@ -335,9 +390,11 @@ export default function App() {
     try {
       await deleteDoc(doc(db, "inventory", id));
     } catch (err: any) {
-      console.error("Error deleting item:", err);
-      alert("Failed to delete item.");
+      console.warn("Firestore delete failed, deleting locally:", err);
     }
+    const updated = items.filter((i) => i.id !== id);
+    setItems(updated);
+    saveLocalVault(updated);
   };
 
   const handleQuickStatusUpdate = async (id: string, updates: Partial<InventoryItem>) => {
@@ -345,9 +402,11 @@ export default function App() {
       const docRef = doc(db, "inventory", id);
       await updateDoc(docRef, updates);
     } catch (err: any) {
-      console.error("Error updating status:", err);
-      alert("Failed to update status.");
+      console.warn("Firestore quick update failed, updating locally:", err);
     }
+    const updated = items.map((i) => (i.id === id ? { ...i, ...updates } : i));
+    setItems(updated);
+    saveLocalVault(updated);
   };
 
   // Export Filtered Items to Google Sheets compatible CSV
