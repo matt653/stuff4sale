@@ -3,7 +3,7 @@ import {
   Plus, Search, Download, Sparkles, Filter, SlidersHorizontal, 
   X, Check, AlertCircle, RefreshCw, Layers, MapPin, Calendar, 
   Tag, Info, DollarSign, Archive, ShoppingBag, Eye, Star, LayoutGrid, LayoutList,
-  Edit, Trash2, TrendingUp, Smartphone, Cloud, Share2
+  Edit, Trash2, TrendingUp, Smartphone, Cloud, Share2, Clock, CheckCircle
 } from "lucide-react";
 import { collection, onSnapshot, addDoc, updateDoc, doc, deleteDoc, query, orderBy } from "firebase/firestore";
 import { db } from "./firebase";
@@ -1016,7 +1016,50 @@ export default function App() {
         )}
 
         {/* Filters Toolbar Bar */}
-        <section className="bg-white border border-slate-150 rounded-2xl p-4 mb-6 shadow-sm" id="filters-toolbar">
+        <section className="bg-white border border-slate-150 rounded-2xl p-4 mb-6 shadow-sm space-y-3" id="filters-toolbar">
+          {/* Status Filter Tabs (Posted vs Not Posted) */}
+          <div className="flex flex-wrap items-center gap-1.5 border-b border-slate-100 pb-3">
+            <button
+              type="button"
+              onClick={() => setSelectedStatus("all")}
+              className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition flex items-center gap-1.5 ${
+                selectedStatus === "all" ? "bg-slate-900 text-white shadow-xs" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+              }`}
+            >
+              All Items ({items.length})
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSelectedStatus("inventory")}
+              className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition flex items-center gap-1.5 ${
+                selectedStatus === "inventory" ? "bg-amber-500 text-white shadow-xs" : "bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100"
+              }`}
+            >
+              <Clock size={12} /> Not Posted Yet ({items.filter(i => i.status === "inventory").length})
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSelectedStatus("listed")}
+              className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition flex items-center gap-1.5 ${
+                selectedStatus === "listed" ? "bg-blue-600 text-white shadow-xs" : "bg-blue-50 text-blue-800 border border-blue-200 hover:bg-blue-100"
+              }`}
+            >
+              <Share2 size={12} /> Posted on FB ({items.filter(i => i.status === "listed").length})
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSelectedStatus("sold")}
+              className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition flex items-center gap-1.5 ${
+                selectedStatus === "sold" ? "bg-emerald-600 text-white shadow-xs" : "bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100"
+              }`}
+            >
+              <CheckCircle size={12} /> Sold ({items.filter(i => i.status === "sold").length})
+            </button>
+          </div>
+
           <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
             {/* Search Input */}
             <div className="relative flex-1">

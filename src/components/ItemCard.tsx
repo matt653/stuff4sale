@@ -32,29 +32,31 @@ export default function ItemCard({ item, onEdit, onDelete, onStatusChange, onFBP
     }).format(val);
   };
 
+  const isFBListed = item.status === "listed" || (item.listedPlatform && item.listedPlatform.toLowerCase().includes("facebook"));
+
   const getStatusBadge = (status: ItemStatus) => {
     switch (status) {
       case "inventory":
         return (
-          <span className="text-[10px] font-bold bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full uppercase tracking-wider" id={`badge-inventory-${item.id}`}>
-            Stock
+          <span className="text-[10px] font-extrabold bg-slate-900/80 backdrop-blur-md text-amber-300 border border-amber-400/40 px-2.5 py-1 rounded-full uppercase tracking-wider flex items-center gap-1 shadow-md" id={`badge-inventory-${item.id}`}>
+            <Clock size={10} /> NOT POSTED YET
           </span>
         );
       case "listed":
         return (
-          <span className="text-[10px] font-bold bg-amber-100 text-amber-700 px-2.5 py-1 rounded-full uppercase tracking-wider flex items-center gap-1" id={`badge-listed-${item.id}`}>
-            <Clock size={10} /> Listed
+          <span className="text-[10px] font-extrabold bg-blue-600 text-white border border-blue-400/40 px-2.5 py-1 rounded-full uppercase tracking-wider flex items-center gap-1 shadow-md" id={`badge-listed-${item.id}`}>
+            <Share2 size={10} /> {item.listedPlatform ? `POSTED ON ${item.listedPlatform.toUpperCase()}` : "POSTED ON FB MARKETPLACE"}
           </span>
         );
       case "sold":
         return (
-          <span className="text-[10px] font-bold bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded-full uppercase tracking-wider flex items-center gap-1" id={`badge-sold-${item.id}`}>
-            <CheckCircle size={10} /> Sold
+          <span className="text-[10px] font-extrabold bg-emerald-600 text-white border border-emerald-400/40 px-2.5 py-1 rounded-full uppercase tracking-wider flex items-center gap-1 shadow-md" id={`badge-sold-${item.id}`}>
+            <CheckCircle size={10} /> SOLD
           </span>
         );
       case "archived":
         return (
-          <span className="text-[10px] font-bold bg-slate-200 text-slate-700 px-2.5 py-1 rounded-full uppercase tracking-wider flex items-center gap-1" id={`badge-archived-${item.id}`}>
+          <span className="text-[10px] font-extrabold bg-slate-200 text-slate-700 px-2.5 py-1 rounded-full uppercase tracking-wider flex items-center gap-1" id={`badge-archived-${item.id}`}>
             <Archive size={10} /> Archived
           </span>
         );
@@ -264,11 +266,32 @@ export default function ItemCard({ item, onEdit, onDelete, onStatusChange, onFBP
             {item.status === "inventory" && (
               <button
                 type="button"
-                onClick={() => setShowStatusModal("list")}
-                className="text-[11px] font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-2.5 py-1.5 rounded-lg transition"
-                id={`btn-quick-list-${item.id}`}
+                onClick={() => onStatusChange(item.id, { 
+                  status: "listed", 
+                  listedPlatform: "Facebook Marketplace",
+                  listedPrice: item.listedPrice || item.purchasePrice * 2 || 35,
+                  updatedAt: new Date().toISOString()
+                })}
+                className="text-[11px] font-extrabold bg-blue-600 hover:bg-blue-700 text-white px-2.5 py-1.5 rounded-lg transition shadow-xs flex items-center gap-1 cursor-pointer"
+                id={`btn-quick-list-fb-${item.id}`}
               >
-                Mark Listed
+                <Share2 size={11} /> Mark Posted on FB
+              </button>
+            )}
+
+            {item.status === "listed" && (
+              <button
+                type="button"
+                onClick={() => onStatusChange(item.id, { 
+                  status: "inventory", 
+                  listedPlatform: null,
+                  updatedAt: new Date().toISOString()
+                })}
+                className="text-[10px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-1.5 rounded-lg transition"
+                id={`btn-quick-unlist-${item.id}`}
+                title="Mark as Not Posted Yet"
+              >
+                Unlist
               </button>
             )}
 
@@ -276,10 +299,10 @@ export default function ItemCard({ item, onEdit, onDelete, onStatusChange, onFBP
               <button
                 type="button"
                 onClick={() => setShowStatusModal("sell")}
-                className="text-[11px] font-bold bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1.5 rounded-lg transition shadow-sm"
+                className="text-[11px] font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1.5 rounded-lg transition shadow-xs cursor-pointer"
                 id={`btn-quick-sell-${item.id}`}
               >
-                Mark Sold
+                Mark Sold ($)
               </button>
             )}
 

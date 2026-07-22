@@ -184,15 +184,29 @@ export default function FBMarketplacePostingTool({
 
   // Mark as Listed in database
   const handleMarkAsListed = () => {
-    if (!activeItem || !adData) return;
-    onStatusChange(activeItem.id, {
-      status: "listed",
-      listedPlatform: "Facebook Marketplace",
-      listedPrice: adData.fbPrice,
-      updatedAt: new Date().toISOString()
-    });
-    setIsListedSuccess(true);
-    setTimeout(() => setIsListedSuccess(false), 3000);
+    if (isBundleMode) {
+      if (selectedBundleItemIds.length === 0) return;
+      selectedBundleItemIds.forEach(id => {
+        const item = items.find(i => i.id === id);
+        onStatusChange(id, {
+          status: "listed",
+          listedPlatform: "Facebook Marketplace",
+          listedPrice: item?.listedPrice || (adData ? Math.round(adData.fbPrice / selectedBundleItemIds.length) : 35),
+          updatedAt: new Date().toISOString()
+        });
+      });
+      setIsListedSuccess(true);
+      setTimeout(() => setIsListedSuccess(false), 3000);
+    } else if (activeItem) {
+      onStatusChange(activeItem.id, {
+        status: "listed",
+        listedPlatform: "Facebook Marketplace",
+        listedPrice: adData ? adData.fbPrice : activeItem.listedPrice || 35,
+        updatedAt: new Date().toISOString()
+      });
+      setIsListedSuccess(true);
+      setTimeout(() => setIsListedSuccess(false), 3000);
+    }
   };
 
   // Open Facebook Marketplace in new tab
