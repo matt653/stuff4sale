@@ -57,6 +57,7 @@ export default function App() {
   // Active Form Fields
   const [itemName, setItemName] = useState("");
   const [itemCategory, setItemCategory] = useState("Clothing & Apparel");
+  const [stockNumber, setStockNumber] = useState("");
   const [purchasePrice, setPurchasePrice] = useState("");
   const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().split("T")[0]);
   const [purchaseLocation, setPurchaseLocation] = useState("");
@@ -108,6 +109,7 @@ export default function App() {
   const resetForm = () => {
     setItemName("");
     setItemCategory("Clothing & Apparel");
+    setStockNumber("");
     setPurchasePrice("");
     setPurchaseDate(new Date().toISOString().split("T")[0]);
     setPurchaseLocation("");
@@ -130,6 +132,7 @@ export default function App() {
     setEditingItem(item);
     setItemName(item.name);
     setItemCategory(item.category);
+    setStockNumber(item.stockNumber || "");
     setPurchasePrice(item.purchasePrice.toString());
     setPurchaseDate(item.purchaseDate);
     setPurchaseLocation(item.purchaseLocation || "");
@@ -251,23 +254,28 @@ export default function App() {
       const sPrice = salePrice ? Number(salePrice) : null;
       const lPrice = listedPrice ? Number(listedPrice) : null;
 
+      // Bulletproof photo retention: ensure primary cover photo and photo list are never wiped during editing
+      const finalPhotos = photos.length > 0 ? photos : photoUrl ? [photoUrl] : (editingItem?.photos || (editingItem?.photoUrl ? [editingItem.photoUrl] : []));
+      const finalCoverPhoto = finalPhotos[0] || photoUrl || editingItem?.photoUrl || null;
+
       const itemData: Omit<InventoryItem, "id"> = {
         name: itemName,
         category: itemCategory,
+        stockNumber: stockNumber.trim() || null as any,
         status: itemStatus,
         purchasePrice: pPrice,
         purchaseDate,
         purchaseLocation,
         notes,
-        photoUrl: photos[0] || photoUrl || null,
-        photos: photos,
+        photoUrl: finalCoverPhoto,
+        photos: finalPhotos,
         videoUrl,
         listedPrice: lPrice,
         listedPlatform: itemStatus === "listed" ? listedPlatform : null,
         salePrice: itemStatus === "sold" ? sPrice : null,
         salePlatform: itemStatus === "sold" ? salePlatform : null,
         saleDate: itemStatus === "sold" ? saleDate : null,
-        research: aiResult,
+        research: aiResult || editingItem?.research || null,
         createdAt: editingItem ? editingItem.createdAt : new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
@@ -475,6 +483,7 @@ export default function App() {
   const filteredItems = items.filter((item) => {
     const matchesSearch = 
       item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (item.stockNumber && item.stockNumber.toLowerCase().includes(searchQuery.toLowerCase())) ||
       (item.category && item.category.toLowerCase().includes(searchQuery.toLowerCase())) ||
       (item.purchaseLocation && item.purchaseLocation.toLowerCase().includes(searchQuery.toLowerCase())) ||
       (item.notes && item.notes.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -816,6 +825,25 @@ export default function App() {
                         <option key={cat} value={cat}>{cat}</option>
                       ))}
                     </select>
+                  </div>
+
+                  {/* Internal Stock # / SKU Field */}
+                  <div>
+                    <label className="text-xs font-bold text-indigo-900 uppercase tracking-wide flex items-center justify-between mb-1.5">
+                      <span>Stock # / Internal SKU</span>
+                      <span className="text-[9px] text-slate-400 font-normal">Optional</span>
+                    </label>
+                    <div className="relative">
+                      <Tag size={13} className="absolute left-3.5 top-3 text-indigo-500" />
+                      <input
+                        type="text"
+                        placeholder="e.g. BIN-A4, #SKU-102..."
+                        value={stockNumber}
+                        onChange={(e) => setStockNumber(e.target.value)}
+                        className="w-full text-xs border border-indigo-200 bg-indigo-50/30 rounded-xl pl-9 pr-3.5 py-2.5 focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-900 font-bold"
+                        id="form-item-stock-number"
+                      />
+                    </div>
                   </div>
 
                   {/* Purchase Location */}

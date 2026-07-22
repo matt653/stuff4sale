@@ -41,6 +41,17 @@ export default function CameraCapture({
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
+  // Re-sync photos state when initialPhotos or initialPhotoUrl prop changes (e.g. when editing item)
+  useEffect(() => {
+    if (initialPhotos && initialPhotos.length > 0) {
+      setPhotos(initialPhotos);
+    } else if (initialPhotoUrl) {
+      setPhotos([initialPhotoUrl]);
+    } else {
+      setPhotos([]);
+    }
+  }, [initialPhotos, initialPhotoUrl]);
+
   // Sync state changes with parent component
   const updatePhotos = (newPhotos: string[]) => {
     setPhotos(newPhotos);

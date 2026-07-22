@@ -41,6 +41,7 @@ export interface InventoryItem {
   notes: string;
   photoUrl: string | null; // base64 string (primary/cover photo)
   photos?: string[]; // array of base64 photo strings for multiple picture support
+  stockNumber?: string; // Internal SKU / Stock # (e.g. BIN-A4, #SKU-102)
   videoUrl?: string | null; // base64 video string or link
   research: AIResearchResult | null;
   createdAt: string;

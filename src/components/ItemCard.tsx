@@ -202,17 +202,25 @@ export default function ItemCard({ item, onEdit, onDelete, onStatusChange, onFBP
       {/* Main Metadata Info Body */}
       <div className="p-4 flex-1 flex flex-col justify-between">
         <div>
-          {/* Category & Title */}
-          <div className="flex items-center gap-1.5 mb-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-            <span>{item.category || "General Item"}</span>
-            {item.purchaseLocation && (
-              <>
-                <span>•</span>
-                <span className="flex items-center gap-0.5 text-slate-500">
-                  <MapPin size={10} className="text-slate-400" />
-                  {item.purchaseLocation}
-                </span>
-              </>
+          {/* Category & Stock # */}
+          <div className="flex items-center justify-between gap-1.5 mb-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+            <div className="flex items-center gap-1.5 truncate">
+              <span className="truncate">{item.category || "General Item"}</span>
+              {item.purchaseLocation && (
+                <>
+                  <span>•</span>
+                  <span className="flex items-center gap-0.5 text-slate-500 truncate">
+                    <MapPin size={10} className="text-slate-400 shrink-0" />
+                    {item.purchaseLocation}
+                  </span>
+                </>
+              )}
+            </div>
+
+            {item.stockNumber && (
+              <span className="bg-indigo-50 text-indigo-700 border border-indigo-200/80 px-2 py-0.5 rounded-md text-[9px] font-extrabold shrink-0">
+                #{item.stockNumber}
+              </span>
             )}
           </div>
           
