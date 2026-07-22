@@ -1,17 +1,36 @@
 import React, { useState } from "react";
-import { Sparkles, Copy, Check, FileText, DollarSign, RefreshCw, Star, Tag, ThumbsUp } from "lucide-react";
-import { AIResearchResult } from "../types";
+import { Sparkles, Copy, Check, FileText, DollarSign, RefreshCw, Star, Tag, ThumbsUp, Send, MessageSquare, AlertCircle } from "lucide-react";
+import { AIResearchResult, AIChatMessage } from "../types";
 
 interface AIResearchViewProps {
   research: AIResearchResult | null;
+  photos?: string[];
+  itemName?: string;
+  itemNotes?: string;
   onApplyAll?: (research: AIResearchResult) => void;
   onApplyField?: (fieldName: "name" | "notes" | "listedPrice" | "category", value: any) => void;
   isLoading: boolean;
   error: string | null;
 }
 
-export default function AIResearchView({ research, onApplyAll, onApplyField, isLoading, error }: AIResearchViewProps) {
+export default function AIResearchView({
+  research,
+  photos = [],
+  itemName = "",
+  itemNotes = "",
+  onApplyAll,
+  onApplyField,
+  isLoading: externalLoading,
+  error: externalError
+}: AIResearchViewProps) {
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  
+  // Conversational Chat State
+  const [messages, setMessages] = useState<AIChatMessage[]>([]);
+  const [chatInput, setChatInput] = useState("");
+  const [isChatLoading, setIsChatLoading] = useState(false);
+  const [chatError, setChatError] = useState<string | null>(null);
+  const [finalReport, setFinalReport] = useState<AIResearchResult | null>(research);
 
   const copyToClipboard = (text: string, fieldName: string) => {
     navigator.clipboard.writeText(text);
@@ -19,49 +38,92 @@ export default function AIResearchView({ research, onApplyAll, onApplyField, isL
     setTimeout(() => setCopiedField(null), 2000);
   };
 
-  if (isLoading) {
-    return (
-      <div className="bg-gradient-to-br from-indigo-50 to-slate-50 border border-indigo-100 rounded-2xl p-6 text-center shadow-inner flex flex-col items-center justify-center min-h-[300px]">
-        <div className="relative mb-4">
-          <div className="w-12 h-12 rounded-full border-4 border-indigo-200 border-t-indigo-600 animate-spin" />
-          <Sparkles className="absolute inset-0 m-auto text-indigo-600 animate-pulse" size={16} />
-        </div>
-        <h4 className="text-sm font-semibold text-indigo-950 mb-1">Analyzing and Researching Market...</h4>
-        <p className="text-xs text-indigo-600/80 max-w-sm">
-          Gemini is analyzing historical pricing, checking sell-through rates, optimizing keywords, and crafting a listing title & description...
-        </p>
-      </div>
-    );
-  }
+  // Start or Continue AI Valuation Chat
+  const handleSendChatMessage = async (userText?: string, isFinal = false) => {
+    const textToSend = userText !== undefined ? userText : chatInput;
+    if (!textToSend && photos.length === 0 && !itemName && !isFinal) {
+      setChatError("Please take a photo or enter a quick item name to start valuation chat.");
+      return;
+    }
 
-  if (error) {
-    return (
-      <div className="bg-rose-50 border border-rose-200 rounded-2xl p-5 text-slate-700 shadow-sm">
-        <div className="flex items-center gap-2 mb-2 text-rose-700">
-          <Sparkles size={18} className="shrink-0" />
-          <h4 className="font-semibold text-sm">Research Failed</h4>
-        </div>
-        <p className="text-xs text-rose-600 mb-4">{error}</p>
-        <p className="text-xs text-slate-500">
-          Make sure your item has a name or photo so the AI can look up information.
-        </p>
-      </div>
-    );
-  }
+    setIsChatLoading(true);
+    setChatError(null);
 
-  if (!research) {
-    return (
-      <div className="bg-slate-50 border border-slate-200 border-dashed rounded-2xl p-6 text-center text-slate-500 flex flex-col items-center justify-center min-h-[220px]">
-        <Sparkles size={28} className="text-slate-400 mb-2.5 animate-pulse" />
-        <h4 className="text-xs font-semibold text-slate-700 mb-1">AI Market Research Assistant</h4>
-        <p className="text-xs text-slate-400 max-w-xs mb-3">
-          Need list prices, SEO titles, or optimized descriptions? Tap the AI Research button on the form.
-        </p>
-      </div>
-    );
-  }
+    const updatedHistory: AIChatMessage[] = textToSend ? [
+      ...messages,
+      {
+        id: Date.now().toString(),
+        sender: "user",
+        text: textToSend,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      }
+    ] : messages;
 
-  // Determine demand score color
+    if (textToSend) setMessages(updatedHistory);
+    setChatInput("");
+
+    try {
+      const res = await fetch("/api/valuation-chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: itemName,
+          notes: itemNotes,
+          images: photos,
+          history: updatedHistory,
+          generateFinalReport: isFinal
+        })
+      });
+
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || "Failed to communicate with Gemini AI.");
+      }
+
+      const data = await res.json();
+
+      if (data.responseType === "REPORT" && data.report) {
+        const reportResult: AIResearchResult = data.report;
+        setFinalReport(reportResult);
+
+        // Append final AI report message
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: (Date.now() + 1).toString(),
+            sender: "ai",
+            text: data.aiMessage || "Final Sourcing & Valuation Report generated!",
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            report: reportResult
+          }
+        ]);
+
+        if (onApplyAll) {
+          onApplyAll(reportResult);
+        }
+      } else {
+        // Question response with quick replies
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: (Date.now() + 1).toString(),
+            sender: "ai",
+            text: data.aiMessage || "Can you provide a quick condition update?",
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            quickReplies: data.suggestedQuickReplies || []
+          }
+        ]);
+      }
+    } catch (err: any) {
+      console.error(err);
+      setChatError(err.message || "Failed to connect to AI valuation chat.");
+    } finally {
+      setIsChatLoading(false);
+    }
+  };
+
+  const activeReport = finalReport || research;
+
   const getDemandColor = (score: number) => {
     if (score >= 8) return "bg-emerald-500";
     if (score >= 5) return "bg-amber-500";
@@ -74,11 +136,11 @@ export default function AIResearchView({ research, onApplyAll, onApplyField, isL
     return "Low Demand (Patience Needed)";
   };
 
-  // Determine verdict badge
-  const verdict = research.worthSelling || (research.estimatedValueMin >= 20 && research.demandScore >= 5 ? "YES" : research.estimatedValueMin >= 10 ? "MARGINAL" : "NO");
+  const verdict = activeReport?.worthSelling || (activeReport && activeReport.estimatedValueMin >= 20 && activeReport.demandScore >= 5 ? "YES" : activeReport && activeReport.estimatedValueMin >= 10 ? "MARGINAL" : "NO");
 
   return (
-    <div className="bg-gradient-to-br from-indigo-50/40 via-purple-50/10 to-white border border-indigo-100 rounded-2xl p-5 shadow-sm space-y-4" id="ai-research-view">
+    <div className="bg-gradient-to-br from-indigo-50/40 via-purple-50/10 to-white border border-indigo-100 rounded-2xl p-4 sm:p-5 shadow-xs space-y-4" id="ai-research-view">
+      
       {/* Header */}
       <div className="flex items-center justify-between pb-3 border-b border-indigo-100/50">
         <div className="flex items-center gap-2">
@@ -86,254 +148,283 @@ export default function AIResearchView({ research, onApplyAll, onApplyField, isL
             <Sparkles size={16} />
           </div>
           <div>
-            <h4 className="text-sm font-bold text-slate-800">Gemini Sourcing & Market Valuation</h4>
-            <span className="text-[10px] text-indigo-600 font-semibold tracking-wider uppercase">Live Reseller Intelligence</span>
+            <h4 className="text-sm font-bold text-slate-800">Gemini Valuation Chat & Inspector</h4>
+            <span className="text-[10px] text-indigo-600 font-semibold tracking-wider uppercase">Interactive Condition Check</span>
           </div>
         </div>
 
-        {onApplyAll && (
+        {activeReport && onApplyAll && (
           <button
             type="button"
-            onClick={() => onApplyAll(research)}
+            onClick={() => onApplyAll(activeReport)}
             className="text-xs bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1.5 px-3 rounded-lg flex items-center gap-1 transition-all shadow-sm active:scale-95 cursor-pointer"
             id="btn-apply-all-research"
           >
-            Apply All AI Suggestions
+            Apply All to Form
           </button>
         )}
       </div>
 
-      {/* Sourcing Verdict Card: SCRAP OR SELL */}
-      <div className={`p-4 rounded-2xl border flex items-center justify-between shadow-sm ${
-        verdict === "YES"
-          ? "bg-emerald-50 border-emerald-200 text-emerald-900"
-          : verdict === "MARGINAL"
-          ? "bg-amber-50 border-amber-200 text-amber-900"
-          : "bg-rose-50 border-rose-200 text-rose-900"
-      }`}>
-        <div className="space-y-0.5">
-          <span className="text-[10px] font-extrabold uppercase tracking-wider block opacity-75">
-            Sourcing Verdict
-          </span>
-          <h4 className="font-extrabold text-sm">
-            {verdict === "YES"
-              ? "🚀 WORTH SELLING! (Great Flip Opportunity)"
-              : verdict === "MARGINAL"
-              ? "⚠️ MARGINAL FIND - Low Margin / Slower Sale"
-              : "🛑 SCRAP / PASS IT - Low Value / Bulky to Ship"}
-          </h4>
-          {research.triageReason && (
-            <p className="text-xs font-medium opacity-90 mt-1">
-              {research.triageReason}
+      {/* CHAT MESSAGES STREAM */}
+      <div className="space-y-3 max-h-72 overflow-y-auto pr-1 scrollbar-thin" id="valuation-chat-stream">
+        {messages.length === 0 ? (
+          <div className="bg-white/80 border border-indigo-100 rounded-2xl p-4 text-center space-y-2">
+            <MessageSquare size={24} className="mx-auto text-indigo-500 animate-pulse" />
+            <h5 className="text-xs font-bold text-slate-800">Start AI Valuation Chat</h5>
+            <p className="text-[11px] text-slate-500 leading-relaxed max-w-xs mx-auto">
+              Click <b>"💬 Start AI Valuation Chat"</b> below. Gemini will examine your photos and ask 1-2 condition questions before generating your final valuation report!
             </p>
-          )}
-        </div>
-
-        <div className="text-right shrink-0 ml-2">
-          <span className="text-[10px] font-bold uppercase tracking-wider block opacity-75">Demand</span>
-          <span className="text-base font-extrabold">{research.demandScore}/10</span>
-        </div>
-      </div>
-
-      {/* Price Range & Demand Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        {/* Estimated Pricing Card */}
-        <div className="bg-white border border-slate-100 p-3.5 rounded-xl shadow-sm flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-1.5">
-            <span className="text-xs font-semibold text-slate-500 flex items-center gap-1">
-              <DollarSign size={13} className="text-indigo-600" />
-              Resell Price Estimate
-            </span>
-            {onApplyField && (
-              <button
-                type="button"
-                onClick={() => onApplyField("listedPrice", Math.round((research.estimatedValueMin + research.estimatedValueMax) / 2))}
-                className="text-[10px] text-indigo-600 hover:underline font-semibold"
-                id="btn-apply-ai-price"
-              >
-                Apply Midpoint (${Math.round((research.estimatedValueMin + research.estimatedValueMax) / 2)})
-              </button>
-            )}
+            <button
+              type="button"
+              disabled={isChatLoading || externalLoading}
+              onClick={() => handleSendChatMessage("Analyze this item and ask any condition questions needed before valuation.")}
+              className="mt-2 py-2 px-4 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-200 text-white font-extrabold text-xs rounded-xl transition shadow-sm active:scale-95 cursor-pointer"
+              id="btn-start-ai-chat"
+            >
+              {isChatLoading ? <RefreshCw size={14} className="animate-spin inline mr-1" /> : <Sparkles size={14} className="inline mr-1" />}
+              💬 Start AI Valuation Chat
+            </button>
           </div>
-          <div className="flex items-baseline gap-1">
-            <span className="text-2xl font-extrabold text-slate-800">${research.estimatedValueMin}</span>
-            <span className="text-slate-400 font-semibold text-sm">to</span>
-            <span className="text-2xl font-extrabold text-slate-800">${research.estimatedValueMax}</span>
-          </div>
-          <p className="text-[10px] text-slate-400 mt-1">Based on recent completed sales historical patterns</p>
-        </div>
-
-        {/* Demand Indicator Card */}
-        <div className="bg-white border border-slate-100 p-3.5 rounded-xl shadow-sm flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-1.5">
-            <span className="text-xs font-semibold text-slate-500 flex items-center gap-1">
-              <Star size={13} className="text-amber-500 fill-amber-500" />
-              Resell Demand Score
-            </span>
-            <span className="text-xs font-bold text-slate-700">{research.demandScore}/10</span>
-          </div>
-          
-          {/* Custom progress bar */}
-          <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden mt-1 flex">
+        ) : (
+          messages.map((msg) => (
             <div
-              className={`h-full ${getDemandColor(research.demandScore)} transition-all duration-1000`}
-              style={{ width: `${research.demandScore * 10}%` }}
+              key={msg.id}
+              className={`flex flex-col ${msg.sender === "user" ? "items-end" : "items-start"} space-y-1.5`}
+            >
+              <div
+                className={`max-w-[88%] p-3 rounded-2xl text-xs font-medium leading-relaxed ${
+                  msg.sender === "user"
+                    ? "bg-indigo-600 text-white rounded-br-none shadow-xs"
+                    : "bg-white border border-indigo-100 text-slate-800 rounded-bl-none shadow-xs"
+                }`}
+              >
+                <div className="flex items-center justify-between text-[9px] opacity-75 mb-1 font-bold">
+                  <span>{msg.sender === "user" ? "You" : "Gemini AI Inspector"}</span>
+                  <span>{msg.timestamp}</span>
+                </div>
+                <p className="whitespace-pre-wrap">{msg.text}</p>
+              </div>
+
+              {/* Quick Reply Chips */}
+              {msg.quickReplies && msg.quickReplies.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 pl-2 pt-0.5">
+                  {msg.quickReplies.map((reply, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      disabled={isChatLoading}
+                      onClick={() => handleSendChatMessage(reply)}
+                      className="bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-900 text-[11px] font-bold px-2.5 py-1 rounded-full transition active:scale-95 shadow-2xs cursor-pointer"
+                    >
+                      💬 {reply}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))
+        )}
+
+        {isChatLoading && (
+          <div className="flex items-center gap-2 p-3 bg-white border border-indigo-100 rounded-2xl text-xs text-indigo-700 animate-pulse">
+            <RefreshCw size={14} className="animate-spin" />
+            <span>Gemini is inspecting item & thinking...</span>
+          </div>
+        )}
+
+        {(chatError || externalError) && (
+          <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl flex items-center gap-2">
+            <AlertCircle size={15} className="shrink-0" />
+            <span>{chatError || externalError}</span>
+          </div>
+        )}
+      </div>
+
+      {/* CHAT INPUT BAR & FINAL REPORT TRIGGER */}
+      {messages.length > 0 && !activeReport && (
+        <div className="space-y-2 pt-2 border-t border-indigo-100/60">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleSendChatMessage();
+            }}
+            className="flex items-center gap-2"
+          >
+            <input
+              type="text"
+              placeholder="Answer condition question (e.g. Works great, no battery corrosion)..."
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+              className="flex-1 px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 outline-none focus:ring-1 focus:ring-indigo-500 font-medium"
             />
-          </div>
-          
-          <p className="text-[10px] text-slate-500 mt-2 font-medium">{getDemandLabel(research.demandScore)}</p>
-        </div>
-      </div>
-
-      {/* Suggested Title */}
-      <div className="space-y-1">
-        <div className="flex items-center justify-between text-xs">
-          <span className="font-semibold text-slate-600 flex items-center gap-1">
-            <Tag size={13} className="text-indigo-600" />
-            SEO Listing Title ({research.suggestedTitle.length} chars)
-          </span>
-          <div className="flex items-center gap-2">
-            {onApplyField && (
-              <button
-                type="button"
-                onClick={() => onApplyField("name", research.suggestedTitle)}
-                className="text-[10px] text-indigo-600 hover:underline font-semibold"
-                id="btn-apply-ai-title"
-              >
-                Apply
-              </button>
-            )}
             <button
-              type="button"
-              onClick={() => copyToClipboard(research.suggestedTitle, "title")}
-              className="text-slate-400 hover:text-slate-600 transition flex items-center gap-0.5 text-[10px]"
-              id="btn-copy-ai-title"
+              type="submit"
+              disabled={isChatLoading || !chatInput}
+              className="p-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition shadow-xs disabled:opacity-50"
             >
-              {copiedField === "title" ? <Check size={11} className="text-emerald-600" /> : <Copy size={11} />}
-              {copiedField === "title" ? "Copied" : "Copy"}
+              <Send size={14} />
             </button>
-          </div>
-        </div>
-        <p className="bg-white border border-slate-150 rounded-xl p-3 text-xs text-slate-700 font-medium tracking-tight">
-          {research.suggestedTitle}
-        </p>
-      </div>
+          </form>
 
-      {/* Suggested Description */}
-      <div className="space-y-1">
-        <div className="flex items-center justify-between text-xs">
-          <span className="font-semibold text-slate-600 flex items-center gap-1">
-            <FileText size={13} className="text-indigo-600" />
-            SEO Listing Description
-          </span>
-          <div className="flex items-center gap-2">
-            {onApplyField && (
-              <button
-                type="button"
-                onClick={() => onApplyField("notes", research.suggestedDescription)}
-                className="text-[10px] text-indigo-600 hover:underline font-semibold"
-                id="btn-apply-ai-description"
-              >
-                Apply to Notes
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={() => copyToClipboard(research.suggestedDescription, "description")}
-              className="text-slate-400 hover:text-slate-600 transition flex items-center gap-0.5 text-[10px]"
-              id="btn-copy-ai-description"
-            >
-              {copiedField === "description" ? <Check size={11} className="text-emerald-600" /> : <Copy size={11} />}
-              {copiedField === "description" ? "Copied" : "Copy"}
-            </button>
-          </div>
-        </div>
-        <div className="bg-white border border-slate-150 rounded-xl p-3 text-xs text-slate-600 max-h-48 overflow-y-auto whitespace-pre-wrap leading-relaxed font-sans scrollbar-thin">
-          {research.suggestedDescription}
-        </div>
-      </div>
-
-      {/* Target Platforms & Category Info */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
-        {/* Platforms */}
-        <div className="space-y-1.5">
-          <span className="text-xs font-semibold text-slate-600 flex items-center gap-1">
-            <ThumbsUp size={13} className="text-indigo-600" />
-            Recommended Outlets
-          </span>
-          <ul className="space-y-1">
-            {research.targetPlatforms.map((platform, idx) => (
-              <li key={idx} className="bg-slate-50 border border-slate-100 rounded-lg px-2.5 py-1.5 text-[11px] text-slate-600 list-none leading-normal">
-                {platform}
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        {/* Tips */}
-        <div className="space-y-1.5">
-          <span className="text-xs font-semibold text-slate-600 flex items-center gap-1">
-            <Sparkles size={13} className="text-indigo-600" />
-            Reselling & Shipping Tips
-          </span>
-          <ul className="space-y-1">
-            {research.sellingTips.map((tip, idx) => (
-              <li key={idx} className="bg-slate-50 border border-slate-100 rounded-lg px-2.5 py-1.5 text-[11px] text-slate-600 list-none leading-normal">
-                💡 {tip}
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
-
-      {/* Item Cleaning & Preparation Checklist Section */}
-      {((research.cleaningInstructions && research.cleaningInstructions.length > 0) || (research.prepChecklist && research.prepChecklist.length > 0)) && (
-        <div className="bg-indigo-50/50 border border-indigo-100 rounded-xl p-3.5 space-y-3">
-          <h5 className="text-xs font-bold text-indigo-950 flex items-center gap-1.5">
-            🧼 Cleaning, Maintenance & Listing Prep Guide
-          </h5>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-            {research.cleaningInstructions && research.cleaningInstructions.length > 0 && (
-              <div className="space-y-1">
-                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Cleaning & Restoration</span>
-                <ul className="space-y-1">
-                  {research.cleaningInstructions.map((step, idx) => (
-                    <li key={idx} className="bg-white border border-indigo-100/60 rounded-lg px-2.5 py-1.5 text-[11px] text-slate-700 font-medium">
-                      🧽 {step}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {research.prepChecklist && research.prepChecklist.length > 0 && (
-              <div className="space-y-1">
-                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Listing Prep Checklist</span>
-                <ul className="space-y-1">
-                  {research.prepChecklist.map((step, idx) => (
-                    <li key={idx} className="bg-white border border-indigo-100/60 rounded-lg px-2.5 py-1.5 text-[11px] text-slate-700 font-medium">
-                      📋 {step}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
+          <button
+            type="button"
+            disabled={isChatLoading}
+            onClick={() => handleSendChatMessage(undefined, true)}
+            className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl flex items-center justify-center gap-1.5 transition shadow-sm cursor-pointer"
+          >
+            <Sparkles size={14} />
+            Generate Final Valuation Report
+          </button>
         </div>
       )}
 
-      {/* Keywords / Search Tags */}
-      {research.keywords && research.keywords.length > 0 && (
-        <div className="space-y-1.5 pt-1.5 border-t border-indigo-100/50">
-          <span className="text-[11px] font-semibold text-slate-500 block">High-Volume Listing Tags</span>
-          <div className="flex flex-wrap gap-1.5">
-            {research.keywords.map((kw, idx) => (
-              <span key={idx} className="text-[10px] font-semibold bg-indigo-50/80 text-indigo-600 border border-indigo-100 px-2 py-0.5 rounded-full">
-                #{kw}
+      {/* FINAL VALUATION REPORT CARD */}
+      {activeReport && (
+        <div className="space-y-4 pt-2 border-t border-indigo-100/60 animate-fade-in" id="final-valuation-report">
+          
+          {/* Sourcing Verdict Card */}
+          <div className={`p-4 rounded-2xl border flex items-center justify-between shadow-sm ${
+            verdict === "YES"
+              ? "bg-emerald-50 border-emerald-200 text-emerald-900"
+              : verdict === "MARGINAL"
+              ? "bg-amber-50 border-amber-200 text-amber-900"
+              : "bg-rose-50 border-rose-200 text-rose-900"
+          }`}>
+            <div className="space-y-0.5">
+              <span className="text-[10px] font-extrabold uppercase tracking-wider block opacity-75">
+                Sourcing Verdict
               </span>
-            ))}
+              <h4 className="font-extrabold text-sm">
+                {verdict === "YES"
+                  ? "🚀 WORTH SELLING! (Great Flip Opportunity)"
+                  : verdict === "MARGINAL"
+                  ? "⚠️ MARGINAL FIND - Low Margin / Slower Sale"
+                  : "🛑 SCRAP / PASS IT - Low Value / Bulky to Ship"}
+              </h4>
+              {activeReport.triageReason && (
+                <p className="text-xs font-medium opacity-90 mt-1">
+                  {activeReport.triageReason}
+                </p>
+              )}
+            </div>
+
+            <div className="text-right shrink-0 ml-2">
+              <span className="text-[10px] font-bold uppercase tracking-wider block opacity-75">Demand</span>
+              <span className="text-base font-extrabold">{activeReport.demandScore}/10</span>
+            </div>
           </div>
+
+          {/* Price Range & Demand Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="bg-white border border-slate-100 p-3.5 rounded-xl shadow-xs flex flex-col justify-between">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-xs font-semibold text-slate-500 flex items-center gap-1">
+                  <DollarSign size={13} className="text-indigo-600" />
+                  Resell Price Estimate
+                </span>
+                {onApplyField && (
+                  <button
+                    type="button"
+                    onClick={() => onApplyField("listedPrice", Math.round((activeReport.estimatedValueMin + activeReport.estimatedValueMax) / 2))}
+                    className="text-[10px] text-indigo-600 hover:underline font-semibold"
+                  >
+                    Apply Midpoint (${Math.round((activeReport.estimatedValueMin + activeReport.estimatedValueMax) / 2)})
+                  </button>
+                )}
+              </div>
+              <div className="flex items-baseline gap-1">
+                <span className="text-2xl font-extrabold text-slate-800">${activeReport.estimatedValueMin}</span>
+                <span className="text-slate-400 font-semibold text-sm">to</span>
+                <span className="text-2xl font-extrabold text-slate-800">${activeReport.estimatedValueMax}</span>
+              </div>
+            </div>
+
+            <div className="bg-white border border-slate-100 p-3.5 rounded-xl shadow-xs flex flex-col justify-between">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-xs font-semibold text-slate-500 flex items-center gap-1">
+                  <Star size={13} className="text-amber-500 fill-amber-500" />
+                  Resell Demand Score
+                </span>
+                <span className="text-xs font-bold text-slate-700">{activeReport.demandScore}/10</span>
+              </div>
+              
+              <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden mt-1 flex">
+                <div
+                  className={`h-full ${getDemandColor(activeReport.demandScore)} transition-all duration-1000`}
+                  style={{ width: `${activeReport.demandScore * 10}%` }}
+                />
+              </div>
+              <p className="text-[10px] text-slate-500 mt-2 font-medium">{getDemandLabel(activeReport.demandScore)}</p>
+            </div>
+          </div>
+
+          {/* Suggested Title */}
+          <div className="space-y-1">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-semibold text-slate-600 flex items-center gap-1">
+                <Tag size={13} className="text-indigo-600" />
+                Identified SEO Title ({activeReport.suggestedTitle.length} chars)
+              </span>
+              <button
+                type="button"
+                onClick={() => copyToClipboard(activeReport.suggestedTitle, "title")}
+                className="text-slate-400 hover:text-slate-600 transition flex items-center gap-0.5 text-[10px]"
+              >
+                {copiedField === "title" ? <Check size={11} className="text-emerald-600" /> : <Copy size={11} />}
+                {copiedField === "title" ? "Copied" : "Copy"}
+              </button>
+            </div>
+            <p className="bg-white border border-slate-150 rounded-xl p-3 text-xs text-slate-700 font-medium tracking-tight">
+              {activeReport.suggestedTitle}
+            </p>
+          </div>
+
+          {/* Item Cleaning & Preparation Guide */}
+          {((activeReport.cleaningInstructions && activeReport.cleaningInstructions.length > 0) || (activeReport.prepChecklist && activeReport.prepChecklist.length > 0)) && (
+            <div className="bg-indigo-50/50 border border-indigo-100 rounded-xl p-3.5 space-y-3">
+              <h5 className="text-xs font-bold text-indigo-950 flex items-center gap-1.5">
+                🧼 Cleaning & Preparation Guide
+              </h5>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                {activeReport.cleaningInstructions && activeReport.cleaningInstructions.length > 0 && (
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Cleaning & Restoration</span>
+                    <ul className="space-y-1">
+                      {activeReport.cleaningInstructions.map((step, idx) => (
+                        <li key={idx} className="bg-white border border-indigo-100/60 rounded-lg px-2.5 py-1.5 text-[11px] text-slate-700 font-medium">
+                          🧽 {step}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {activeReport.prepChecklist && activeReport.prepChecklist.length > 0 && (
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Listing Prep Checklist</span>
+                    <ul className="space-y-1">
+                      {activeReport.prepChecklist.map((step, idx) => (
+                        <li key={idx} className="bg-white border border-indigo-100/60 rounded-lg px-2.5 py-1.5 text-[11px] text-slate-700 font-medium">
+                          📋 {step}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {onApplyAll && (
+            <button
+              type="button"
+              onClick={() => onApplyAll(activeReport)}
+              className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs rounded-xl shadow-md transition active:scale-95 cursor-pointer"
+            >
+              ✨ Apply All AI Suggestions to Item Form (Box 2)
+            </button>
+          )}
         </div>
       )}
     </div>

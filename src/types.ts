@@ -16,6 +16,15 @@ export interface AIResearchResult {
   prepChecklist?: string[];
 }
 
+export interface AIChatMessage {
+  id: string;
+  sender: 'user' | 'ai';
+  text: string;
+  timestamp: string;
+  quickReplies?: string[];
+  report?: AIResearchResult;
+}
+
 export interface InventoryItem {
   id: string;
   name: string;

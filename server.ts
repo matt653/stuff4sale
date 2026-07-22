@@ -130,6 +130,110 @@ The JSON response MUST match this exact schema:
   }
 });
 
+// Interactive Conversational AI Valuation Chat Endpoint
+app.post("/api/valuation-chat", async (req, res) => {
+  if (!ai) {
+    return res.status(503).json({
+      error: "Gemini AI is currently unavailable because the server API key is not configured.",
+    });
+  }
+
+  try {
+    const { name, notes, image, images, history, generateFinalReport } = req.body;
+    const contents: any[] = [];
+
+    const conversationContext = history && Array.isArray(history) && history.length > 0
+      ? history.map((m: any) => `${m.sender === 'user' ? 'User' : 'Gemini'}: ${m.text}`).join('\n')
+      : '';
+
+    let promptText = "";
+
+    if (generateFinalReport) {
+      promptText = `You are Gemini AI Sourcing & Valuation Expert. 
+Synthesize all item details, photos, and conversation history below to generate the FINAL SOURCING & VALUATION REPORT.
+
+Conversation History:
+${conversationContext}
+Current Notes: ${notes || "None"}
+Item Hint/Title: ${name || "Unknown"}
+
+Return a strictly valid JSON object matching this schema:
+{
+  "responseType": "REPORT",
+  "aiMessage": "Here is your complete sourcing & valuation report!",
+  "report": {
+    "suggestedTitle": "SEO Listing Title (max 80 chars)",
+    "suggestedDescription": "Detailed listing description ready for copy-paste",
+    "estimatedValueMin": 20,
+    "estimatedValueMax": 60,
+    "demandScore": 8,
+    "worthSelling": "YES", (Choose one strictly: "YES", "MARGINAL", "NO")
+    "triageReason": "1-sentence sourcing verdict advising why it is worth selling or scrap",
+    "cleaningInstructions": ["Step 1...", "Step 2..."],
+    "prepChecklist": ["Prep tip 1...", "Prep tip 2..."],
+    "targetPlatforms": ["eBay - Great reach", "Facebook Marketplace - Local pickup"],
+    "sellingTips": ["Tip 1...", "Tip 2..."],
+    "category": "Product Category",
+    "keywords": ["tag1", "tag2", "tag3"]
+  }
+}`;
+    } else {
+      promptText = `You are Gemini AI Sourcing Assistant. 
+Analyze the uploaded item photo(s), name/notes, and conversation history below. 
+If this is the start of the chat or if critical condition details are unknown, ask 1 to 2 sharp, friendly follow-up questions about the item's condition, working order, accessories, or flaws before generating the final report. Also provide 3 quick-reply choices for the user!
+
+Conversation History:
+${conversationContext}
+Initial Notes: ${notes || "None"}
+Item Name/Hint: ${name || "Image uploaded"}
+
+Return a strictly valid JSON object matching this schema:
+{
+  "responseType": "QUESTION",
+  "aiMessage": "Your friendly, conversational response identifying what the item appears to be and asking 1 to 2 quick questions about condition/accessories/testing to determine exact value.",
+  "suggestedQuickReplies": [
+    "Choice 1: e.g. Powers on & works great!",
+    "Choice 2: e.g. Untested / Needs power cord",
+    "Choice 3: e.g. Has minor scratches / cosmetic flaws"
+  ]
+}`;
+    }
+
+    contents.push(promptText);
+
+    // Attach images as inline data
+    const imageList: string[] = images && Array.isArray(images) && images.length > 0 ? images : image ? [image] : [];
+    imageList.forEach((imgStr: string, idx: number) => {
+      const match = imgStr.match(/^data:(image\/\w+);base64,(.+)$/);
+      if (match) {
+        contents.push({
+          inlineData: {
+            data: match[2],
+            mimeType: match[1],
+          },
+        });
+      }
+    });
+
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents,
+      config: {
+        responseMimeType: "application/json",
+      },
+    });
+
+    const result = JSON.parse(response.text || "{}");
+    res.json(result);
+  } catch (error: any) {
+    console.error("Error in AI valuation chat endpoint:", error);
+    res.status(500).json({
+      error: "Failed to process AI valuation chat.",
+      details: error.message,
+    });
+  }
+});
+
 // Specialized Facebook Marketplace Ad Optimizer Endpoint
 app.post("/api/fb-optimize", async (req, res) => {
   if (!ai) {

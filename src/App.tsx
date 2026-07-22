@@ -762,9 +762,12 @@ export default function App() {
                   {aiLoading ? "Gemini is Identifying Item & Researching Comps..." : "✨ Gemini Find It! (Auto-Fill Form)"}
                 </button>
 
-                {/* Research Results Panel View */}
+                {/* Conversational Valuation Chat & Research Panel View */}
                 <AIResearchView 
                   research={aiResult} 
+                  photos={photos.length > 0 ? photos : photoUrl ? [photoUrl] : []}
+                  itemName={itemName}
+                  itemNotes={notes}
                   onApplyAll={handleApplyAllAi} 
                   onApplyField={handleApplyAiField}
                   isLoading={aiLoading} 
