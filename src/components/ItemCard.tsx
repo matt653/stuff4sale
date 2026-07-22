@@ -89,11 +89,27 @@ export default function ItemCard({ item, onEdit, onDelete, onStatusChange, onFBP
   const netProfit = isProfit ? (item.salePrice || 0) - (item.purchasePrice || 0) : 0;
   const roi = isProfit && item.purchasePrice > 0 ? (netProfit / item.purchasePrice) * 100 : 0;
 
+  // Multi-photo state support
+  const itemPhotos = item.photos && item.photos.length > 0 ? item.photos : item.photoUrl ? [item.photoUrl] : [];
+  const [currentPhotoIdx, setCurrentPhotoIdx] = useState(0);
+
+  const handleNextPhoto = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (itemPhotos.length === 0) return;
+    setCurrentPhotoIdx((prev) => (prev + 1) % itemPhotos.length);
+  };
+
+  const handlePrevPhoto = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (itemPhotos.length === 0) return;
+    setCurrentPhotoIdx((prev) => (prev - 1 + itemPhotos.length) % itemPhotos.length);
+  };
+
   return (
     <div className="bg-white border border-slate-150 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col justify-between group" id={`item-card-${item.id}`}>
       
       {/* Top Media & Badge Block */}
-      <div className="relative aspect-[4/3] w-full bg-slate-100 border-b border-slate-100 overflow-hidden flex items-center justify-center">
+      <div className="relative aspect-[4/3] w-full bg-slate-100 border-b border-slate-100 overflow-hidden flex items-center justify-center group/media">
         {item.videoUrl ? (
           <video
             src={item.videoUrl}
@@ -101,13 +117,40 @@ export default function ItemCard({ item, onEdit, onDelete, onStatusChange, onFBP
             playsInline
             className="w-full h-full object-cover"
           />
-        ) : item.photoUrl ? (
-          <img
-            src={item.photoUrl}
-            alt={item.name}
-            referrerPolicy="no-referrer"
-            className="object-cover w-full h-full group-hover:scale-[1.02] transition-transform duration-500"
-          />
+        ) : itemPhotos.length > 0 ? (
+          <>
+            <img
+              src={itemPhotos[currentPhotoIdx] || itemPhotos[0]}
+              alt={item.name}
+              referrerPolicy="no-referrer"
+              className="object-cover w-full h-full group-hover:scale-[1.02] transition-transform duration-500"
+            />
+            {/* Multi-Photo Carousel Controls */}
+            {itemPhotos.length > 1 && (
+              <>
+                <button
+                  type="button"
+                  onClick={handlePrevPhoto}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 bg-slate-900/70 hover:bg-slate-900 text-white rounded-full flex items-center justify-center opacity-0 group-hover/media:opacity-100 transition-opacity shadow-md z-10"
+                  title="Previous Photo"
+                >
+                  ‹
+                </button>
+                <button
+                  type="button"
+                  onClick={handleNextPhoto}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 bg-slate-900/70 hover:bg-slate-900 text-white rounded-full flex items-center justify-center opacity-0 group-hover/media:opacity-100 transition-opacity shadow-md z-10"
+                  title="Next Photo"
+                >
+                  ›
+                </button>
+                {/* Photo counter indicator badge */}
+                <div className="absolute bottom-7 right-2 bg-slate-900/80 backdrop-blur-md text-white text-[10px] font-bold px-2 py-0.5 rounded-full z-10 flex items-center gap-1 shadow-sm">
+                  <span>📷 {currentPhotoIdx + 1}/{itemPhotos.length}</span>
+                </div>
+              </>
+            )}
+          </>
         ) : (
           <div className="flex flex-col items-center justify-center text-slate-400 p-4">
             <ShoppingBag size={38} className="stroke-[1.25] text-slate-300 mb-1" />

@@ -33,9 +33,9 @@ app.post("/api/research", async (req, res) => {
   }
 
   try {
-    const { name, category, notes, image } = req.body;
+    const { name, category, notes, image, images } = req.body;
 
-    if (!name && !image) {
+    if (!name && !image && (!images || images.length === 0)) {
       return res.status(400).json({ error: "Item name or image is required for research." });
     }
 
@@ -45,7 +45,7 @@ app.post("/api/research", async (req, res) => {
 Analyze historical sales, demand patterns, listing strategies, and typical value.
 
 Input Details provided:
-- Item Name: ${name || "Unidentified (Please analyze the attached image)"}
+- Item Name: ${name || "Unidentified (Please analyze the attached images)"}
 - Initial Category: ${category || "Unknown"}
 - Notes/Condition: ${notes || "No extra notes"}
 
@@ -73,8 +73,10 @@ The JSON response MUST match this exact schema:
 
     contents.push(promptText);
 
-    if (image) {
-      const match = image.match(/^data:(image\/\w+);base64,(.+)$/);
+    const imageList: string[] = images && Array.isArray(images) && images.length > 0 ? images : image ? [image] : [];
+    
+    imageList.forEach((imgStr: string) => {
+      const match = imgStr.match(/^data:(image\/\w+);base64,(.+)$/);
       if (match) {
         contents.push({
           inlineData: {
@@ -83,7 +85,7 @@ The JSON response MUST match this exact schema:
           },
         });
       }
-    }
+    });
 
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",

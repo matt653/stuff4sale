@@ -58,6 +58,7 @@ export default function App() {
   const [purchaseLocation, setPurchaseLocation] = useState("");
   const [notes, setNotes] = useState("");
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [photos, setPhotos] = useState<string[]>([]);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [itemStatus, setItemStatus] = useState<ItemStatus>("inventory");
 
@@ -108,6 +109,7 @@ export default function App() {
     setPurchaseLocation("");
     setNotes("");
     setPhotoUrl(null);
+    setPhotos([]);
     setVideoUrl(null);
     setItemStatus("inventory");
     setListedPrice("");
@@ -129,6 +131,7 @@ export default function App() {
     setPurchaseLocation(item.purchaseLocation || "");
     setNotes(item.notes || "");
     setPhotoUrl(item.photoUrl);
+    setPhotos(item.photos && item.photos.length > 0 ? item.photos : item.photoUrl ? [item.photoUrl] : []);
     setVideoUrl(item.videoUrl || null);
     setItemStatus(item.status);
     setListedPrice(item.listedPrice ? item.listedPrice.toString() : "");
@@ -145,7 +148,8 @@ export default function App() {
 
   // Connect to server-side Gemini research API
   const handleAiResearch = async () => {
-    if (!itemName && !photoUrl) {
+    const activeImage = photos[0] || photoUrl;
+    if (!itemName && !activeImage && photos.length === 0) {
       setAiError("Please input an item name or take a photo first so the AI has context to research.");
       return;
     }
@@ -164,7 +168,8 @@ export default function App() {
           name: itemName,
           category: itemCategory,
           notes: notes,
-          image: photoUrl,
+          image: activeImage,
+          images: photos.length > 0 ? photos : activeImage ? [activeImage] : [],
         }),
       });
 
@@ -230,7 +235,8 @@ export default function App() {
         purchaseDate,
         purchaseLocation,
         notes,
-        photoUrl,
+        photoUrl: photos[0] || photoUrl || null,
+        photos: photos,
         videoUrl,
         listedPrice: lPrice,
         listedPlatform: itemStatus === "listed" ? listedPlatform : null,
@@ -686,8 +692,13 @@ export default function App() {
                 {/* Visual Capture Camera Component */}
                 <CameraCapture 
                   onPhotoCaptured={(base64) => setPhotoUrl(base64 || null)} 
+                  onPhotosCaptured={(photoList) => {
+                    setPhotos(photoList);
+                    setPhotoUrl(photoList[0] || null);
+                  }}
                   onVideoCaptured={(base64) => setVideoUrl(base64 || null)}
                   initialPhotoUrl={photoUrl}
+                  initialPhotos={photos}
                   initialVideoUrl={videoUrl}
                 />
 
