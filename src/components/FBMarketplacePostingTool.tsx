@@ -92,6 +92,22 @@ export default function FBMarketplacePostingTool({
     });
   };
 
+  // Auto-calculate bundle prices when bundle selection changes
+  const selectedBundleItems = items.filter(i => selectedBundleItemIds.includes(i.id));
+  const totalBundleIndividualSum = selectedBundleItems.reduce(
+    (sum, i) => sum + (i.listedPrice || i.research?.estimatedValueMax || i.purchasePrice * 2 || 30),
+    0
+  );
+  const recommendedBundleDiscountPrice = Math.round(totalBundleIndividualSum * 0.85); // 15% bundle discount
+  const currentBundlePrice = customPrice ? Number(customPrice) : recommendedBundleDiscountPrice;
+  const currentBundleSavings = Math.max(0, totalBundleIndividualSum - currentBundlePrice);
+
+  useEffect(() => {
+    if (isBundleMode && selectedBundleItemIds.length > 0) {
+      setCustomPrice(recommendedBundleDiscountPrice.toString());
+    }
+  }, [isBundleMode, selectedBundleItemIds.length]);
+
   // Trigger Gemini AI FB Ad Optimizer Endpoint
   const handleOptimizeWithAI = async () => {
     if (!activeItem && !isBundleMode) return;
@@ -102,18 +118,22 @@ export default function FBMarketplacePostingTool({
       let payload: any = {};
 
       if (isBundleMode) {
-        const bundleItems = items.filter(i => selectedBundleItemIds.includes(i.id));
-        const totalPrice = bundleItems.reduce((sum, i) => sum + (i.listedPrice || i.research?.estimatedValueMax || i.purchasePrice * 2 || 30), 0);
-        const discountedPrice = Math.round(totalPrice * 0.85); // 15% bundle discount recommendation
-        
+        const bundleItemsPayload = selectedBundleItems.map(i => ({
+          name: i.name,
+          price: i.listedPrice || i.research?.estimatedValueMax || i.purchasePrice * 2 || 30,
+          notes: i.notes || ""
+        }));
+
         payload = {
-          name: `Bundle Deal: ${bundleItems.map(i => i.name).join(" + ")}`,
-          category: bundleItems[0]?.category || "Yard Art / Antiques",
-          notes: `Bundle of ${bundleItems.length} items. ${customNote || "Discounted package deal for local pickup."}`,
-          price: customPrice ? Number(customPrice) : discountedPrice,
+          name: `Bundle Deal (${selectedBundleItems.length} Items): ${selectedBundleItems.map(i => i.name).join(" + ")}`,
+          category: selectedBundleItems[0]?.category || "Home & Garden",
+          notes: `Bundle of ${selectedBundleItems.length} items. Total value $${totalBundleIndividualSum}. Package deal price $${currentBundlePrice}. Save $${currentBundleSavings}! ${customNote || ""}`,
+          price: currentBundlePrice,
+          totalIndividualPrice: totalBundleIndividualSum,
+          discountSavings: currentBundleSavings,
           tone: "bundle",
           isBundle: true,
-          bundleItems: bundleItems.map(i => ({ name: i.name, notes: i.notes }))
+          bundleItems: bundleItemsPayload
         };
       } else if (activeItem) {
         payload = {
@@ -349,6 +369,32 @@ export default function FBMarketplacePostingTool({
                   );
                 })}
               </div>
+
+              {/* Bundle Pricing Summary Badge */}
+              {selectedBundleItemIds.length > 0 && (
+                <div className="mt-2.5 bg-indigo-50/70 border border-indigo-200 p-3 rounded-2xl space-y-1.5 text-xs">
+                  <div className="flex items-center justify-between font-bold text-indigo-950">
+                    <span>Bundle Discount Summary:</span>
+                    <span className="text-[10px] uppercase font-extrabold bg-indigo-200 text-indigo-800 px-2 py-0.5 rounded-full">
+                      {selectedBundleItems.length} Items Included
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 pt-1 text-center font-bold">
+                    <div className="bg-white p-2 rounded-xl border border-indigo-100 shadow-xs">
+                      <span className="text-[9px] text-slate-400 block uppercase font-bold">Individual Total</span>
+                      <span className="text-xs text-slate-700 font-extrabold line-through">${totalBundleIndividualSum}</span>
+                    </div>
+                    <div className="bg-emerald-600 text-white p-2 rounded-xl shadow-xs">
+                      <span className="text-[9px] text-emerald-100 block uppercase font-bold">Bundle Price</span>
+                      <span className="text-xs font-black">${currentBundlePrice}</span>
+                    </div>
+                    <div className="bg-amber-500 text-white p-2 rounded-xl shadow-xs">
+                      <span className="text-[9px] text-amber-100 block uppercase font-bold">Buyer Savings</span>
+                      <span className="text-xs font-extrabold">Save ${currentBundleSavings}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

@@ -139,7 +139,7 @@ app.post("/api/fb-optimize", async (req, res) => {
   }
 
   try {
-    const { name, category, notes, price, tone, isBundle, bundleItems } = req.body;
+    const { name, category, notes, price, tone, isBundle, bundleItems, totalIndividualPrice, discountSavings } = req.body;
 
     let promptText = `You are a top-performing Facebook Marketplace seller assistant. 
 Create an irresistible, high-converting Facebook Marketplace listing ad copy for local buyers.
@@ -151,7 +151,19 @@ Item Details:
 - Target Price: $${price || 0}
 - Tone requested: ${tone || "casual"}
 - Is Bundle Deal: ${isBundle ? "Yes" : "No"}
-${isBundle && bundleItems ? `- Bundle Included Items: ${JSON.stringify(bundleItems)}` : ""}
+${isBundle ? `
+CRITICAL BUNDLE PRICING INSTRUCTIONS:
+- Total Individual Price Sum: $${totalIndividualPrice || price}
+- Discounted Bundle Package Price: $${price}
+- Customer Bundle Savings: $${discountSavings || 0}
+- Included Bundle Items: ${JSON.stringify(bundleItems)}
+
+Your fbDescription MUST BE STRUCTURED EXACTLY AS FOLLOWS FOR BUNDLES:
+1. Start with a bold package headline stating the DISCOUNTED BUNDLE PACKAGE PRICE ($${price} for everything!).
+2. List the INDIVIDUAL PRICE BREAKDOWN for each item separately (e.g., "• [Item Name] - $[Price] if bought individually").
+3. Include an explicit BUNDLE SAVINGS line (e.g., "🔥 Save $${discountSavings} when you take the whole bundle today!").
+4. List item condition notes, local pickup terms (Cash/Venmo accepted), and call to action.
+` : ""}
 
 Generate a JSON response matching this schema strictly without markdown or formatting:
 {
