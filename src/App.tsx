@@ -121,8 +121,11 @@ export default function App() {
     }
   };
 
-  // Real-time Firestore subscription
+  // Real-time Firestore subscription with local storage vault protection
   useEffect(() => {
+    // 1. Immediately attempt loading local vault on mount to eliminate initial delay
+    loadLocalVault();
+
     setLoading(true);
     const q = collection(db, "inventory");
     
@@ -160,12 +163,24 @@ export default function App() {
             lastInquiryAt: data.lastInquiryAt || undefined,
           } as InventoryItem);
         });
-        setItems(fetchedItems);
+
+        if (fetchedItems.length > 0) {
+          setItems(fetchedItems);
+          saveLocalVault(fetchedItems);
+        } else {
+          // If Firestore returns 0 items, check if local storage vault has items
+          const recovered = loadLocalVault();
+          if (!recovered) {
+            setItems([]);
+          }
+        }
+
         setLoading(false);
         setErrorMessage(null);
       },
       (err) => {
-        console.error("Firestore subscription error:", err);
+        console.error("Firestore subscription error, falling back to local vault:", err);
+        loadLocalVault();
         setLoading(false);
       }
     );
