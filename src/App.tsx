@@ -37,6 +37,93 @@ const COMMON_CATEGORIES = [
   "Other / Miscellaneous"
 ];
 
+const DEFAULT_SAMPLE_ITEMS: Omit<InventoryItem, "id">[] = [
+  {
+    name: "Sony PlayStation 4 Console 500GB (Jet Black)",
+    category: "Video Games & Consoles",
+    status: "sold",
+    purchasePrice: 40.00,
+    purchaseDate: "2026-07-10",
+    purchaseLocation: "Yard Sale",
+    listedPrice: 130.00,
+    listedPlatform: "eBay",
+    salePrice: 125.00,
+    saleDate: "2026-07-15",
+    salePlatform: "eBay",
+    notes: "Bought complete with one controller and HDMI. Cleaned off dust and tested. Works perfectly.",
+    photoUrl: null,
+    research: {
+      estimatedValueMin: 90,
+      estimatedValueMax: 140,
+      suggestedTitle: "Sony PlayStation 4 PS4 500GB Console Black - Tested & Working!",
+      suggestedDescription: "Up for sale is a tested and fully functional Sony PlayStation 4 (500GB) console in Jet Black. Includes original controller, power cord, and HDMI cable. Console has been fully factory reset and cleaned.",
+      demandScore: 9,
+      targetPlatforms: ["eBay - Massive console demand", "FB Marketplace - Sells fast locally"],
+      sellingTips: ["Bundle with cheap games to raise margin", "Take clear photos of serial number"],
+      category: "Video Games & Consoles",
+      keywords: ["ps4 console", "sony playstation", "gaming console", "ps4 bundle"]
+    },
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    name: "Patagonia Better Sweater Fleece Jacket Mens Medium",
+    category: "Clothing & Apparel",
+    status: "listed",
+    purchasePrice: 6.50,
+    purchaseDate: "2026-07-12",
+    purchaseLocation: "Goodwill Outlet",
+    listedPrice: 45.00,
+    listedPlatform: "eBay",
+    salePrice: null,
+    saleDate: null,
+    salePlatform: null,
+    notes: "Excellent condition. No snags or stains. Freshly laundered.",
+    photoUrl: null,
+    research: {
+      estimatedValueMin: 35,
+      estimatedValueMax: 55,
+      suggestedTitle: "Patagonia Better Sweater Full Zip Fleece Jacket Grey Mens Size Medium",
+      suggestedDescription: "Beautiful Patagonia Better Sweater full zip fleece jacket in men's size Medium. Light heather grey color. Warm knit fabric style with zippered pockets. In excellent pre-owned condition.",
+      demandScore: 8,
+      targetPlatforms: ["Poshmark - Strong outdoor clothing market", "eBay - Reliable audience"],
+      sellingTips: ["Measure pit-to-pit and length", "Photograph the Patagonia logo close-up"],
+      category: "Clothing & Apparel",
+      keywords: ["patagonia fleece", "better sweater", "mens patagonia", "fleece zip up"]
+    },
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    name: "Vintage Polaroid Sun 600 Instant Camera",
+    category: "Vintage & Antiques",
+    status: "inventory",
+    purchasePrice: 5.00,
+    purchaseDate: "2026-07-18",
+    purchaseLocation: "Estate Sale",
+    listedPrice: null,
+    listedPlatform: null,
+    salePrice: null,
+    saleDate: null,
+    salePlatform: null,
+    notes: "Body is in great shape. Flash opens correctly. Untested since I don't have 600 film.",
+    photoUrl: null,
+    research: {
+      estimatedValueMin: 25,
+      estimatedValueMax: 45,
+      suggestedTitle: "Vintage Polaroid Sun 600 LMS Instant Film Camera - Beautiful Retro Aesthetics",
+      suggestedDescription: "Up for sale is a classic vintage Polaroid Sun 600 Light Management System instant camera. Uses Polaroid 600 film. Mechanically clean with opening flash bar. Being sold as-is vintage untested.",
+      demandScore: 6,
+      targetPlatforms: ["eBay - Collectors dream", "Etsy - High vintage value"],
+      sellingTips: ["Wipe clean with isopropyl alcohol", "List model details clearly in description"],
+      category: "Vintage & Antiques",
+      keywords: ["polaroid sun 600", "vintage camera", "polaroid instant", "retro polaroid"]
+    },
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  }
+];
+
 export default function App() {
   // Inventory state
   const [items, setItems] = useState<InventoryItem[]>([]);
@@ -127,14 +214,58 @@ export default function App() {
     };
   }, [items]);
 
-  // Real-time Firestore subscription (100% Pure Firestore Single Source of Truth)
+  // Real-time Firestore subscription with automatic initial seed/migration if Firestore is empty
+  const hasAutoInitialized = React.useRef(false);
+
   useEffect(() => {
     setLoading(true);
     const q = collection(db, "inventory");
     
     const unsubscribe = onSnapshot(
       q,
-      (snapshot) => {
+      async (snapshot) => {
+        if (snapshot.empty && !hasAutoInitialized.current) {
+          hasAutoInitialized.current = true;
+          console.log("Firestore inventory collection is empty. Checking local vault or auto-seeding...");
+
+          // 1. Check if local storage vault has items to migrate to Firestore
+          const possibleKeys = ["stuff4sale_items_vault", "inventory_items", "sidehustle_inventory", "items", "stuff4sale_inventory"];
+          let migratedAny = false;
+
+          for (const key of possibleKeys) {
+            try {
+              const saved = localStorage.getItem(key);
+              if (saved) {
+                const parsed = JSON.parse(saved);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                  console.log(`Migrating ${parsed.length} local items to Firestore...`);
+                  const collectionRef = collection(db, "inventory");
+                  for (const item of parsed) {
+                    if (item && item.name) {
+                      const { id, ...itemData } = item;
+                      await addDoc(collectionRef, itemData);
+                    }
+                  }
+                  migratedAny = true;
+                  break;
+                }
+              }
+            } catch (e) {
+              console.error("Migration error:", e);
+            }
+          }
+
+          // 2. If no local vault items exist, seed the 3 default sample products into Firestore
+          if (!migratedAny) {
+            console.log("Seeding default sample products into Firestore...");
+            const collectionRef = collection(db, "inventory");
+            for (const sampleItem of DEFAULT_SAMPLE_ITEMS) {
+              await addDoc(collectionRef, sampleItem);
+            }
+          }
+          return;
+        }
+
         const fetchedItems: InventoryItem[] = [];
         snapshot.forEach((docSnap) => {
           const data = docSnap.data();
