@@ -1594,24 +1594,12 @@ export default function App() {
           </div>
         )}
 
-        {/* Unified Facebook Studio & Graph API Hub Modal Overlay */}
+        {/* Facebook Marketplace Posting Assistant Modal */}
         {showFBHub && (
           <FBHubModal
             items={items}
             selectedItem={fbSelectedItem}
-            initialTab={fbHubTab}
-            notifications={fbNotifications}
-            connected={fbConnected}
             onStatusChange={handleQuickStatusUpdate}
-            onMarkAsRead={(id) => {
-              setFbNotifications((prev) =>
-                prev.map((n) => (n.id === id ? { ...n, read: true } : n))
-              );
-            }}
-            onMarkAllAsRead={() => {
-              setFbNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-            }}
-            onClearAll={() => setFbNotifications([])}
             onClose={() => setShowFBHub(false)}
           />
         )}
