@@ -376,15 +376,16 @@ export default function App() {
         updatedAt: new Date().toISOString(),
       };
 
-      if (editingItem) {
-        // Update existing doc in Firestore
-        const docRef = doc(db, "inventory", editingItem.id);
-        await updateDoc(docRef, itemData);
-      } else {
-        // Create new doc directly in Firestore
-        const collectionRef = collection(db, "inventory");
-        await addDoc(collectionRef, itemData);
-      }
+      const assignedStockNumber = stockNumber.trim() || getNextSequentialStockNumber(items);
+      const targetDocId = editingItem ? editingItem.id : assignedStockNumber;
+
+      const finalItemData: Omit<InventoryItem, "id"> = {
+        ...itemData,
+        stockNumber: assignedStockNumber,
+      };
+
+      const docRef = doc(db, "inventory", targetDocId);
+      await setDoc(docRef, finalItemData, { merge: true });
 
       setShowAddForm(false);
       resetForm();
