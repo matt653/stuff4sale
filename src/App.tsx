@@ -235,9 +235,11 @@ export default function App() {
   };
 
   // Connect to server-side Gemini research API
-  const handleAiResearch = async () => {
-    const activeImage = photos[0] || photoUrl;
-    if (!itemName && !activeImage && photos.length === 0) {
+  const handleAiResearch = async (overrideImg?: string, overridePhotos?: string[]) => {
+    const activeImage = overrideImg || photoUrl;
+    const activePhotosList = overridePhotos || photos;
+
+    if (!itemName && !activeImage && activePhotosList.length === 0) {
       setAiError("Please input an item name or take a photo first so the AI has context to research.");
       return;
     }
@@ -258,7 +260,7 @@ export default function App() {
           category: itemCategory,
           notes: notes,
           image: activeImage,
-          images: photos.length > 0 ? photos : activeImage ? [activeImage] : [],
+          images: activePhotosList.length > 0 ? activePhotosList : activeImage ? [activeImage] : [],
         }),
       });
 
@@ -277,6 +279,9 @@ export default function App() {
       }
       if (result.category) {
         setItemCategory(result.category);
+      }
+      if (result.groupName) {
+        setBundleTitle(result.groupName);
       }
       if (result.estimatedValueMin && result.estimatedValueMax) {
         const midpoint = Math.round((result.estimatedValueMin + result.estimatedValueMax) / 2);
@@ -750,10 +755,16 @@ export default function App() {
 
                 {/* Visual Capture Camera Component */}
                 <CameraCapture 
-                  onPhotoCaptured={(base64) => setPhotoUrl(base64 || null)} 
+                  onPhotoCaptured={(base64) => {
+                    setPhotoUrl(base64 || null);
+                    if (base64) handleAiResearch(base64, [base64]);
+                  }} 
                   onPhotosCaptured={(photoList) => {
                     setPhotos(photoList);
                     setPhotoUrl(photoList[0] || null);
+                    if (photoList.length > 0) {
+                      handleAiResearch(photoList[0], photoList);
+                    }
                   }}
                   onVideoCaptured={(base64) => setVideoUrl(base64 || null)}
                   initialPhotoUrl={photoUrl}

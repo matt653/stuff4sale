@@ -15,6 +15,7 @@ export interface AIResearchResult {
   cleaningInstructions?: string[];
   prepChecklist?: string[];
   stockNumber?: string;
+  groupName?: string;
 }
 
 export interface AIChatMessage {

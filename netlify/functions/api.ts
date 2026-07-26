@@ -121,6 +121,7 @@ The JSON response MUST match this exact schema:
     "Tip 2..."
   ],
   "category": "A refined product category name",
+  "groupName": "A descriptive group or bundle collection name (e.g. Power Tool Set, Vintage Audio Gear, Retro Gaming Bundle)",
   "keywords": ["vintage", "retro", "collectible"]
 }`;
 
