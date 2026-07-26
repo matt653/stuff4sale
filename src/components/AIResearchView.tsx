@@ -24,6 +24,7 @@ export default function AIResearchView({
   error: externalError
 }: AIResearchViewProps) {
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [priceSliderPos, setPriceSliderPos] = useState(50);
   
   // Conversational Chat State
   const [messages, setMessages] = useState<AIChatMessage[]>([]);
@@ -317,59 +318,90 @@ export default function AIResearchView({
             </div>
           </div>
 
-          {/* Price Range & Demand Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="bg-white border border-slate-100 p-3.5 rounded-xl shadow-xs flex flex-col justify-between space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-slate-500 flex items-center gap-1">
-                  <DollarSign size={13} className="text-indigo-600" />
-                  Resell Price Valuation
-                </span>
-                <span className="text-[10px] text-slate-400 font-bold uppercase">Strategy</span>
-              </div>
-              <div className="flex items-baseline gap-1">
-                <span className="text-2xl font-extrabold text-slate-800">${activeReport.estimatedValueMin}</span>
-                <span className="text-slate-400 font-semibold text-sm">to</span>
-                <span className="text-2xl font-extrabold text-slate-800">${activeReport.estimatedValueMax}</span>
-              </div>
-              {onApplyField && (
-                <div className="grid grid-cols-2 gap-1.5 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => onApplyField("listedPrice", activeReport.estimatedValueMin)}
-                    className="py-1.5 px-2 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 rounded-lg text-[10px] font-bold transition flex items-center justify-center gap-1 cursor-pointer"
-                  >
-                    ⚡ Quick Sale (${activeReport.estimatedValueMin})
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onApplyField("listedPrice", activeReport.estimatedValueMax)}
-                    className="py-1.5 px-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 rounded-lg text-[10px] font-bold transition flex items-center justify-center gap-1 cursor-pointer"
-                  >
-                    💎 Full Retail (${activeReport.estimatedValueMax})
-                  </button>
-                </div>
-              )}
-            </div>
+          {/* Merged Resell Valuation & Demand Score Card with Interactive Strategy Slider */}
+          {(() => {
+            const minVal = Number(activeReport.estimatedValueMin) || 0;
+            const maxVal = Number(activeReport.estimatedValueMax) || 0;
+            const currentPriceFromSlider = minVal > 0 && maxVal > 0 
+              ? Math.round(minVal + (priceSliderPos / 100) * (maxVal - minVal))
+              : (maxVal || minVal || 35);
 
-            <div className="bg-white border border-slate-100 p-3.5 rounded-xl shadow-xs flex flex-col justify-between">
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-xs font-semibold text-slate-500 flex items-center gap-1">
-                  <Star size={13} className="text-amber-500 fill-amber-500" />
-                  Resell Demand Score
-                </span>
-                <span className="text-xs font-bold text-slate-700">{activeReport.demandScore}/10</span>
+            return (
+              <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-4">
+                {/* Header: Resell Valuation & Demand */}
+                <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-100">
+                  <div>
+                    <span className="text-xs font-semibold text-slate-500 flex items-center gap-1 mb-0.5">
+                      <DollarSign size={14} className="text-indigo-600" />
+                      Resell Price Valuation
+                    </span>
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="text-2xl font-black text-slate-900">${minVal}</span>
+                      <span className="text-slate-400 font-semibold text-xs uppercase tracking-wider">to</span>
+                      <span className="text-2xl font-black text-slate-900">${maxVal}</span>
+                    </div>
+                  </div>
+
+                  <div className="text-right">
+                    <span className="text-xs font-semibold text-slate-500 flex items-center gap-1 justify-end mb-0.5">
+                      <Star size={13} className="text-amber-500 fill-amber-500" />
+                      Demand Score
+                    </span>
+                    <div className="flex items-center gap-2 justify-end">
+                      <span className="text-base font-extrabold text-slate-800">{activeReport.demandScore}/10</span>
+                      <div className="w-16 bg-slate-100 h-2 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full ${getDemandColor(activeReport.demandScore)}`}
+                          style={{ width: `${activeReport.demandScore * 10}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Interactive Pricing Strategy Slider */}
+                <div className="space-y-2 pt-1">
+                  <div className="flex items-center justify-between text-xs font-bold">
+                    <span className="text-amber-700 flex items-center gap-1">
+                      ⚡ Quick Sale (${minVal})
+                    </span>
+                    <span className="bg-indigo-600 text-white px-3 py-0.5 rounded-full font-black text-[11px] shadow-xs">
+                      Target Price: ${currentPriceFromSlider}
+                    </span>
+                    <span className="text-emerald-700 flex items-center gap-1">
+                      💎 Full Retail (${maxVal})
+                    </span>
+                  </div>
+
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    step="5"
+                    value={priceSliderPos}
+                    onChange={(e) => {
+                      const newPos = Number(e.target.value);
+                      setPriceSliderPos(newPos);
+                      if (onApplyField) {
+                        const calculated = minVal > 0 && maxVal > 0
+                          ? Math.round(minVal + (newPos / 100) * (maxVal - minVal))
+                          : (maxVal || minVal || 35);
+                        onApplyField("listedPrice", calculated);
+                      }
+                    }}
+                    className="w-full h-2.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                    id="pricing-strategy-slider"
+                  />
+
+                  <div className="flex justify-between text-[10px] text-slate-400 font-semibold px-0.5">
+                    <span>Fast Cash Turnaround</span>
+                    <span>Balanced Comp</span>
+                    <span>Max Retail Profit</span>
+                  </div>
+                </div>
               </div>
-              
-              <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden mt-1 flex">
-                <div
-                  className={`h-full ${getDemandColor(activeReport.demandScore)} transition-all duration-1000`}
-                  style={{ width: `${activeReport.demandScore * 10}%` }}
-                />
-              </div>
-              <p className="text-[10px] text-slate-500 mt-2 font-medium">{getDemandLabel(activeReport.demandScore)}</p>
-            </div>
-          </div>
+            );
+          })()}
 
           {/* Identified SEO Title */}
           <div className="space-y-1">
