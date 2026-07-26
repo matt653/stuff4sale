@@ -26,19 +26,51 @@ export default function AIResearchView({
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [priceSliderPos, setPriceSliderPos] = useState(50);
   const [finalReport, setFinalReport] = useState<AIResearchResult | null>(research);
+  const [flawResponses, setFlawResponses] = useState<Record<number, string>>({});
+  const [hasInitializedPrice, setHasInitializedPrice] = useState(false);
 
-  // Sync slider price to Step 2 form
+  // Sync slider price to Step 2 form ONCE on intake
   React.useEffect(() => {
     const report = finalReport || research;
-    if (report && onApplyField) {
+    if (report && !hasInitializedPrice && onApplyField) {
       const minVal = Number(report.estimatedValueMin) || 0;
       const maxVal = Number(report.estimatedValueMax) || 0;
       const initialPrice = minVal > 0 && maxVal > 0
         ? Math.round(minVal + (priceSliderPos / 100) * (maxVal - minVal))
         : (maxVal || minVal || 35);
       onApplyField("listedPrice", initialPrice);
+      setHasInitializedPrice(true);
     }
-  }, [research, finalReport]);
+  }, [research, finalReport, hasInitializedPrice]);
+
+  const handleGenerateDetails = () => {
+    const report = finalReport || research;
+    if (!report || !onApplyAll) return;
+
+    const flaws = report.issuesFound || report.cleaningInstructions || [];
+    let compiledDesc = report.suggestedDescription || "";
+
+    if (flaws.length > 0) {
+      const conditionBlockLines = flaws.map((issue, idx) => {
+        const userResp = flawResponses[idx]?.trim();
+        return userResp ? `• ${issue}\n  👉 Seller Clarification: ${userResp}` : `• ${issue}`;
+      });
+
+      if (!compiledDesc.toLowerCase().includes("flaw") && !compiledDesc.toLowerCase().includes("issue")) {
+        compiledDesc += "\n\n⚠️ Condition & Seller Clarifications:\n" + conditionBlockLines.join("\n");
+      } else {
+        const respondedLines = conditionBlockLines.filter((_, idx) => Boolean(flawResponses[idx]?.trim()));
+        if (respondedLines.length > 0) {
+          compiledDesc += "\n\n📌 Additional Seller Condition Clarifications:\n" + respondedLines.join("\n");
+        }
+      }
+    }
+
+    onApplyAll({
+      ...report,
+      suggestedDescription: compiledDesc
+    });
+  };
   
   // Conversational Chat State
   const [messages, setMessages] = useState<AIChatMessage[]>([]);
@@ -437,30 +469,47 @@ export default function AIResearchView({
             </p>
           </div>
 
-          {/* Issues & Flaws Found Section */}
+          {/* Issues & Flaws Found Section with Interactive Seller Response Boxes */}
           {((activeReport.issuesFound && activeReport.issuesFound.length > 0) || (activeReport.cleaningInstructions && activeReport.cleaningInstructions.length > 0)) && (
-            <div className="bg-amber-50/50 border border-amber-200/80 rounded-xl p-3.5 space-y-2">
-              <h5 className="text-xs font-bold text-amber-950 flex items-center gap-1.5">
-                ⚠️ Issues & Flaws Found
-              </h5>
-              <ul className="space-y-1.5 text-xs">
+            <div className="bg-amber-50/60 border border-amber-200/90 rounded-2xl p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <h5 className="text-xs font-bold text-amber-950 flex items-center gap-1.5">
+                  ⚠️ Issues & Flaws Found
+                </h5>
+                <span className="text-[10px] text-amber-700 font-bold bg-amber-100/70 px-2 py-0.5 rounded-full">
+                  Type your seller notes below
+                </span>
+              </div>
+              <div className="space-y-2 text-xs">
                 {(activeReport.issuesFound || activeReport.cleaningInstructions || []).map((issue, idx) => (
-                  <li key={idx} className="bg-white border border-amber-200/60 rounded-lg px-3 py-2 text-[11px] text-amber-900 font-medium flex items-start gap-1.5">
-                    <span className="shrink-0">🔸</span>
-                    <span>{issue}</span>
-                  </li>
+                  <div key={idx} className="bg-white border border-amber-200/70 rounded-xl p-3 space-y-2 shadow-xs">
+                    <div className="flex items-start gap-1.5 text-xs text-amber-950 font-bold">
+                      <span className="shrink-0 text-amber-500">🔸</span>
+                      <span>{issue}</span>
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Type your response/clarification (e.g. 'Solid iron, no rust-through', 'Spins smoothly', 'Local pickup only')..."
+                      value={flawResponses[idx] || ""}
+                      onChange={(e) => setFlawResponses({ ...flawResponses, [idx]: e.target.value })}
+                      className="w-full text-xs border border-amber-200 bg-amber-50/20 rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-amber-500 text-slate-800 font-medium"
+                      id={`flaw-response-input-${idx}`}
+                    />
+                  </div>
                 ))}
-              </ul>
+              </div>
             </div>
           )}
 
           {onApplyAll && (
             <button
               type="button"
-              onClick={() => onApplyAll(activeReport)}
-              className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs rounded-xl shadow-md transition active:scale-95 cursor-pointer"
+              onClick={handleGenerateDetails}
+              className="w-full py-3.5 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-extrabold text-xs rounded-2xl shadow-md transition active:scale-95 cursor-pointer flex items-center justify-center gap-2"
+              id="btn-generate-details"
             >
-              ✨ Apply All AI Suggestions to Item Form (Box 2)
+              <Sparkles size={16} />
+              ✨ Generate Details (Compile Description & Flaws to Form)
             </button>
           )}
         </div>
