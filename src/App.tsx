@@ -243,6 +243,7 @@ export default function App() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "x-gemini-api-key": (import.meta as any).env?.VITE_GEMINI_API_KEY || (import.meta as any).env?.GEMINI_API_KEY || "",
         },
         body: JSON.stringify({
           name: itemName,

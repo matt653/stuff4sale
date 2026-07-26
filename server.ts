@@ -13,14 +13,16 @@ const PORT = 3000;
 // Set up large JSON body limit for base64 image uploads
 app.use(express.json({ limit: "15mb" }));
 
-// Initialize Gemini API Client
-const geminiApiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
-let ai: GoogleGenAI | null = null;
+// Helper to resolve Gemini API Client from request headers or environment variables
+function getAiClient(req: express.Request): GoogleGenAI | null {
+  const headerKey = (req.headers["x-gemini-api-key"] || req.headers["x-api-key"]) as string;
+  const envKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
+  const finalKey = (headerKey && headerKey.trim()) ? headerKey.trim() : envKey;
 
-if (geminiApiKey) {
-  ai = new GoogleGenAI({ apiKey: geminiApiKey });
-} else {
-  console.warn("WARNING: GEMINI_API_KEY is not defined in the environment. AI research features will be unavailable.");
+  if (finalKey) {
+    return new GoogleGenAI({ apiKey: finalKey });
+  }
+  return null;
 }
 
 // Clean JSON response from Gemini
@@ -68,20 +70,17 @@ async function callGeminiWithFallback(aiClient: GoogleGenAI, contents: any[]) {
 
 // Health Check Endpoint
 app.get("/api/health", (req, res) => {
-  res.json({ status: "ok", aiEnabled: !!ai });
+  const aiClient = getAiClient(req);
+  res.json({ status: "ok", aiEnabled: !!aiClient });
 });
 
 // Gemini-Powered Item Research Endpoint
 app.post("/api/research", async (req, res) => {
-  let activeAi = ai;
-  if (!activeAi) {
-    const key = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
-    if (key) activeAi = new GoogleGenAI({ apiKey: key });
-  }
+  const activeAi = getAiClient(req);
 
   if (!activeAi) {
     return res.status(503).json({
-      error: "AI Research is currently unavailable. Please configure GEMINI_API_KEY in your environment.",
+      error: "AI Research is currently unavailable. Please configure GEMINI_API_KEY or VITE_GEMINI_API_KEY in your environment.",
     });
   }
 
@@ -165,9 +164,10 @@ The JSON response MUST match this exact schema:
 
 // Interactive Conversational AI Valuation Chat Endpoint
 app.post("/api/valuation-chat", async (req, res) => {
-  if (!ai) {
+  const activeAi = getAiClient(req);
+  if (!activeAi) {
     return res.status(503).json({
-      error: "Gemini AI is currently unavailable because the server API key is not configured.",
+      error: "Gemini AI is currently unavailable. Please configure GEMINI_API_KEY in your environment.",
     });
   }
 
@@ -200,7 +200,7 @@ Return a strictly valid JSON object matching this schema:
     "estimatedValueMin": 20,
     "estimatedValueMax": 60,
     "demandScore": 8,
-    "worthSelling": "YES", (Choose one strictly: "YES", "MARGINAL", "NO")
+    "worthSelling": "YES",
     "triageReason": "1-sentence sourcing verdict advising why it is worth selling or scrap",
     "cleaningInstructions": ["Step 1...", "Step 2..."],
     "prepChecklist": ["Prep tip 1...", "Prep tip 2..."],
@@ -236,7 +236,7 @@ Return a strictly valid JSON object matching this schema:
 
     // Attach images as inline data
     const imageList: string[] = images && Array.isArray(images) && images.length > 0 ? images : image ? [image] : [];
-    imageList.forEach((imgStr: string, idx: number) => {
+    imageList.forEach((imgStr: string) => {
       const match = imgStr.match(/^data:(image\/\w+);base64,(.+)$/);
       if (match) {
         contents.push({
@@ -248,15 +248,7 @@ Return a strictly valid JSON object matching this schema:
       }
     });
 
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents,
-      config: {
-        responseMimeType: "application/json",
-      },
-    });
-
-    const result = JSON.parse(response.text || "{}");
+    const result = await callGeminiWithFallback(activeAi, contents);
     res.json(result);
   } catch (error: any) {
     console.error("Error in AI valuation chat endpoint:", error);
@@ -269,9 +261,10 @@ Return a strictly valid JSON object matching this schema:
 
 // Specialized Facebook Marketplace Ad Optimizer Endpoint
 app.post("/api/fb-optimize", async (req, res) => {
-  if (!ai) {
+  const activeAi = getAiClient(req);
+  if (!activeAi) {
     return res.status(503).json({
-      error: "AI Facebook Marketplace Optimizer is currently unavailable because the server API key is not configured.",
+      error: "AI Facebook Marketplace Optimizer is currently unavailable. Please configure GEMINI_API_KEY in your environment.",
     });
   }
 
@@ -307,23 +300,13 @@ Generate a JSON response matching this schema strictly without markdown or forma
   "fbTitle": "Clear, search-friendly title (max 90 chars)",
   "fbPrice": ${price || 0},
   "fbCategory": "Suggested Facebook Marketplace Category (e.g. Garden & Outdoor, Tools, Antiques, Home Goods, Furniture)",
-  "fbCondition": "Good", (Choose one: New, Like New, Good, Fair)
+  "fbCondition": "Good",
   "fbDescription": "Engaging description body ready for copy-pasting into Facebook Marketplace. Include clean bullet points, item features, dimensions/condition, local pickup terms (Cash/Venmo accepted, porch pickup or public meetup), and friendly call-to-action.",
-  "fbTags": "tag1, tag2, tag3, tag4, tag5, tag6", (Comma separated tags ready for FB Marketplace tag field)
+  "fbTags": "tag1, tag2, tag3, tag4, tag5, tag6",
   "fbTips": ["Local FB Marketplace tip 1", "Tip 2"]
 }`;
 
-    console.log(`Generating FB Marketplace Ad for "${name}" with tone "${tone}"...`);
-
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: [promptText],
-      config: {
-        responseMimeType: "application/json",
-      },
-    });
-
-    const result = JSON.parse(response.text || "{}");
+    const result = await callGeminiWithFallback(activeAi, [promptText]);
     res.json(result);
   } catch (error: any) {
     console.error("Error in FB optimize endpoint:", error);

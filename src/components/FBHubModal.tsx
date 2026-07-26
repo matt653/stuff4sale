@@ -144,7 +144,10 @@ export default function FBHubModal({
 
       const res = await fetch("/api/fb-optimize", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "x-gemini-api-key": (import.meta as any).env?.VITE_GEMINI_API_KEY || (import.meta as any).env?.GEMINI_API_KEY || "",
+        },
         body: JSON.stringify(payload)
       });
 

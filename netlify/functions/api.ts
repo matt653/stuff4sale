@@ -6,12 +6,16 @@ const app = express();
 
 app.use(express.json({ limit: "15mb" }));
 
-// Initialize Gemini API Client from Netlify environment variables
-const geminiApiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
-let ai: GoogleGenAI | null = null;
+// Helper to resolve Gemini API Client from request headers or environment variables
+function getAiClient(req: express.Request): GoogleGenAI | null {
+  const headerKey = (req.headers["x-gemini-api-key"] || req.headers["x-api-key"]) as string;
+  const envKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
+  const finalKey = (headerKey && headerKey.trim()) ? headerKey.trim() : envKey;
 
-if (geminiApiKey) {
-  ai = new GoogleGenAI({ apiKey: geminiApiKey });
+  if (finalKey) {
+    return new GoogleGenAI({ apiKey: finalKey });
+  }
+  return null;
 }
 
 // Clean JSON response from Gemini
@@ -59,20 +63,17 @@ async function callGeminiWithFallback(aiClient: GoogleGenAI, contents: any[]) {
 
 // Health Check Endpoint
 app.get("/api/health", (req, res) => {
-  res.json({ status: "ok", aiEnabled: !!ai, provider: "netlify-serverless" });
+  const aiClient = getAiClient(req);
+  res.json({ status: "ok", aiEnabled: !!aiClient, provider: "netlify-serverless" });
 });
 
 // Gemini-Powered Item Research Endpoint
 app.post("/api/research", async (req, res) => {
-  let activeAi = ai;
-  if (!activeAi) {
-    const key = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
-    if (key) activeAi = new GoogleGenAI({ apiKey: key });
-  }
+  const activeAi = getAiClient(req);
 
   if (!activeAi) {
     return res.status(503).json({
-      error: "AI Research is currently unavailable. Please configure GEMINI_API_KEY in your Netlify site settings.",
+      error: "AI Research is currently unavailable. Please configure GEMINI_API_KEY or VITE_GEMINI_API_KEY in your Netlify site settings.",
     });
   }
 
@@ -152,12 +153,9 @@ The JSON response MUST match this exact schema:
 
 // Interactive Conversational AI Valuation Chat Endpoint
 app.post("/api/valuation-chat", async (req, res) => {
-  if (!ai) {
-    const key = process.env.GEMINI_API_KEY;
-    if (key) ai = new GoogleGenAI({ apiKey: key });
-  }
+  const activeAi = getAiClient(req);
 
-  if (!ai) {
+  if (!activeAi) {
     return res.status(503).json({
       error: "Gemini AI is currently unavailable. Please configure GEMINI_API_KEY in your Netlify settings.",
     });
@@ -239,15 +237,7 @@ Return a strictly valid JSON object matching this schema:
       }
     });
 
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents,
-      config: {
-        responseMimeType: "application/json",
-      },
-    });
-
-    const result = JSON.parse(response.text || "{}");
+    const result = await callGeminiWithFallback(activeAi, contents);
     res.json(result);
   } catch (error: any) {
     console.error("Netlify Function AI Valuation Chat error:", error);
@@ -260,12 +250,9 @@ Return a strictly valid JSON object matching this schema:
 
 // Specialized Facebook Marketplace Ad Optimizer Endpoint
 app.post("/api/fb-optimize", async (req, res) => {
-  if (!ai) {
-    const key = process.env.GEMINI_API_KEY;
-    if (key) ai = new GoogleGenAI({ apiKey: key });
-  }
+  const activeAi = getAiClient(req);
 
-  if (!ai) {
+  if (!activeAi) {
     return res.status(503).json({
       error: "AI Facebook Marketplace Optimizer is currently unavailable. Please configure GEMINI_API_KEY in your Netlify settings.",
     });
@@ -308,15 +295,7 @@ Generate a JSON response matching this schema strictly without markdown or forma
   "fbTips": ["Tip 1", "Tip 2"]
 }`;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: [promptText],
-      config: {
-        responseMimeType: "application/json",
-      },
-    });
-
-    const result = JSON.parse(response.text || "{}");
+    const result = await callGeminiWithFallback(activeAi, [promptText]);
     res.json(result);
   } catch (error: any) {
     console.error("Netlify Function FB Optimize error:", error);
