@@ -17,11 +17,8 @@ Stuff4Sale is a full-stack AI-powered inventory management, item valuation, and 
 
 #### 2. AI Research & Sourcing Intake Inspector (`@google/genai` & `server.ts`)
 - **Multimodal Gemini AI Research**: Powered by Google Gemini (`@google/genai`) via Express server endpoint (`/api/research`). Accepts text queries and multi-image uploads with automatic model fallback (`gemini-2.5-flash` → `gemini-2.0-flash` → `gemini-1.5-flash`).
-- **Automated Reselling Valuation**: Estimates conservative to optimistic reselling list price ranges (`estimatedValueMin` and `estimatedValueMax` in USD).
-- **Sourcing Triage Verdict**: Evaluates items with a clear sourcing verdict (`YES`, `MARGINAL`, `NO`) and provides an explicit `triageReason`.
-- **Demand Score**: Computes sell-through rate demand score on a scale of 1–10.
-- **SEO Title & Description Generator**: Generates click-worthy, SEO-optimized listing titles (max 80 chars) and structured listing descriptions ready for copy-paste.
-- **Restoration & Prep Checklist**: Returns 2–3 step item cleaning/restoration instructions, prep checklists, targeted platforms, and hyper-practical reselling tips.
+- **Automated Reselling Valuation & Pricing Goal**: Estimates conservative (`estimatedValueMin`) to optimistic (`estimatedValueMax`) reselling list price ranges with a 2-mode strategy selector (`⚡ Quick Sale` vs `💎 Full Retail`).
+- **Issues & Flaws Found Generator**: Identifies 1–3 specific item flaws or condition issues (rust, wear, missing parts, untested condition) and incorporates them transparently into the generated ad copy alongside upsell features.
 - **AI Intake Inspector**: Modal interface (`AIIntakeInspector.tsx`) for rapid photo-first sourcing triage before adding items into active inventory.
 
 #### 3. Personal Facebook Marketplace Assistant (`FBHubModal.tsx`)
