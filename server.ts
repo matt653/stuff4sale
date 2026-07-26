@@ -301,6 +301,209 @@ Generate a JSON response matching this schema strictly without markdown or forma
   }
 });
 
+// ==========================================
+// REAL-TIME FACEBOOK WEBHOOK & SSE STREAM ENGINE
+// ==========================================
+
+// In-Memory Storage for Connected SSE Clients & Notifications History
+interface SSEClient {
+  id: string;
+  res: express.Response;
+}
+
+let sseClients: SSEClient[] = [];
+let notificationHistory: any[] = [];
+
+// Meta Webhook Verification Configuration
+let fbConfig = {
+  verifyToken: process.env.FB_VERIFY_TOKEN || "stuff4sale_fb_secret",
+  appSecret: process.env.FB_APP_SECRET || "",
+  pageAccessToken: process.env.FB_PAGE_ACCESS_TOKEN || "",
+  webhookActive: true
+};
+
+// Helper: Broadcast a real-time notification to all connected browser SSE clients
+function broadcastFBNotification(notification: any) {
+  notificationHistory.unshift(notification);
+  if (notificationHistory.length > 50) {
+    notificationHistory.pop();
+  }
+
+  const payload = JSON.stringify({
+    type: "fb_notification",
+    notification,
+  });
+
+  sseClients.forEach((client) => {
+    try {
+      client.res.write(`data: ${payload}\n\n`);
+    } catch (err) {
+      console.error(`Failed to send SSE to client ${client.id}:`, err);
+    }
+  });
+}
+
+// 1. Server-Sent Events (SSE) Stream Endpoint for Browser Clients
+app.get("/api/fb/stream", (req, res) => {
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.flushHeaders?.();
+
+  const clientId = `client_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  const newClient: SSEClient = { id: clientId, res };
+  sseClients.push(newClient);
+
+  console.log(`🟢 Browser client connected to FB Real-Time SSE Stream [${clientId}] (Total: ${sseClients.length})`);
+
+  // Send immediate connection success event + recent history
+  res.write(`data: ${JSON.stringify({ type: "connected", clientId, activeClients: sseClients.length })}\n\n`);
+
+  // Heartbeat ping every 25s to keep connection alive through proxies
+  const pingInterval = setInterval(() => {
+    res.write(`data: ${JSON.stringify({ type: "ping", timestamp: new Date().toISOString() })}\n\n`);
+  }, 25000);
+
+  req.on("close", () => {
+    clearInterval(pingInterval);
+    sseClients = sseClients.filter((c) => c.id !== clientId);
+    console.log(`🔴 Browser client disconnected from FB SSE Stream [${clientId}] (Remaining: ${sseClients.length})`);
+  });
+});
+
+// 2. Meta / Facebook Webhook Verification Endpoint (GET)
+// Meta calls this URL when you click "Verify and Save" in Meta App Dashboard
+app.get("/api/fb/webhook", (req, res) => {
+  const mode = req.query["hub.mode"];
+  const token = req.query["hub.verify_token"];
+  const challenge = req.query["hub.challenge"];
+
+  if (mode && token) {
+    if (mode === "subscribe" && token === fbConfig.verifyToken) {
+      console.log("✅ Facebook Meta Webhook Verification SUCCESSFUL!");
+      return res.status(200).send(challenge);
+    } else {
+      console.warn("❌ Meta Webhook Verification Failed: Invalid Token");
+      return res.sendStatus(403);
+    }
+  }
+  res.sendStatus(400);
+});
+
+// 3. Meta / Facebook Webhook Notification Receiver (POST)
+// Meta sends HTTP POST requests here whenever new messages or comments occur on Facebook
+app.post("/api/fb/webhook", (req, res) => {
+  const body = req.body;
+
+  if (body.object === "page" || body.object === "user") {
+    console.log("📩 Received Meta Webhook Event Payload:", JSON.stringify(body, null, 2));
+
+    body.entry?.forEach((entry: any) => {
+      // Handle Facebook Messenger Messages
+      if (entry.messaging) {
+        entry.messaging.forEach((messagingEvent: any) => {
+          if (messagingEvent.message) {
+            const senderId = messagingEvent.sender?.id || "FB User";
+            const messageText = messagingEvent.message.text || "Sent an attachment / sticker";
+            
+            const notification = {
+              id: `fb_msg_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+              type: "message",
+              senderName: messagingEvent.sender?.name || `Facebook Buyer (${senderId.slice(-4)})`,
+              messageText: messageText,
+              platform: "Facebook Messenger",
+              timestamp: new Date().toISOString(),
+              read: false,
+              metaEventId: messagingEvent.message.mid || entry.id
+            };
+
+            broadcastFBNotification(notification);
+          }
+        });
+      }
+
+      // Handle Facebook Page / Marketplace Listing Comments
+      if (entry.changes) {
+        entry.changes.forEach((change: any) => {
+          if (change.field === "feed" || change.field === "comments") {
+            const value = change.value;
+            const notification = {
+              id: `fb_cmt_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+              type: "comment",
+              senderName: value.from?.name || "Facebook User",
+              messageText: value.message || "Commented on your listing",
+              itemTitle: value.post?.name || value.item || undefined,
+              platform: "FB Marketplace Comment",
+              timestamp: new Date().toISOString(),
+              read: false,
+              metaEventId: value.comment_id || entry.id
+            };
+
+            broadcastFBNotification(notification);
+          }
+        });
+      }
+    });
+
+    // Return 200 OK to Meta immediately so Meta knows the event was delivered
+    return res.status(200).send("EVENT_RECEIVED");
+  }
+
+  res.sendStatus(404);
+});
+
+// 4. Interactive Simulation Endpoint for Testing Webhooks Live
+app.post("/api/fb/simulate", (req, res) => {
+  const { type, senderName, messageText, itemTitle, itemId } = req.body;
+
+  const notification = {
+    id: `sim_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+    type: type || "message",
+    senderName: senderName || "Sarah Jenkins (FB Buyer)",
+    messageText: messageText || "Hi! Is this item still available? I can pick up today with cash!",
+    itemTitle: itemTitle || undefined,
+    itemId: itemId || undefined,
+    platform: type === "comment" ? "FB Marketplace Comment" : type === "lead" ? "FB Page" : "Facebook Messenger",
+    timestamp: new Date().toISOString(),
+    read: false,
+    metaEventId: `sim_evt_${Date.now()}`
+  };
+
+  console.log("⚡ Broadcasting simulated FB notification via SSE:", notification.messageText);
+  broadcastFBNotification(notification);
+
+  res.json({
+    status: "ok",
+    message: "Real-time Facebook notification broadcasted successfully!",
+    notification,
+    recipientsCount: sseClients.length
+  });
+});
+
+// 5. Get / Update Webhook Status & Credentials Settings
+app.get("/api/fb/settings", (req, res) => {
+  res.json({
+    verifyToken: fbConfig.verifyToken,
+    webhookActive: fbConfig.webhookActive,
+    activeSseConnections: sseClients.length,
+    historyCount: notificationHistory.length
+  });
+});
+
+app.post("/api/fb/settings", (req, res) => {
+  const { verifyToken, appSecret, pageAccessToken } = req.body;
+  if (verifyToken) fbConfig.verifyToken = verifyToken;
+  if (appSecret !== undefined) fbConfig.appSecret = appSecret;
+  if (pageAccessToken !== undefined) fbConfig.pageAccessToken = pageAccessToken;
+
+  res.json({
+    status: "ok",
+    message: "Facebook Webhook settings updated successfully.",
+    verifyToken: fbConfig.verifyToken
+  });
+});
+
+
 // Configure Vite middleware in development
 async function startServer() {
   if (process.env.NODE_ENV !== "production") {

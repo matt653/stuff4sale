@@ -3,11 +3,12 @@ import {
   Plus, Search, Download, Sparkles, Filter, SlidersHorizontal, 
   X, Check, AlertCircle, RefreshCw, Layers, MapPin, Calendar, 
   Tag, Info, DollarSign, Archive, ShoppingBag, Eye, Star, LayoutGrid, LayoutList,
-  Edit, Trash2, TrendingUp, Smartphone, Cloud, Share2, Clock, CheckCircle
+  Edit, Trash2, TrendingUp, Smartphone, Cloud, Share2, Clock, CheckCircle,
+  Bell, MessageSquare, Zap, MessageCircle
 } from "lucide-react";
 import { collection, onSnapshot, addDoc, setDoc, updateDoc, doc, deleteDoc, query, orderBy } from "firebase/firestore";
 import { db } from "./firebase";
-import { InventoryItem, ItemStatus, AIResearchResult } from "./types";
+import { InventoryItem, ItemStatus, AIResearchResult, FBNotification } from "./types";
 import StatsGrid from "./components/StatsGrid";
 import ItemCard from "./components/ItemCard";
 import CameraCapture from "./components/CameraCapture";
@@ -15,6 +16,10 @@ import AIResearchView from "./components/AIResearchView";
 import FBMarketplacePostingTool from "./components/FBMarketplacePostingTool";
 import AIIntakeInspector from "./components/AIIntakeInspector";
 import FBLeadSyncModal from "./components/FBLeadSyncModal";
+import FBNotificationCenter from "./components/FBNotificationCenter";
+import FBWebhookSetupModal from "./components/FBWebhookSetupModal";
+import { fbRealtimeService } from "./services/fbRealtimeService";
+
 
 const COMMON_CATEGORIES = [
   "Clothing & Apparel",
@@ -80,6 +85,47 @@ export default function App() {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
   const [isOfflineVault, setIsOfflineVault] = useState(false);
+
+  // Real-time Facebook Notifications & Webhook state
+  const [fbNotifications, setFbNotifications] = useState<FBNotification[]>([]);
+  const [fbConnected, setFbConnected] = useState(false);
+  const [showNotificationCenter, setShowNotificationCenter] = useState(false);
+  const [showWebhookSetupModal, setShowWebhookSetupModal] = useState(false);
+  const [activeToast, setActiveToast] = useState<FBNotification | null>(null);
+
+  // Real-Time Facebook SSE Connection Hook
+  useEffect(() => {
+    fbRealtimeService.connect();
+
+    const unsubStatus = fbRealtimeService.onStatusChange((status) => {
+      setFbConnected(status);
+    });
+
+    const unsubNotif = fbRealtimeService.onNotification((notif) => {
+      setFbNotifications((prev) => [notif, ...prev]);
+      setActiveToast(notif);
+      setTimeout(() => setActiveToast(null), 6500);
+
+      // Auto-update matched item inquiry count in Firestore if item is linked
+      if (notif.itemId) {
+        const targetItem = items.find((i) => i.id === notif.itemId);
+        if (targetItem) {
+          const itemRef = doc(db, "inventory", notif.itemId);
+          updateDoc(itemRef, {
+            buyerInquiriesCount: (targetItem.buyerInquiriesCount || 0) + 1,
+            lastInquiryAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          }).catch((err) => console.error("Error auto-updating buyer inquiry count:", err));
+        }
+      }
+    });
+
+    return () => {
+      unsubStatus();
+      unsubNotif();
+      fbRealtimeService.disconnect();
+    };
+  }, [items]);
 
   // Real-time Firestore subscription (100% Pure Firestore Single Source of Truth)
   useEffect(() => {
@@ -590,6 +636,36 @@ export default function App() {
               className="w-64 pl-10 pr-4 py-2 bg-slate-100 border-transparent rounded-full text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 transition-all outline-none"
             />
             <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+          </div>
+
+          {/* Facebook Live Notifications & Webhook Control Bell */}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowNotificationCenter(true)}
+              className="relative p-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl transition flex items-center justify-center border border-blue-200 shadow-2xs group"
+              title="Facebook Live Activity Center (Messages & Comments)"
+              id="btn-fb-notifications-bell"
+            >
+              <Bell size={18} className="group-hover:scale-110 transition-transform" />
+              {fbNotifications.filter((n) => !n.read).length > 0 ? (
+                <span className="absolute -top-1 -right-1 bg-rose-600 text-white text-[10px] font-black w-4 h-4 rounded-full flex items-center justify-center animate-pulse shadow-2xs">
+                  {fbNotifications.filter((n) => !n.read).length}
+                </span>
+              ) : (
+                <span className={`absolute top-1 right-1 w-2 h-2 rounded-full ${fbConnected ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowWebhookSetupModal(true)}
+              className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition border border-slate-200"
+              title="Configure Facebook Webhook & Test Live Events"
+            >
+              <Zap size={14} className="text-yellow-500" />
+              <span>FB Live Sync</span>
+            </button>
           </div>
 
           {items.length > 0 && (
@@ -1674,8 +1750,79 @@ export default function App() {
             onClose={() => setShowLeadModal(false)}
           />
         )}
+
+        {/* Real-Time Facebook Activity Center Modal Overlay */}
+        {showNotificationCenter && (
+          <FBNotificationCenter
+            notifications={fbNotifications}
+            items={items}
+            onMarkAsRead={(id) => {
+              setFbNotifications((prev) =>
+                prev.map((n) => (n.id === id ? { ...n, read: true } : n))
+              );
+            }}
+            onMarkAllAsRead={() => {
+              setFbNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+            }}
+            onClearAll={() => setFbNotifications([])}
+            onClose={() => setShowNotificationCenter(false)}
+            onOpenSetupModal={() => {
+              setShowNotificationCenter(false);
+              setShowWebhookSetupModal(true);
+            }}
+          />
+        )}
+
+        {/* Meta Real-Time Webhook Setup & Live Simulator Modal Overlay */}
+        {showWebhookSetupModal && (
+          <FBWebhookSetupModal
+            items={items}
+            onClose={() => setShowWebhookSetupModal(false)}
+          />
+        )}
+
+        {/* Floating Real-Time Live Toast Alert */}
+        {activeToast && (
+          <div className="fixed bottom-6 right-6 z-50 bg-slate-900/95 backdrop-blur-md text-white p-4 rounded-2xl shadow-2xl border border-blue-500/40 max-w-sm w-full animate-bounce flex items-start gap-3">
+            <div
+              className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-xs ${
+                activeToast.type === "comment" ? "bg-indigo-600" : "bg-blue-600"
+              }`}
+            >
+              {activeToast.type === "comment" ? <MessageCircle size={20} /> : <MessageSquare size={20} />}
+            </div>
+            <div className="min-w-0 grow">
+              <div className="flex items-center justify-between gap-1">
+                <h5 className="font-extrabold text-xs text-white truncate">{activeToast.senderName}</h5>
+                <span className="text-[9px] font-bold bg-blue-500/30 text-blue-300 px-1.5 py-0.5 rounded-md shrink-0">
+                  {activeToast.platform}
+                </span>
+              </div>
+              <p className="text-xs text-slate-200 font-medium truncate mt-0.5">"{activeToast.messageText}"</p>
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveToast(null);
+                  setShowNotificationCenter(true);
+                }}
+                className="mt-2 text-[10px] font-bold text-blue-400 hover:text-blue-300 underline flex items-center gap-1"
+              >
+                <span>View in Live Activity Center</span>
+                <span>→</span>
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={() => setActiveToast(null)}
+              className="text-slate-400 hover:text-white p-1 rounded-lg transition"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        )}
         </main>
       </div>
     </div>
   );
 }
+

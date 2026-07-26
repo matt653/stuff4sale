@@ -61,3 +61,20 @@ export interface DashboardStats {
   averageRoi: number;
   listedCount: number;
 }
+
+export type FBNotificationType = 'message' | 'comment' | 'lead' | 'system';
+
+export interface FBNotification {
+  id: string;
+  type: FBNotificationType;
+  senderName: string;
+  senderAvatar?: string;
+  messageText: string;
+  itemTitle?: string;
+  itemId?: string;
+  timestamp: string;
+  read: boolean;
+  platform: 'Facebook Messenger' | 'FB Marketplace Comment' | 'FB Page';
+  metaEventId?: string;
+}
+
