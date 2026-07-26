@@ -200,9 +200,9 @@ export default function App() {
     setVideoUrl(null);
     setItemStatus("inventory");
     setListedPrice("");
-    setListedPlatform("eBay");
+    setListedPlatform("Facebook Marketplace");
     setSalePrice("");
-    setSalePlatform("eBay");
+    setSalePlatform("Facebook Marketplace");
     setSaleDate("");
     setAiResult(null);
     setAiError(null);
@@ -224,9 +224,9 @@ export default function App() {
     setVideoUrl(item.videoUrl || null);
     setItemStatus(item.status);
     setListedPrice(item.listedPrice ? item.listedPrice.toString() : "");
-    setListedPlatform(item.listedPlatform || "eBay");
+    setListedPlatform(item.listedPlatform || "Facebook Marketplace");
     setSalePrice(item.salePrice ? item.salePrice.toString() : "");
-    setSalePlatform(item.salePlatform || "eBay");
+    setSalePlatform(item.salePlatform || "Facebook Marketplace");
     setSaleDate(item.saleDate || "");
     setAiResult(item.research);
     setShowAddForm(true);
@@ -372,10 +372,10 @@ export default function App() {
         photos: finalPhotos,
         videoUrl,
         listedPrice: lPrice,
-        listedPlatform: itemStatus === "listed" ? listedPlatform : null,
-        salePrice: itemStatus === "sold" ? sPrice : null,
-        salePlatform: itemStatus === "sold" ? salePlatform : null,
-        saleDate: itemStatus === "sold" ? saleDate : null,
+        listedPlatform: listedPlatform || "Facebook Marketplace",
+        salePrice: sPrice,
+        salePlatform: salePlatform || null,
+        saleDate: saleDate || null,
         research: aiResult || editingItem?.research || null,
         createdAt: editingItem ? editingItem.createdAt : new Date().toISOString(),
         updatedAt: new Date().toISOString(),
