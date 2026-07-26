@@ -15,7 +15,7 @@ import CameraCapture from "./components/CameraCapture";
 import AIResearchView from "./components/AIResearchView";
 import FBHubModal from "./components/FBHubModal";
 import { fbRealtimeService } from "./services/fbRealtimeService";
-import { getNextSequentialStockNumber } from "./utils/stockUtils";
+import { getNextSequentialStockNumber, matchBestCategory } from "./utils/stockUtils";
 
 
 const COMMON_CATEGORIES = [
@@ -277,19 +277,30 @@ export default function App() {
       if (result.suggestedTitle) {
         setItemName(result.suggestedTitle);
       }
-      if (result.category) {
-        setItemCategory(result.category);
-      }
+
+      const matchedCat = matchBestCategory(result.category, result.suggestedTitle || itemName);
+      setItemCategory(matchedCat);
+
       if (result.groupName) {
         setBundleTitle(result.groupName);
       }
-      if (result.estimatedValueMin && result.estimatedValueMax) {
-        const midpoint = Math.round((result.estimatedValueMin + result.estimatedValueMax) / 2);
-        setListedPrice(midpoint.toString());
+
+      // Robust price calculation (always populates list price)
+      const valMax = Number(result.estimatedValueMax) || 0;
+      const valMin = Number(result.estimatedValueMin) || 0;
+      let calculatedPrice = 35;
+      if (valMax > 0 && valMin > 0) {
+        calculatedPrice = Math.round((valMin + valMax) / 2);
+      } else if (valMax > 0) {
+        calculatedPrice = valMax;
+      } else if (valMin > 0) {
+        calculatedPrice = valMin;
       }
+      setListedPrice(calculatedPrice.toString());
+
       if (result.stockNumber) {
         setStockNumber(result.stockNumber);
-      } else if (!stockNumber) {
+      } else {
         setStockNumber(getNextSequentialStockNumber(items));
       }
       

@@ -24,3 +24,50 @@ export function getNextSequentialStockNumber(items: InventoryItem[]): string {
 
   return (maxNum + 1).toString();
 }
+
+/**
+ * Maps raw category strings or item keywords into the standard category options.
+ * Prevents HTML select dropdowns from falling back to "Clothing & Apparel".
+ */
+export function matchBestCategory(rawCategory: string = "", titleHint: string = ""): string {
+  const textToScan = `${rawCategory} ${titleHint}`.toLowerCase();
+
+  if (textToScan.includes("tool") || textToScan.includes("hardware") || textToScan.includes("wheel") || textToScan.includes("industrial") || textToScan.includes("salvage") || textToScan.includes("iron") || textToScan.includes("wagon") || textToScan.includes("saw") || textToScan.includes("plow") || textToScan.includes("machine")) {
+    return "Tools & Hardware";
+  }
+  if (textToScan.includes("vintage") || textToScan.includes("antique") || textToScan.includes("rustic") || textToScan.includes("decor") || textToScan.includes("farmhouse") || textToScan.includes("estate")) {
+    return "Vintage & Antiques";
+  }
+  if (textToScan.includes("cloth") || textToScan.includes("apparel") || textToScan.includes("shirt") || textToScan.includes("pant") || textToScan.includes("jacket") || textToScan.includes("hat")) {
+    return "Clothing & Apparel";
+  }
+  if (textToScan.includes("shoe") || textToScan.includes("sneaker") || textToScan.includes("boot")) {
+    return "Shoes & Sneakers";
+  }
+  if (textToScan.includes("electronic") || textToScan.includes("gadget") || textToScan.includes("audio") || textToScan.includes("phone") || textToScan.includes("speaker") || textToScan.includes("tv")) {
+    return "Electronics & Gadgets";
+  }
+  if (textToScan.includes("game") || textToScan.includes("console") || textToScan.includes("nintendo") || textToScan.includes("playstation") || textToScan.includes("xbox")) {
+    return "Video Games & Consoles";
+  }
+  if (textToScan.includes("toy") || textToScan.includes("collectible") || textToScan.includes("figure") || textToScan.includes("doll")) {
+    return "Toys & Collectibles";
+  }
+  if (textToScan.includes("book") || textToScan.includes("comic") || textToScan.includes("media") || textToScan.includes("dvd") || textToScan.includes("vhs")) {
+    return "Books, Comics & Media";
+  }
+  if (textToScan.includes("home") || textToScan.includes("kitchen") || textToScan.includes("appliance") || textToScan.includes("cookware")) {
+    return "Home, Kitchen & Decor";
+  }
+  if (textToScan.includes("sport") || textToScan.includes("outdoor") || textToScan.includes("bike") || textToScan.includes("camp")) {
+    return "Sports & Outdoors";
+  }
+  if (textToScan.includes("jewel") || textToScan.includes("watch") || textToScan.includes("accessory") || textToScan.includes("gold") || textToScan.includes("silver")) {
+    return "Jewelry & Accessories";
+  }
+  if (textToScan.includes("card") || textToScan.includes("pokemon")) {
+    return "Trading Cards";
+  }
+
+  return "Other / Miscellaneous";
+}

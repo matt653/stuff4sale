@@ -120,7 +120,7 @@ The JSON response MUST match this exact schema:
     "Tip 1...",
     "Tip 2..."
   ],
-  "category": "A refined product category name",
+  "category": "Must strictly be one of: Clothing & Apparel, Shoes & Sneakers, Electronics & Gadgets, Video Games & Consoles, Toys & Collectibles, Books Comics & Media, Home Kitchen & Decor, Tools & Hardware, Sports & Outdoors, Jewelry & Accessories, Vintage & Antiques, Trading Cards, Other / Miscellaneous",
   "groupName": "A descriptive group or bundle collection name (e.g. Power Tool Set, Vintage Audio Gear, Retro Gaming Bundle)",
   "keywords": ["vintage", "retro", "collectible"]
 }`;
