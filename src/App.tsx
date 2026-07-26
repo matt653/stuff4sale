@@ -14,7 +14,6 @@ import ItemCard from "./components/ItemCard";
 import CameraCapture from "./components/CameraCapture";
 import AIResearchView from "./components/AIResearchView";
 import FBHubModal from "./components/FBHubModal";
-import ApiKeyModal from "./components/ApiKeyModal";
 import { fbRealtimeService } from "./services/fbRealtimeService";
 import { getNextSequentialStockNumber } from "./utils/stockUtils";
 
@@ -53,8 +52,6 @@ export default function App() {
   const [showInspector, setShowInspector] = useState(false);
   const [showMobileModal, setShowMobileModal] = useState(false);
   const [showFBHub, setShowFBHub] = useState(false);
-  const [showApiKeyModal, setShowApiKeyModal] = useState(false);
-  const [userApiKey, setUserApiKey] = useState<string>(() => localStorage.getItem("user_gemini_api_key") || "");
   const [fbHubTab, setFbHubTab] = useState<"connect" | "post" | "inbox" | "webhook">("post");
   const [fbSelectedItem, setFbSelectedItem] = useState<InventoryItem | null>(null);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
@@ -583,18 +580,6 @@ export default function App() {
               <span className="hidden sm:inline">Export CSV</span>
             </button>
           )}
-
-          {/* Gemini API Key Settings Button */}
-          <button
-            type="button"
-            onClick={() => setShowApiKeyModal(true)}
-            className="px-3 py-2 border border-slate-200 bg-white hover:bg-indigo-50 text-slate-700 hover:text-indigo-700 font-semibold text-xs rounded-xl flex items-center gap-1.5 transition active:scale-95 shadow-2xs cursor-pointer"
-            title="Configure Google Gemini API Key"
-            id="btn-open-api-key-modal"
-          >
-            <Key size={14} className="text-indigo-600" />
-            <span className="hidden sm:inline">API Key</span>
-          </button>
 
           <button
             type="button"
@@ -1634,13 +1619,7 @@ export default function App() {
           />
         )}
 
-        {/* Gemini API Key Modal Overlay */}
-        {showApiKeyModal && (
-          <ApiKeyModal
-            onClose={() => setShowApiKeyModal(false)}
-            onKeySaved={(newKey) => setUserApiKey(newKey)}
-          />
-        )}
+
 
         {/* Floating Real-Time Live Toast Alert */}
         {activeToast && (
