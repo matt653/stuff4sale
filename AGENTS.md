@@ -10,7 +10,7 @@ Stuff4Sale is a full-stack AI-powered inventory management, item valuation, and 
 #### 1. Inventory & Asset Management
 - **Full Lifecycle Tracking**: Categorize and manage items across four distinct status states: `inventory`, `listed`, `sold`, and `archived`.
 - **Rich Media & Multimodal Intake**: Supports primary cover photos, multi-image galleries (base64 photo array), and video URLs/uploads via a custom built-in `CameraCapture` component.
-- **Zero-Input Photo Auto-Fill**: Simply uploading or snapping a photo automatically triggers Gemini AI identification to fill in Item Title/Name, Category, Group/Bundle Name, List Price, Stock Number, and Description.
+- **Explicit Gemini Research Trigger**: Gemini AI identification is strictly triggered only when the user manually clicks the "✨ Gemini Find It!" button. No background or automatic research calls run on photo upload.
 - **Stock Numbering & Internal SKUs**: Automatic sequential stock number generator (`stockUtils.ts`) starting at `1` and incrementing upward (`1`, `2`, `3`...). Each item's Firestore Document ID is set directly to its Stock Number (`1`, `2`, `3`...) for exact 1-to-1 database mapping.
 - **Reselling Bundles**: Link multiple individual inventory items into cohesive bundle groups (`bundleId`, `bundleTitle`, `bundledItemIds`).
 - **Comprehensive Financial Tracking**: Track purchase price, sourcing date, purchase location, listed price, listed platform (eBay, Facebook Marketplace, Mercari, Poshmark, OfferUp, etc.), sale price, sale date, and net profit / ROI.
