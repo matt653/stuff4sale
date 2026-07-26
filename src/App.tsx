@@ -286,17 +286,6 @@ export default function App() {
         setBundleTitle(result.groupName);
       }
 
-      // Pricing strategy resolution (Quick Sale vs Full Retail)
-      const valMax = Number(result.estimatedValueMax) || 0;
-      const valMin = Number(result.estimatedValueMin) || 0;
-      let calculatedPrice = 35;
-      if (pricingStrategy === "quick") {
-        calculatedPrice = valMin > 0 ? valMin : (valMax > 0 ? valMax : 35);
-      } else {
-        calculatedPrice = valMax > 0 ? valMax : (valMin > 0 ? valMin : 35);
-      }
-      setListedPrice(calculatedPrice.toString());
-
       if (result.stockNumber) {
         setStockNumber(result.stockNumber);
       } else {
@@ -340,17 +329,6 @@ export default function App() {
     
     const matchedCat = matchBestCategory(research.category, research.suggestedTitle);
     setItemCategory(matchedCat);
-    
-    // Set listed price based on pricingStrategy (Quick Sale vs Full Retail)
-    const valMax = Number(research.estimatedValueMax) || 0;
-    const valMin = Number(research.estimatedValueMin) || 0;
-    let calculatedPrice = 35;
-    if (pricingStrategy === "quick") {
-      calculatedPrice = valMin > 0 ? valMin : (valMax > 0 ? valMax : 35);
-    } else {
-      calculatedPrice = valMax > 0 ? valMax : (valMin > 0 ? valMin : 35);
-    }
-    setListedPrice(calculatedPrice.toString());
     
     // Auto progress to listed status if not already progressed
     if (itemStatus === "inventory") {
@@ -918,9 +896,8 @@ export default function App() {
 
                   {/* Target List Price ($) - Always visible in front of Purchase Cost */}
                   <div>
-                    <label className="text-xs font-bold text-emerald-800 uppercase tracking-wide flex items-center justify-between mb-1.5">
-                      <span>Target List Price ($)</span>
-                      <span className="text-[9px] text-emerald-600 font-bold bg-emerald-50 px-1.5 py-0.5 rounded">Controlled by Slider</span>
+                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wide block mb-1.5">
+                      Target List Price ($)
                     </label>
                     <div className="relative">
                       <DollarSign size={13} className="absolute left-3.5 top-3 text-emerald-600 font-bold" />

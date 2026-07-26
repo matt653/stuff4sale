@@ -27,21 +27,6 @@ export default function AIResearchView({
   const [priceSliderPos, setPriceSliderPos] = useState(50);
   const [finalReport, setFinalReport] = useState<AIResearchResult | null>(research);
   const [flawResponses, setFlawResponses] = useState<Record<number, string>>({});
-  const [hasInitializedPrice, setHasInitializedPrice] = useState(false);
-
-  // Sync slider price to Step 2 form ONCE on intake
-  React.useEffect(() => {
-    const report = finalReport || research;
-    if (report && !hasInitializedPrice && onApplyField) {
-      const minVal = Number(report.estimatedValueMin) || 0;
-      const maxVal = Number(report.estimatedValueMax) || 0;
-      const initialPrice = minVal > 0 && maxVal > 0
-        ? Math.round(minVal + (priceSliderPos / 100) * (maxVal - minVal))
-        : (maxVal || minVal || 35);
-      onApplyField("listedPrice", initialPrice);
-      setHasInitializedPrice(true);
-    }
-  }, [research, finalReport, hasInitializedPrice]);
 
   const handleGenerateDetails = () => {
     const report = finalReport || research;
@@ -424,16 +409,7 @@ export default function AIResearchView({
                     max="100"
                     step="5"
                     value={priceSliderPos}
-                    onChange={(e) => {
-                      const newPos = Number(e.target.value);
-                      setPriceSliderPos(newPos);
-                      if (onApplyField) {
-                        const calculated = minVal > 0 && maxVal > 0
-                          ? Math.round(minVal + (newPos / 100) * (maxVal - minVal))
-                          : (maxVal || minVal || 35);
-                        onApplyField("listedPrice", calculated);
-                      }
-                    }}
+                    onChange={(e) => setPriceSliderPos(Number(e.target.value))}
                     className="w-full h-2.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
                     id="pricing-strategy-slider"
                   />
