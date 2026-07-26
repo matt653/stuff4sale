@@ -73,9 +73,9 @@ export default function App() {
   // Listing / Sales fields
   const [pricingStrategy, setPricingStrategy] = useState<"quick" | "retail">("quick");
   const [listedPrice, setListedPrice] = useState("");
-  const [listedPlatform, setListedPlatform] = useState("eBay");
+  const [listedPlatform, setListedPlatform] = useState("Facebook Marketplace");
   const [salePrice, setSalePrice] = useState("");
-  const [salePlatform, setSalePlatform] = useState("eBay");
+  const [salePlatform, setSalePlatform] = useState("Facebook Marketplace");
   const [saleDate, setSaleDate] = useState("");
 
   // AI Research states
@@ -147,7 +147,7 @@ export default function App() {
             saleDate: data.saleDate || null,
             salePlatform: data.salePlatform || null,
             listedPrice: data.listedPrice !== undefined && data.listedPrice !== null ? Number(data.listedPrice) : null,
-            listedPlatform: data.listedPlatform || null,
+            listedPlatform: data.listedPlatform || "Facebook Marketplace",
             notes: data.notes || "",
             photoUrl: data.photoUrl || (data.photos && data.photos[0]) || null,
             photos: data.photos || (data.photoUrl ? [data.photoUrl] : []),

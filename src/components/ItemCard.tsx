@@ -20,9 +20,9 @@ export default function ItemCard({ item, allItems = [], onEdit, onDelete, onStat
   
   // Status form states
   const [listedPrice, setListedPrice] = useState(item.listedPrice || item.purchasePrice * 2 || 0);
-  const [listedPlatform, setListedPlatform] = useState(item.listedPlatform || "eBay");
+  const [listedPlatform, setListedPlatform] = useState(item.listedPlatform || "Facebook Marketplace");
   const [salePrice, setSalePrice] = useState(item.salePrice || item.listedPrice || item.purchasePrice * 2 || 0);
-  const [salePlatform, setSalePlatform] = useState(item.salePlatform || item.listedPlatform || "eBay");
+  const [salePlatform, setSalePlatform] = useState(item.salePlatform || item.listedPlatform || "Facebook Marketplace");
   const [saleDate, setSaleDate] = useState(item.saleDate || new Date().toISOString().split("T")[0]);
 
   // Find other items in the same bundle

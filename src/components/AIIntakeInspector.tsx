@@ -78,7 +78,7 @@ export default function AIIntakeInspector({ onAddToInventory, onClose }: AIIntak
         photoUrl: photos[0] || null,
         photos: photos,
         listedPrice: midpointValue,
-        listedPlatform: researchResult.targetPlatforms[0] ? researchResult.targetPlatforms[0].split("-")[0].trim() : "eBay",
+        listedPlatform: "Facebook Marketplace",
         salePrice: null,
         salePlatform: null,
         saleDate: null,
