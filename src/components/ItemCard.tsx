@@ -439,12 +439,13 @@ export default function ItemCard({ item, allItems = [], onEdit, onDelete, onStat
             
             <button
               type="button"
-              onClick={() => {
-                if (confirm("Are you sure you want to delete this inventory item? This cannot be undone.")) {
+              onClick={(e) => {
+                e.stopPropagation();
+                if (confirm(`Are you sure you want to delete "${item.name}"? This cannot be undone.`)) {
                   onDelete(item.id);
                 }
               }}
-              className="p-1.5 bg-slate-50 hover:bg-rose-50 text-slate-400 rounded-lg border border-slate-200/50 transition hover:text-rose-600"
+              className="p-1.5 bg-slate-50 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-lg border border-slate-200/50 transition cursor-pointer"
               title="Delete item"
               id={`btn-delete-item-${item.id}`}
             >

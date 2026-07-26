@@ -81,19 +81,32 @@ export default function App() {
   const [aiError, setAiError] = useState<string | null>(null);
   const [isOfflineVault, setIsOfflineVault] = useState(false);
 
-  // Helper to load items from local storage vault
+  // Helper to load items from local storage vault across all legacy keys
   const loadLocalVault = () => {
-    try {
-      const saved = localStorage.getItem("stuff4sale_items_vault");
-      if (saved) {
-        const parsed: InventoryItem[] = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setItems(parsed);
-          return true;
+    const possibleKeys = [
+      "stuff4sale_items_vault",
+      "inventory_items",
+      "sidehustle_inventory",
+      "items",
+      "stuff4sale_inventory",
+      "inventory",
+      "hustle_sheet_items"
+    ];
+
+    for (const key of possibleKeys) {
+      try {
+        const saved = localStorage.getItem(key);
+        if (saved) {
+          const parsed: InventoryItem[] = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            console.log(`Recovered ${parsed.length} items from key '${key}'`);
+            setItems(parsed);
+            return true;
+          }
         }
+      } catch (e) {
+        console.error(`Failed loading key ${key}:`, e);
       }
-    } catch (e) {
-      console.error("Failed loading local storage vault:", e);
     }
     return false;
   };
@@ -102,104 +115,62 @@ export default function App() {
   const saveLocalVault = (newItems: InventoryItem[]) => {
     try {
       localStorage.setItem("stuff4sale_items_vault", JSON.stringify(newItems));
+      localStorage.setItem("inventory_items", JSON.stringify(newItems));
     } catch (e) {
       console.error("Failed writing to local storage vault:", e);
     }
   };
 
-  // Real-time Firestore subscription with Dual Database Listener & Local Storage Vault Fallback
+  // Real-time Firestore subscription
   useEffect(() => {
     setLoading(true);
-    const defaultItemsMap = new Map<string, InventoryItem>();
-    const customItemsMap = new Map<string, InventoryItem>();
-
-    const parseDoc = (doc: any): InventoryItem => {
-      const data = doc.data();
-      return {
-        id: doc.id,
-        name: data.name || "Untitled Item",
-        category: data.category || "General Item",
-        status: data.status || "inventory",
-        purchasePrice: Number(data.purchasePrice) || 0,
-        purchaseDate: data.purchaseDate || new Date().toISOString().split("T")[0],
-        purchaseLocation: data.purchaseLocation || "",
-        salePrice: data.salePrice !== undefined && data.salePrice !== null ? Number(data.salePrice) : null,
-        saleDate: data.saleDate || null,
-        salePlatform: data.salePlatform || null,
-        listedPrice: data.listedPrice !== undefined && data.listedPrice !== null ? Number(data.listedPrice) : null,
-        listedPlatform: data.listedPlatform || null,
-        notes: data.notes || "",
-        photoUrl: data.photoUrl || (data.photos && data.photos[0]) || null,
-        photos: data.photos || (data.photoUrl ? [data.photoUrl] : []),
-        stockNumber: data.stockNumber || undefined,
-        bundleId: data.bundleId || undefined,
-        bundleTitle: data.bundleTitle || undefined,
-        bundledItemIds: data.bundledItemIds || undefined,
-        videoUrl: data.videoUrl || null,
-        research: data.research || null,
-        createdAt: data.createdAt || new Date().toISOString(),
-        updatedAt: data.updatedAt || new Date().toISOString(),
-        buyerInquiriesCount: data.buyerInquiriesCount || 0,
-        lastInquiryAt: data.lastInquiryAt || undefined,
-      };
-    };
-
-    const syncCombinedItems = () => {
-      const mergedMap = new Map<string, InventoryItem>();
-      defaultItemsMap.forEach((v, k) => mergedMap.set(k, v));
-      customItemsMap.forEach((v, k) => mergedMap.set(k, v));
-
-      const mergedList = Array.from(mergedMap.values());
-      setItems(mergedList);
-      saveLocalVault(mergedList);
-      setLoading(false);
-      setErrorMessage(null);
-      setIsOfflineVault(false);
-    };
-
-    // 1. Subscribe to Default Firestore Database
-    const unsubDefault = onSnapshot(
-      collection(dbDefault, "inventory"),
+    const q = collection(db, "inventory");
+    
+    const unsubscribe = onSnapshot(
+      q,
       (snapshot) => {
-        defaultItemsMap.clear();
+        const fetchedItems: InventoryItem[] = [];
         snapshot.forEach((doc) => {
-          defaultItemsMap.set(doc.id, parseDoc(doc));
+          const data = doc.data();
+          fetchedItems.push({ 
+            id: doc.id, 
+            name: data.name || "Untitled Item",
+            category: data.category || "General Item",
+            status: data.status || "inventory",
+            purchasePrice: Number(data.purchasePrice) || 0,
+            purchaseDate: data.purchaseDate || new Date().toISOString().split("T")[0],
+            purchaseLocation: data.purchaseLocation || "",
+            salePrice: data.salePrice !== undefined && data.salePrice !== null ? Number(data.salePrice) : null,
+            saleDate: data.saleDate || null,
+            salePlatform: data.salePlatform || null,
+            listedPrice: data.listedPrice !== undefined && data.listedPrice !== null ? Number(data.listedPrice) : null,
+            listedPlatform: data.listedPlatform || null,
+            notes: data.notes || "",
+            photoUrl: data.photoUrl || (data.photos && data.photos[0]) || null,
+            photos: data.photos || (data.photoUrl ? [data.photoUrl] : []),
+            stockNumber: data.stockNumber || undefined,
+            bundleId: data.bundleId || undefined,
+            bundleTitle: data.bundleTitle || undefined,
+            bundledItemIds: data.bundledItemIds || undefined,
+            videoUrl: data.videoUrl || null,
+            research: data.research || null,
+            createdAt: data.createdAt || new Date().toISOString(),
+            updatedAt: data.updatedAt || new Date().toISOString(),
+            buyerInquiriesCount: data.buyerInquiriesCount || 0,
+            lastInquiryAt: data.lastInquiryAt || undefined,
+          } as InventoryItem);
         });
-        syncCombinedItems();
+        setItems(fetchedItems);
+        setLoading(false);
+        setErrorMessage(null);
       },
       (err) => {
-        console.warn("dbDefault listener error:", err);
-        const hasLocalData = loadLocalVault();
-        setIsOfflineVault(true);
-        if (!hasLocalData) {
-          setErrorMessage("Running in Local Vault Mode. Add items to save your inventory locally!");
-        }
+        console.error("Firestore subscription error:", err);
         setLoading(false);
       }
     );
 
-    // 2. Subscribe to Custom Firestore Database (if configured)
-    let unsubCustom = () => {};
-    if (dbCustom) {
-      unsubCustom = onSnapshot(
-        collection(dbCustom, "inventory"),
-        (snapshot) => {
-          customItemsMap.clear();
-          snapshot.forEach((doc) => {
-            customItemsMap.set(doc.id, parseDoc(doc));
-          });
-          syncCombinedItems();
-        },
-        (err) => {
-          console.warn("dbCustom listener warning:", err);
-        }
-      );
-    }
-
-    return () => {
-      unsubDefault();
-      unsubCustom();
-    };
+    return () => unsubscribe();
   }, []);
 
   // Handle Form triggers
@@ -397,17 +368,19 @@ export default function App() {
         saveLocalVault(updatedList);
       } else {
         // Create new doc in Firestore
-        const newId = `ITEM-${Date.now()}`;
+        let actualId = `ITEM-${Date.now()}`;
         try {
           const collectionRef = collection(db, "inventory");
           const created = await addDoc(collectionRef, itemData);
-          itemData;
+          if (created && created.id) {
+            actualId = created.id;
+          }
         } catch (e) {
           console.warn("Firestore creation failed, saving locally:", e);
         }
 
-        // Update local state & vault
-        const newItemRecord: InventoryItem = { id: newId, ...itemData };
+        // Update local state & vault with actual Firestore ID
+        const newItemRecord: InventoryItem = { id: actualId, ...itemData };
         const updatedList = [newItemRecord, ...items];
         setItems(updatedList);
         saveLocalVault(updatedList);
@@ -421,14 +394,19 @@ export default function App() {
   };
 
   const handleDeleteItem = async (id: string) => {
-    try {
-      await deleteDoc(doc(db, "inventory", id));
-    } catch (err: any) {
-      console.warn("Firestore delete failed, deleting locally:", err);
-    }
+    if (!id) return;
+
+    // Immediately remove from local state & local vault storage (optimistic UI update)
     const updated = items.filter((i) => i.id !== id);
     setItems(updated);
     saveLocalVault(updated);
+
+    // Delete document from Firestore
+    try {
+      await deleteDoc(doc(db, "inventory", id));
+    } catch (err: any) {
+      console.warn("Firestore delete failed, kept local removal:", err);
+    }
   };
 
   const handleQuickStatusUpdate = async (id: string, updates: Partial<InventoryItem>) => {
@@ -598,6 +576,15 @@ export default function App() {
         await addDoc(collectionRef, sample1);
         await addDoc(collectionRef, sample2);
         await addDoc(collectionRef, sample3);
+
+        const localSamples: InventoryItem[] = [
+          { id: `SAMPLE-1`, ...sample1 },
+          { id: `SAMPLE-2`, ...sample2 },
+          { id: `SAMPLE-3`, ...sample3 },
+        ];
+        const combined = [...localSamples, ...items];
+        setItems(combined);
+        saveLocalVault(combined);
         setErrorMessage(null);
       } catch (err) {
         console.error("Failed seeding sample data:", err);
@@ -813,6 +800,22 @@ export default function App() {
               >
                 <Share2 size={14} />
                 FB Marketplace Poster
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const found = loadLocalVault();
+                  if (found) {
+                    alert("Successfully recovered items from your browser local vault!");
+                  } else {
+                    alert("No previous local storage items found. Try clicking 'Seed Sample Products' below!");
+                  }
+                }}
+                className="px-3 py-2 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-2xs transition active:scale-95 cursor-pointer"
+                id="btn-recover-vault-items"
+              >
+                📥 Recover Local Items
               </button>
 
               <button
@@ -1187,25 +1190,47 @@ export default function App() {
                 </div>
 
                 {/* Form Footer Buttons */}
-                <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-slate-100">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowAddForm(false);
-                      resetForm();
-                    }}
-                    className="px-4 py-2 text-xs font-semibold text-slate-500 hover:bg-slate-100 rounded-xl transition"
-                    id="btn-cancel-form"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-md transition-all active:scale-95"
-                    id="btn-submit-item"
-                  >
-                    {editingItem ? "Save Changes" : "Save to Live Sheet"}
-                  </button>
+                <div className="flex items-center justify-between gap-2.5 pt-4 border-t border-slate-100">
+                  <div>
+                    {editingItem && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (confirm(`Are you sure you want to delete "${editingItem.name}"? This action cannot be undone.`)) {
+                            handleDeleteItem(editingItem.id);
+                            setShowAddForm(false);
+                            resetForm();
+                          }
+                        }}
+                        className="px-3.5 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-xl transition flex items-center gap-1.5 border border-rose-200 cursor-pointer"
+                        id="btn-delete-from-modal"
+                        title="Delete this inventory item"
+                      >
+                        <Trash2 size={13} />
+                        Delete Item
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowAddForm(false);
+                        resetForm();
+                      }}
+                      className="px-4 py-2 text-xs font-semibold text-slate-500 hover:bg-slate-100 rounded-xl transition cursor-pointer"
+                      id="btn-cancel-form"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-md transition-all active:scale-95 cursor-pointer"
+                      id="btn-submit-item"
+                    >
+                      {editingItem ? "Save Changes" : "Save to Live Sheet"}
+                    </button>
+                  </div>
                 </div>
               </form>
             </div>
@@ -1418,8 +1443,24 @@ export default function App() {
                   </button>
                   <button
                     type="button"
+                    onClick={() => {
+                      const found = loadLocalVault();
+                      if (found) {
+                        alert("Successfully recovered items from your browser local vault!");
+                      } else {
+                        alert("No previous local storage items found. Try clicking 'Seed Sample Products'!");
+                      }
+                    }}
+                    className="px-4 py-2 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold text-xs rounded-xl shadow-2xs transition cursor-pointer"
+                    id="btn-recover-empty-vault"
+                  >
+                    📥 Recover Local Vault
+                  </button>
+
+                  <button
+                    type="button"
                     onClick={handleLoadSampleData}
-                    className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-xl transition"
+                    className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-xl transition cursor-pointer"
                     id="btn-load-sample-data"
                   >
                     Seed Sample Products
@@ -1563,13 +1604,15 @@ export default function App() {
                               <Edit size={12} />
                             </button>
                             <button
-                              onClick={() => {
-                                if (confirm("Delete this inventory item?")) {
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (confirm(`Delete "${item.name}"? This cannot be undone.`)) {
                                   handleDeleteItem(item.id);
                                 }
                               }}
-                              className="p-1.5 bg-slate-50 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-lg border border-slate-200/50 transition"
+                              className="p-1.5 bg-slate-50 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-lg border border-slate-200/50 transition cursor-pointer"
                               title="Delete item"
+                              id={`btn-delete-table-${item.id}`}
                             >
                               <Trash2 size={12} />
                             </button>
