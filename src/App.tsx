@@ -15,6 +15,7 @@ import CameraCapture from "./components/CameraCapture";
 import AIResearchView from "./components/AIResearchView";
 import FBHubModal from "./components/FBHubModal";
 import { fbRealtimeService } from "./services/fbRealtimeService";
+import { getNextSequentialStockNumber } from "./utils/stockUtils";
 
 
 const COMMON_CATEGORIES = [
@@ -176,11 +177,18 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
+  // Auto-fill sequential stock number when items change if form is empty
+  useEffect(() => {
+    if (!editingItem && !stockNumber) {
+      setStockNumber(getNextSequentialStockNumber(items));
+    }
+  }, [items, editingItem]);
+
   // Handle Form triggers
   const resetForm = () => {
     setItemName("");
     setItemCategory("Clothing & Apparel");
-    setStockNumber("");
+    setStockNumber(getNextSequentialStockNumber(items));
     setBundleTitle("");
     setPurchasePrice("");
     setPurchaseDate(new Date().toISOString().split("T")[0]);
@@ -274,6 +282,11 @@ export default function App() {
         const midpoint = Math.round((result.estimatedValueMin + result.estimatedValueMax) / 2);
         setListedPrice(midpoint.toString());
       }
+      if (result.stockNumber) {
+        setStockNumber(result.stockNumber);
+      } else if (!stockNumber) {
+        setStockNumber(getNextSequentialStockNumber(items));
+      }
       
       let descriptionText = result.suggestedDescription || "";
       if (result.cleaningInstructions && result.cleaningInstructions.length > 0) {
@@ -336,7 +349,7 @@ export default function App() {
       const itemData: Omit<InventoryItem, "id"> = {
         name: itemName,
         category: itemCategory,
-        stockNumber: stockNumber.trim() || null as any,
+        stockNumber: stockNumber.trim() || getNextSequentialStockNumber(items),
         bundleId: editingItem?.bundleId || (bundleTitle.trim() ? "BUNDLE-" + Date.now().toString().slice(-4) : null as any),
         bundleTitle: bundleTitle.trim() || null as any,
         bundledItemIds: editingItem?.bundledItemIds || null as any,

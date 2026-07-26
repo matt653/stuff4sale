@@ -14,6 +14,7 @@ export interface AIResearchResult {
   triageReason?: string;
   cleaningInstructions?: string[];
   prepChecklist?: string[];
+  stockNumber?: string;
 }
 
 export interface AIChatMessage {
