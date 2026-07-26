@@ -39,8 +39,8 @@ export default function AIResearchView({
   };
 
   // Start or Continue AI Valuation Chat
-  const handleSendChatMessage = async (userText?: string, isFinal = false) => {
-    const textToSend = userText !== undefined ? userText : chatInput;
+  const handleSendChatMessage = async (userText?: string | React.MouseEvent, isFinal = false) => {
+    const textToSend = (typeof userText === "string" ? userText : chatInput);
     if (!textToSend && photos.length === 0 && !itemName && !isFinal) {
       setChatError("Please take a photo or enter a quick item name to start valuation chat.");
       return;

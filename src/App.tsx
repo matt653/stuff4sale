@@ -236,9 +236,9 @@ export default function App() {
   };
 
   // Connect to server-side Gemini research API
-  const handleAiResearch = async (overrideImg?: string, overridePhotos?: string[]) => {
-    const activeImage = overrideImg || photoUrl;
-    const activePhotosList = overridePhotos || photos;
+  const handleAiResearch = async (overrideImg?: string | React.MouseEvent, overridePhotos?: string[]) => {
+    const activeImage = (typeof overrideImg === "string" ? overrideImg : null) || photos[0] || photoUrl;
+    const activePhotosList = (Array.isArray(overridePhotos) ? overridePhotos : photos);
 
     if (!itemName && !activeImage && activePhotosList.length === 0) {
       setAiError("Please input an item name or take a photo first so the AI has context to research.");
