@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { 
   Share2, Copy, Check, ExternalLink, 
-  ShoppingBag, DollarSign, Tag, X, Download
+  ShoppingBag, DollarSign, Tag, X, Download, MessageSquare, Bell, Image as ImageIcon
 } from "lucide-react";
 import { InventoryItem } from "../types";
 
@@ -27,7 +27,9 @@ export default function FBHubModal({
 
   // State
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [downloadSuccessCount, setDownloadSuccessCount] = useState<number | null>(null);
   const [isListedSuccess, setIsListedSuccess] = useState(false);
+  const [copiedReply, setCopiedReply] = useState<string | null>(null);
 
   // When active item changes
   useEffect(() => {
@@ -102,6 +104,9 @@ export default function FBHubModal({
       link.click();
       document.body.removeChild(link);
     });
+
+    setDownloadSuccessCount(photosToDownload.length);
+    setTimeout(() => setDownloadSuccessCount(null), 5000);
   };
 
   const handleMarkAsListed = () => {
@@ -130,6 +135,14 @@ export default function FBHubModal({
     window.open("https://www.facebook.com/marketplace/create/item", "_blank");
   };
 
+  const handleCopyQuickReply = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedReply(label);
+    setTimeout(() => setCopiedReply(null), 2500);
+  };
+
+  const currentPrice = activeItem?.listedPrice || activeItem?.purchasePrice || 35;
+
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-fade-in" id="fb-hub-modal">
       <div className="bg-white border border-slate-200 rounded-3xl max-w-3xl w-full shadow-2xl overflow-hidden my-auto flex flex-col max-h-[90vh]">
@@ -145,7 +158,7 @@ export default function FBHubModal({
                 Facebook Marketplace Assistant
               </h3>
               <p className="text-xs text-blue-100/80">
-                Direct copy-paste from your inventory description to Facebook Marketplace
+                Direct inventory copy-paste, 1-click photo downloader & quick reply tools
               </p>
             </div>
           </div>
@@ -262,15 +275,23 @@ export default function FBHubModal({
 
             <textarea
               readOnly
-              rows={8}
+              rows={7}
               value={currentDescription}
               className="w-full text-xs font-mono border border-slate-200 rounded-2xl p-4 bg-slate-50 text-slate-800 leading-relaxed focus:outline-none"
               id="fb-ad-description-text"
             />
           </div>
 
+          {/* Download Photos Notification Toast */}
+          {downloadSuccessCount !== null && (
+            <div className="bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-2xl p-3 text-xs font-bold flex items-center gap-2 animate-fade-in">
+              <ImageIcon size={16} className="text-emerald-600 shrink-0" />
+              <span>Downloaded {downloadSuccessCount} photo(s)! Simply drag and drop them directly onto your Facebook Marketplace listing form.</span>
+            </div>
+          )}
+
           {/* Quick Action Buttons */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
             <button
               type="button"
               onClick={handleDownloadPhotos}
@@ -289,7 +310,7 @@ export default function FBHubModal({
               }`}
               id="btn-mark-posted-fb"
             >
-              {isListedSuccess ? <Check size={15} /> : <Check size={15} />}
+              <Check size={15} />
               {isListedSuccess ? "Marked as Listed on FB!" : "Mark Listed on FB"}
             </button>
           </div>
@@ -304,6 +325,50 @@ export default function FBHubModal({
             <ExternalLink size={18} />
             Copy Description & Launch FB Marketplace
           </button>
+
+          {/* Buyer Inquiry Quick Reply Helper */}
+          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <h5 className="text-xs font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wide">
+                <MessageSquare size={14} className="text-blue-600" />
+                <span>Marketplace Buyer Quick Reply Tool</span>
+              </h5>
+              {copiedReply && (
+                <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                  <Check size={11} /> Copied {copiedReply}!
+                </span>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+              <button
+                type="button"
+                onClick={() => handleCopyQuickReply(`Hi! Yes, it's still available for local pickup. When are you free to swing by?`, "Availability Reply")}
+                className="p-3 bg-white border border-slate-200 hover:border-blue-300 rounded-xl font-semibold text-slate-700 text-left transition flex flex-col gap-1 cursor-pointer hover:shadow-xs"
+              >
+                <span className="font-extrabold text-blue-700">⚡ "Is this available?"</span>
+                <span className="text-[11px] text-slate-500 truncate">Yes, it's available! When are you free for local pickup?</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleCopyQuickReply(`Hi! The best I can do is $${currentPrice}, cash or Venmo accepted. Let me know if that works for you!`, "Offer Counter Reply")}
+                className="p-3 bg-white border border-slate-200 hover:border-blue-300 rounded-xl font-semibold text-slate-700 text-left transition flex flex-col gap-1 cursor-pointer hover:shadow-xs"
+              >
+                <span className="font-extrabold text-emerald-700">💰 Price / Offer Counter</span>
+                <span className="text-[11px] text-slate-500 truncate">Best I can do is ${currentPrice}. Cash or Venmo accepted.</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleCopyQuickReply(`Pickup is located near local area. Cash or Venmo accepted upon arrival. Send me a message when you're on your way!`, "Pickup Location Reply")}
+                className="p-3 bg-white border border-slate-200 hover:border-blue-300 rounded-xl font-semibold text-slate-700 text-left transition flex flex-col gap-1 cursor-pointer hover:shadow-xs"
+              >
+                <span className="font-extrabold text-purple-700">📍 Pickup & Location</span>
+                <span className="text-[11px] text-slate-500 truncate">Local pickup near area. Send message when on your way!</span>
+              </button>
+            </div>
+          </div>
 
         </div>
       </div>
