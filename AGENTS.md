@@ -23,9 +23,9 @@ Stuff4Sale is a full-stack AI-powered inventory management, item valuation, and 
 
 #### 3. Personal Facebook Marketplace Assistant (`FBHubModal.tsx`)
 - **Streamlined 1-Page Assistant**: Designed specifically for Personal Facebook Accounts without requiring complex Meta developer API tokens, App Secrets, or Webhooks.
-- **AI Ad Copy Generator**: Generates custom listing ad copy formatted for Facebook Marketplace & Buy/Sell Groups based on item specs, price, and tone (Casual, Urgent, Detailed).
+- **1-to-1 Inventory Description Pulling**: Directly pulls the exact description, stock number, title, category, and list price saved in your inventory database—eliminating redundant AI calls or duplicate ad listings.
 - **1-Click Photo Downloader**: One-click download of item photos to drag and drop into Facebook Marketplace.
-- **1-Click Launch**: Copies ad copy to clipboard and launches Facebook Marketplace creation form in a new tab.
+- **1-Click Launch**: Copies exact inventory description to clipboard and launches Facebook Marketplace creation form in a new tab.
 
 #### 4. Analytics & Financial Reporting (`StatsGrid.tsx`)
 - **Real-Time Metrics**: Displays active inventory count, total inventory value, total sales, net profit, average ROI percentage, and active listing count.
