@@ -236,6 +236,26 @@ export default function FBHubModal({
     copyToClipboard(fullText, "all");
   };
 
+  const handleDownloadPhotos = () => {
+    const photosToDownload = activeItem?.photos && activeItem.photos.length > 0
+      ? activeItem.photos
+      : activeItem?.photoUrl ? [activeItem.photoUrl] : [];
+
+    if (photosToDownload.length === 0) {
+      alert("No photos available to download for this item.");
+      return;
+    }
+
+    photosToDownload.forEach((photo, idx) => {
+      const link = document.createElement("a");
+      link.href = photo;
+      link.download = `${(activeItem?.name || "item").replace(/[^a-z0-9]/gi, '_').toLowerCase()}_photo_${idx + 1}.jpg`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    });
+  };
+
   const handleMarkAsListed = () => {
     if (isBundleMode) {
       if (selectedBundleItemIds.length === 0) return;
@@ -458,25 +478,25 @@ export default function FBHubModal({
                 <div className="flex items-center justify-between">
                   <h4 className="text-sm font-extrabold text-blue-950 flex items-center gap-2">
                     <ShieldCheck size={18} className="text-blue-600" />
-                    Facebook Meta Graph API Setup & Credentials
+                    Personal Facebook Profile & User Access Setup
                   </h4>
                   <span className="text-[10px] bg-blue-200 text-blue-900 font-extrabold px-2.5 py-0.5 rounded-full uppercase">
-                    OAuth & Token Direct
+                    Personal Account Optimized
                   </span>
                 </div>
                 <p className="text-xs text-blue-900 leading-relaxed">
-                  Enter your Meta App credentials below to enable automated Graph API posting directly to your <b>Facebook Page</b>, <b>Facebook Groups</b>, and real-time <b>Messenger webhooks</b>.
+                  Tailored specifically for <b>Personal Facebook Profiles</b>! Enter your credentials below to connect your personal account, or use <b>1-Click Copy & Launch</b> to post directly to <b>Facebook Marketplace</b> and <b>Personal Buy/Sell Groups</b> without needing a Business Page.
                 </p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl space-y-3">
                   <h5 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider">
-                    Meta App Credentials
+                    Personal Account & Meta App Credentials
                   </h5>
                   <div>
                     <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                      Facebook App ID
+                      Facebook App ID / Client ID
                     </label>
                     <input
                       type="text"
@@ -489,7 +509,7 @@ export default function FBHubModal({
 
                   <div>
                     <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                      Facebook App Secret
+                      Facebook App Secret / Key
                     </label>
                     <input
                       type="password"
@@ -503,11 +523,11 @@ export default function FBHubModal({
 
                 <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl space-y-3">
                   <h5 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider">
-                    Page & Group Token Settings
+                    Personal User Token & Group Settings
                   </h5>
                   <div>
                     <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                      Page Access Token / User Token
+                      Personal User Access Token / User Token
                     </label>
                     <input
                       type="password"
@@ -520,7 +540,7 @@ export default function FBHubModal({
 
                   <div>
                     <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                      Target Facebook Group IDs (comma separated)
+                      Target Buy/Sell Facebook Group IDs (comma separated)
                     </label>
                     <input
                       type="text"
@@ -837,6 +857,16 @@ export default function FBHubModal({
                     )}
 
                     <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
+                      <button
+                        type="button"
+                        onClick={handleDownloadPhotos}
+                        className="px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs rounded-xl border border-indigo-200 transition flex items-center gap-1.5 cursor-pointer"
+                        title="Download item photo files to drag & drop into Facebook Marketplace"
+                      >
+                        <Download size={14} />
+                        Download Item Photos
+                      </button>
+
                       <button
                         type="button"
                         onClick={handlePostViaGraphApi}
