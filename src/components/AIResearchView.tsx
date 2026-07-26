@@ -25,13 +25,26 @@ export default function AIResearchView({
 }: AIResearchViewProps) {
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [priceSliderPos, setPriceSliderPos] = useState(50);
+  const [finalReport, setFinalReport] = useState<AIResearchResult | null>(research);
+
+  // Sync slider price to Step 2 form
+  React.useEffect(() => {
+    const report = finalReport || research;
+    if (report && onApplyField) {
+      const minVal = Number(report.estimatedValueMin) || 0;
+      const maxVal = Number(report.estimatedValueMax) || 0;
+      const initialPrice = minVal > 0 && maxVal > 0
+        ? Math.round(minVal + (priceSliderPos / 100) * (maxVal - minVal))
+        : (maxVal || minVal || 35);
+      onApplyField("listedPrice", initialPrice);
+    }
+  }, [research, finalReport]);
   
   // Conversational Chat State
   const [messages, setMessages] = useState<AIChatMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [chatError, setChatError] = useState<string | null>(null);
-  const [finalReport, setFinalReport] = useState<AIResearchResult | null>(research);
 
   const copyToClipboard = (text: string, fieldName: string) => {
     navigator.clipboard.writeText(text);

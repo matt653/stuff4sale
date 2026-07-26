@@ -818,54 +818,14 @@ export default function App() {
 
               {/* BOX 2: Add New Item Record (Auto-populated by Gemini) */}
               <form onSubmit={handleSubmitItem} className="lg:col-span-6 bg-slate-50/80 border border-slate-200 p-5 rounded-2xl space-y-4 shadow-xs" id="box-2-add-new">
-                <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-200">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-200">
                   <div className="flex items-center gap-2">
                     <span className="w-6 h-6 bg-slate-800 text-white rounded-lg text-xs font-black flex items-center justify-center">2</span>
                     <h3 className="font-extrabold text-sm text-slate-900">Add New Item Record</h3>
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] font-extrabold uppercase text-slate-400">Pricing Goal:</span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setPricingStrategy("quick");
-                        if (aiResult) {
-                          const valMin = Number(aiResult.estimatedValueMin) || 0;
-                          const valMax = Number(aiResult.estimatedValueMax) || 0;
-                          setListedPrice((valMin > 0 ? valMin : valMax).toString());
-                        }
-                      }}
-                      className={`px-2.5 py-1 rounded-lg text-[10px] font-extrabold border transition cursor-pointer ${
-                        pricingStrategy === "quick" 
-                          ? "bg-amber-500 text-white border-amber-500 shadow-xs" 
-                          : "bg-white text-slate-600 border-slate-200 hover:bg-slate-100"
-                      }`}
-                      id="btn-strategy-quick"
-                      title="Set price for quick turnaround on Facebook Marketplace"
-                    >
-                      ⚡ Quick Sale ($min)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setPricingStrategy("retail");
-                        if (aiResult) {
-                          const valMax = Number(aiResult.estimatedValueMax) || 0;
-                          const valMin = Number(aiResult.estimatedValueMin) || 0;
-                          setListedPrice((valMax > 0 ? valMax : valMin).toString());
-                        }
-                      }}
-                      className={`px-2.5 py-1 rounded-lg text-[10px] font-extrabold border transition cursor-pointer ${
-                        pricingStrategy === "retail" 
-                          ? "bg-emerald-600 text-white border-emerald-600 shadow-xs" 
-                          : "bg-white text-slate-600 border-slate-200 hover:bg-slate-100"
-                      }`}
-                      id="btn-strategy-retail"
-                      title="Set price for maximum retail profit"
-                    >
-                      💎 Full Retail ($max)
-                    </button>
-                  </div>
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full">
+                    Step 2
+                  </span>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Name field */}
