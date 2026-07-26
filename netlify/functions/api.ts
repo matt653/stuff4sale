@@ -94,20 +94,25 @@ Input Details provided:
 - Initial Category: ${category || "Unknown"}
 - Notes/Condition: ${notes || "No extra notes"}
 
+CRITICAL INSTRUCTION FOR AD DESCRIPTION GENERATION:
+1. Identify 1-3 specific flaws, wear points, rust, surface patina, missing parts, or condition notes and return them in the 'issuesFound' array.
+2. In 'suggestedDescription', you MUST include a dedicated section titled "CONDITION & FLAWS / ISSUES:" that explicitly lists EVERY flaw from 'issuesFound' in complete detail so local buyers know exact condition before traveling.
+3. Keep the tone honest and fair—don't be overly dramatic, but make sure buyers know what they are buying while highlighting the item's key features and upsell appeal.
+
 Analyze this item carefully. You must return your response in standard, valid JSON format. 
 Do not wrap your JSON response in markdown blocks or any other formatting.
 
 The JSON response MUST match this exact schema:
 {
   "suggestedTitle": "An SEO-optimized listing title (max 80 chars) highlighting brand, model, features, or condition",
-  "suggestedDescription": "A professional, attractive listing description ready for copy-paste. Highlight key selling points and upsell value, while transparently mentioning any identified issues/flaws so buyers know exact condition.",
+  "suggestedDescription": "Full listing description ready for copy-paste. Must include item highlights AND an explicit 'CONDITION & FLAWS / ISSUES:' section detailing all flaws.",
   "estimatedValueMin": 15,
   "estimatedValueMax": 45,
   "demandScore": 7,
   "worthSelling": "YES",
   "triageReason": "Clear 1-sentence verdict on whether to flip this find or pass/scrap it.",
   "issuesFound": [
-    "Issue 1: Specific flaw, blemish, rust, wear, missing part, or condition note found on this item."
+    "Issue 1: Detailed description of flaw, rust, wear, missing part, or condition note."
   ],
   "targetPlatforms": [
     "eBay - Great for reach.",

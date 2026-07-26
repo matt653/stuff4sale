@@ -306,7 +306,10 @@ export default function App() {
       let descriptionText = result.suggestedDescription || "";
       const flaws = result.issuesFound || result.cleaningInstructions;
       if (flaws && flaws.length > 0) {
-        descriptionText += "\n\n⚠️ Issues & Flaws Found:\n" + flaws.map((s: string) => `• ${s}`).join("\n");
+        const lowerDesc = descriptionText.toLowerCase();
+        if (!lowerDesc.includes("flaw") && !lowerDesc.includes("issue") && !lowerDesc.includes("condition")) {
+          descriptionText += "\n\n⚠️ Identified Issues & Flaws:\n" + flaws.map((s: string) => `• ${s}`).join("\n");
+        }
       }
       if (descriptionText) {
         setNotes(descriptionText);
