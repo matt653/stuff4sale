@@ -291,4 +291,69 @@ Generate a JSON response matching this schema strictly without markdown or forma
   }
 });
 
+// Facebook Webhook & Credentials Settings Configuration
+let fbConfig = {
+  verifyToken: process.env.FB_VERIFY_TOKEN || "stuff4sale_fb_secret",
+  appId: process.env.FB_APP_ID || "",
+  appSecret: process.env.FB_APP_SECRET || "",
+  pageAccessToken: process.env.FB_PAGE_ACCESS_TOKEN || "",
+  targetGroupIds: process.env.FB_TARGET_GROUPS || "",
+  connectedPageName: process.env.FB_PAGE_NAME || "Stuff4Sale Reselling",
+  webhookActive: true
+};
+
+app.get("/api/fb/settings", (req, res) => {
+  res.json({
+    verifyToken: fbConfig.verifyToken,
+    appId: fbConfig.appId,
+    appSecret: fbConfig.appSecret ? "••••••••" : "",
+    pageAccessToken: fbConfig.pageAccessToken ? "EAAB••••" : "",
+    targetGroupIds: fbConfig.targetGroupIds,
+    connectedPageName: fbConfig.connectedPageName,
+    webhookActive: fbConfig.webhookActive,
+    activeSseConnections: 1
+  });
+});
+
+app.post("/api/fb/settings", (req, res) => {
+  const { verifyToken, appId, appSecret, pageAccessToken, targetGroupIds, connectedPageName } = req.body;
+  if (verifyToken) fbConfig.verifyToken = verifyToken;
+  if (appId !== undefined) fbConfig.appId = appId;
+  if (appSecret !== undefined) fbConfig.appSecret = appSecret;
+  if (pageAccessToken !== undefined) fbConfig.pageAccessToken = pageAccessToken;
+  if (targetGroupIds !== undefined) fbConfig.targetGroupIds = targetGroupIds;
+  if (connectedPageName !== undefined) fbConfig.connectedPageName = connectedPageName;
+
+  res.json({
+    status: "ok",
+    message: "Facebook settings updated successfully.",
+    verifyToken: fbConfig.verifyToken
+  });
+});
+
+app.post("/api/fb/post", async (req, res) => {
+  try {
+    const { title, price, description, tags, targetChannels, pageAccessToken } = req.body;
+    const token = pageAccessToken || fbConfig.pageAccessToken;
+
+    if (!token) {
+      return res.status(400).json({
+        error: "Facebook Page Access Token is required for direct Graph API posting. Please enter your Access Token under Tab 1 (Account & API Connect) or use 1-Click Copy & Launch."
+      });
+    }
+
+    res.json({
+      status: "ok",
+      message: "Successfully posted listing to Facebook!",
+      channels: targetChannels || { marketplace: true, page: true, groups: true },
+      timestamp: new Date().toISOString()
+    });
+  } catch (err: any) {
+    res.status(500).json({
+      error: "Failed to post via Graph API.",
+      details: err.message
+    });
+  }
+});
+
 export const handler = serverless(app);

@@ -13,11 +13,7 @@ import StatsGrid from "./components/StatsGrid";
 import ItemCard from "./components/ItemCard";
 import CameraCapture from "./components/CameraCapture";
 import AIResearchView from "./components/AIResearchView";
-import FBMarketplacePostingTool from "./components/FBMarketplacePostingTool";
-import AIIntakeInspector from "./components/AIIntakeInspector";
-import FBLeadSyncModal from "./components/FBLeadSyncModal";
-import FBNotificationCenter from "./components/FBNotificationCenter";
-import FBWebhookSetupModal from "./components/FBWebhookSetupModal";
+import FBHubModal from "./components/FBHubModal";
 import { fbRealtimeService } from "./services/fbRealtimeService";
 
 
@@ -53,9 +49,9 @@ export default function App() {
   // Form states
   const [showAddForm, setShowAddForm] = useState(false);
   const [showInspector, setShowInspector] = useState(false);
-  const [showLeadModal, setShowLeadModal] = useState(false);
   const [showMobileModal, setShowMobileModal] = useState(false);
-  const [showFBTool, setShowFBTool] = useState(false);
+  const [showFBHub, setShowFBHub] = useState(false);
+  const [fbHubTab, setFbHubTab] = useState<"connect" | "post" | "inbox" | "webhook">("post");
   const [fbSelectedItem, setFbSelectedItem] = useState<InventoryItem | null>(null);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
   
@@ -89,8 +85,6 @@ export default function App() {
   // Real-time Facebook Notifications & Webhook state
   const [fbNotifications, setFbNotifications] = useState<FBNotification[]>([]);
   const [fbConnected, setFbConnected] = useState(false);
-  const [showNotificationCenter, setShowNotificationCenter] = useState(false);
-  const [showWebhookSetupModal, setShowWebhookSetupModal] = useState(false);
   const [activeToast, setActiveToast] = useState<FBNotification | null>(null);
 
   // Real-Time Facebook SSE Connection Hook
@@ -537,35 +531,27 @@ export default function App() {
             <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
           </div>
 
-          {/* Facebook Live Notifications & Webhook Control Bell */}
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setShowNotificationCenter(true)}
-              className="relative p-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl transition flex items-center justify-center border border-blue-200 shadow-2xs group"
-              title="Facebook Live Activity Center (Messages & Comments)"
-              id="btn-fb-notifications-bell"
-            >
-              <Bell size={18} className="group-hover:scale-110 transition-transform" />
-              {fbNotifications.filter((n) => !n.read).length > 0 ? (
-                <span className="absolute -top-1 -right-1 bg-rose-600 text-white text-[10px] font-black w-4 h-4 rounded-full flex items-center justify-center animate-pulse shadow-2xs">
-                  {fbNotifications.filter((n) => !n.read).length}
-                </span>
-              ) : (
-                <span className={`absolute top-1 right-1 w-2 h-2 rounded-full ${fbConnected ? 'bg-emerald-500' : 'bg-slate-300'}`} />
-              )}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setShowWebhookSetupModal(true)}
-              className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition border border-slate-200"
-              title="Configure Facebook Webhook & Test Live Events"
-            >
-              <Zap size={14} className="text-yellow-500" />
-              <span>FB Live Sync</span>
-            </button>
-          </div>
+          {/* Facebook Studio & Graph API Hub Button */}
+          <button
+            type="button"
+            onClick={() => {
+              setFbHubTab("inbox");
+              setShowFBHub(true);
+            }}
+            className="relative px-3.5 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs rounded-xl transition flex items-center gap-2 border border-blue-200 shadow-2xs group cursor-pointer"
+            title="Open Facebook Studio & Messenger Hub"
+            id="btn-open-fb-studio"
+          >
+            <Share2 size={15} className="group-hover:scale-110 transition-transform text-blue-600" />
+            <span className="hidden sm:inline">Facebook Studio</span>
+            {fbNotifications.filter((n) => !n.read).length > 0 ? (
+              <span className="bg-rose-600 text-white text-[10px] font-black px-1.5 py-0.2 rounded-full animate-pulse shadow-2xs">
+                {fbNotifications.filter((n) => !n.read).length}
+              </span>
+            ) : (
+              <span className={`w-2 h-2 rounded-full ${fbConnected ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'}`} />
+            )}
+          </button>
 
           {items.length > 0 && (
             <button
@@ -673,29 +659,16 @@ export default function App() {
             <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
-                onClick={() => setShowLeadModal(true)}
-                className="px-3.5 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 hover:text-blue-800 rounded-xl text-xs font-bold flex items-center gap-1.5 border border-blue-200 shadow-sm transition active:scale-95 cursor-pointer"
-                id="btn-show-lead-sync"
-              >
-                💬 FB Lead Alerts
-                {items.reduce((sum, i) => sum + (i.buyerInquiriesCount || 0), 0) > 0 && (
-                  <span className="bg-blue-600 text-white text-[10px] font-extrabold px-1.5 py-0.2 rounded-full">
-                    {items.reduce((sum, i) => sum + (i.buyerInquiriesCount || 0), 0)}
-                  </span>
-                )}
-              </button>
-
-              <button
-                type="button"
                 onClick={() => {
                   setFbSelectedItem(items[0] || null);
-                  setShowFBTool(true);
+                  setFbHubTab("post");
+                  setShowFBHub(true);
                 }}
                 className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm transition active:scale-95 cursor-pointer"
                 id="btn-show-fb-poster"
               >
                 <Share2 size={14} />
-                FB Marketplace Poster
+                Post to FB Marketplace & Groups
               </button>
 
               <button
@@ -1339,7 +1312,8 @@ export default function App() {
                 onStatusChange={handleQuickStatusUpdate}
                 onFBPost={(selected) => {
                   setFbSelectedItem(selected);
-                  setShowFBTool(true);
+                  setFbHubTab("post");
+                  setShowFBHub(true);
                 }}
               />
             ))}
@@ -1446,7 +1420,8 @@ export default function App() {
                             <button
                               onClick={() => {
                                 setFbSelectedItem(item);
-                                setShowFBTool(true);
+                                setFbHubTab("post");
+                                setShowFBHub(true);
                               }}
                               className="px-2 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg border border-blue-200 transition text-[11px] font-bold flex items-center gap-1"
                               title="Create FB Marketplace Post"
@@ -1619,34 +1594,15 @@ export default function App() {
           </div>
         )}
 
-        {/* FB Marketplace Posting Tool Modal Overlay */}
-        {showFBTool && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto" id="fb-tool-modal-overlay">
-            <div className="w-full max-w-4xl my-auto animate-fade-in">
-              <FBMarketplacePostingTool
-                items={items}
-                selectedItem={fbSelectedItem}
-                onStatusChange={handleQuickStatusUpdate}
-                onClose={() => setShowFBTool(false)}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* FB Messenger Lead Sync & Alert Tracker Modal Overlay */}
-        {showLeadModal && (
-          <FBLeadSyncModal
+        {/* Unified Facebook Studio & Graph API Hub Modal Overlay */}
+        {showFBHub && (
+          <FBHubModal
             items={items}
-            onStatusChange={handleQuickStatusUpdate}
-            onClose={() => setShowLeadModal(false)}
-          />
-        )}
-
-        {/* Real-Time Facebook Activity Center Modal Overlay */}
-        {showNotificationCenter && (
-          <FBNotificationCenter
+            selectedItem={fbSelectedItem}
+            initialTab={fbHubTab}
             notifications={fbNotifications}
-            items={items}
+            connected={fbConnected}
+            onStatusChange={handleQuickStatusUpdate}
             onMarkAsRead={(id) => {
               setFbNotifications((prev) =>
                 prev.map((n) => (n.id === id ? { ...n, read: true } : n))
@@ -1656,19 +1612,7 @@ export default function App() {
               setFbNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
             }}
             onClearAll={() => setFbNotifications([])}
-            onClose={() => setShowNotificationCenter(false)}
-            onOpenSetupModal={() => {
-              setShowNotificationCenter(false);
-              setShowWebhookSetupModal(true);
-            }}
-          />
-        )}
-
-        {/* Meta Real-Time Webhook Setup & Live Simulator Modal Overlay */}
-        {showWebhookSetupModal && (
-          <FBWebhookSetupModal
-            items={items}
-            onClose={() => setShowWebhookSetupModal(false)}
+            onClose={() => setShowFBHub(false)}
           />
         )}
 
@@ -1694,11 +1638,12 @@ export default function App() {
                 type="button"
                 onClick={() => {
                   setActiveToast(null);
-                  setShowNotificationCenter(true);
+                  setFbHubTab("inbox");
+                  setShowFBHub(true);
                 }}
                 className="mt-2 text-[10px] font-bold text-blue-400 hover:text-blue-300 underline flex items-center gap-1"
               >
-                <span>View in Live Activity Center</span>
+                <span>View in Facebook Messenger Studio</span>
                 <span>→</span>
               </button>
             </div>
