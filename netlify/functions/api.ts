@@ -7,11 +7,54 @@ const app = express();
 app.use(express.json({ limit: "15mb" }));
 
 // Initialize Gemini API Client from Netlify environment variables
-const geminiApiKey = process.env.GEMINI_API_KEY;
+const geminiApiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
 let ai: GoogleGenAI | null = null;
 
 if (geminiApiKey) {
   ai = new GoogleGenAI({ apiKey: geminiApiKey });
+}
+
+// Clean JSON response from Gemini
+function cleanJsonResponse(rawText: string): any {
+  if (!rawText) return {};
+  let cleaned = rawText.trim();
+  cleaned = cleaned.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+  try {
+    return JSON.parse(cleaned);
+  } catch (parseError) {
+    const match = cleaned.match(/\{[\s\S]*\}/);
+    if (match) {
+      return JSON.parse(match[0]);
+    }
+    throw parseError;
+  }
+}
+
+// Call Gemini with model fallbacks
+async function callGeminiWithFallback(aiClient: GoogleGenAI, contents: any[]) {
+  const models = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"];
+  let lastError: any = null;
+
+  for (const model of models) {
+    try {
+      console.log(`Sending Gemini request with model: ${model}...`);
+      const response = await aiClient.models.generateContent({
+        model,
+        contents,
+        config: {
+          responseMimeType: "application/json",
+        },
+      });
+
+      if (response && response.text) {
+        return cleanJsonResponse(response.text);
+      }
+    } catch (err: any) {
+      console.warn(`Gemini model '${model}' failed: ${err.message}. Trying fallback...`);
+      lastError = err;
+    }
+  }
+  throw lastError || new Error("All Gemini models failed to generate content.");
 }
 
 // Health Check Endpoint
@@ -21,12 +64,13 @@ app.get("/api/health", (req, res) => {
 
 // Gemini-Powered Item Research Endpoint
 app.post("/api/research", async (req, res) => {
-  if (!ai) {
-    const key = process.env.GEMINI_API_KEY;
-    if (key) ai = new GoogleGenAI({ apiKey: key });
+  let activeAi = ai;
+  if (!activeAi) {
+    const key = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
+    if (key) activeAi = new GoogleGenAI({ apiKey: key });
   }
 
-  if (!ai) {
+  if (!activeAi) {
     return res.status(503).json({
       error: "AI Research is currently unavailable. Please configure GEMINI_API_KEY in your Netlify site settings.",
     });
@@ -95,15 +139,7 @@ The JSON response MUST match this exact schema:
       }
     });
 
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents,
-      config: {
-        responseMimeType: "application/json",
-      },
-    });
-
-    const researchResult = JSON.parse(response.text || "{}");
+    const researchResult = await callGeminiWithFallback(activeAi, contents);
     res.json(researchResult);
   } catch (error: any) {
     console.error("Netlify Function AI Research error:", error);

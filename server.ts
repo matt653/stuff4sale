@@ -14,13 +14,56 @@ const PORT = 3000;
 app.use(express.json({ limit: "15mb" }));
 
 // Initialize Gemini API Client
-const geminiApiKey = process.env.GEMINI_API_KEY;
+const geminiApiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
 let ai: GoogleGenAI | null = null;
 
 if (geminiApiKey) {
   ai = new GoogleGenAI({ apiKey: geminiApiKey });
 } else {
   console.warn("WARNING: GEMINI_API_KEY is not defined in the environment. AI research features will be unavailable.");
+}
+
+// Clean JSON response from Gemini
+function cleanJsonResponse(rawText: string): any {
+  if (!rawText) return {};
+  let cleaned = rawText.trim();
+  cleaned = cleaned.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+  try {
+    return JSON.parse(cleaned);
+  } catch (parseError) {
+    const match = cleaned.match(/\{[\s\S]*\}/);
+    if (match) {
+      return JSON.parse(match[0]);
+    }
+    throw parseError;
+  }
+}
+
+// Call Gemini with model fallbacks
+async function callGeminiWithFallback(aiClient: GoogleGenAI, contents: any[]) {
+  const models = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"];
+  let lastError: any = null;
+
+  for (const model of models) {
+    try {
+      console.log(`Sending Gemini request with model: ${model}...`);
+      const response = await aiClient.models.generateContent({
+        model,
+        contents,
+        config: {
+          responseMimeType: "application/json",
+        },
+      });
+
+      if (response && response.text) {
+        return cleanJsonResponse(response.text);
+      }
+    } catch (err: any) {
+      console.warn(`Gemini model '${model}' failed: ${err.message}. Trying fallback...`);
+      lastError = err;
+    }
+  }
+  throw lastError || new Error("All Gemini models failed to generate content.");
 }
 
 // Health Check Endpoint
@@ -30,9 +73,15 @@ app.get("/api/health", (req, res) => {
 
 // Gemini-Powered Item Research Endpoint
 app.post("/api/research", async (req, res) => {
-  if (!ai) {
+  let activeAi = ai;
+  if (!activeAi) {
+    const key = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
+    if (key) activeAi = new GoogleGenAI({ apiKey: key });
+  }
+
+  if (!activeAi) {
     return res.status(503).json({
-      error: "AI Research is currently unavailable because the server API key is not configured.",
+      error: "AI Research is currently unavailable. Please configure GEMINI_API_KEY in your environment.",
     });
   }
 
@@ -45,7 +94,6 @@ app.post("/api/research", async (req, res) => {
 
     const contents: any[] = [];
 
-    // Construct the prompt guiding Gemini to produce a structured JSON result
     let promptText = `Perform professional reselling and side-hustle market research on this item. 
 Analyze historical sales, demand patterns, listing strategies, and typical value.
 
@@ -61,35 +109,35 @@ The JSON response MUST match this exact schema:
 {
   "suggestedTitle": "An SEO-optimized, highly click-worthy listing title (max 80 chars) highlighting brand, model, features, or condition",
   "suggestedDescription": "A professional, detailed listing description text ready for copy-paste. Highlight key selling points, structure it with clean sections, and leave placeholders [like condition details] for manual editing if needed.",
-  "estimatedValueMin": 15, (Estimate a realistic, conservative lower reselling list price in USD as a number)
-  "estimatedValueMax": 45, (Estimate an optimistic, high-performing reselling list price in USD as a number)
-  "demandScore": 7, (An integer from 1 to 10 indicating sell-through rate. 1 = extremely hard to sell, 10 = sells within hours)
-  "worthSelling": "YES", (Choose one strictly: "YES" if estimated profit/value is good and item sells easily, "MARGINAL" if low profit margin $5-$15 or slow seller, "NO" if item has low value under $10 or is not worth flipping)
+  "estimatedValueMin": 15,
+  "estimatedValueMax": 45,
+  "demandScore": 7,
+  "worthSelling": "YES",
   "triageReason": "A clear, punchy 1-sentence sourcing verdict advising the user why this item is worth reselling or why they should pass/scrap it",
   "cleaningInstructions": [
     "Cleaning step 1: Specific advice on how to clean, restore, or test this exact item to maximize selling price.",
     "Cleaning step 2..."
-  ], (Provide 2 to 3 specific item cleaning and restoration instructions)
+  ],
   "prepChecklist": [
     "Prep step 1: What to test or photograph before listing.",
     "Prep step 2..."
-  ], (Provide 2 to 3 practical steps to prepare this item for listing)
+  ],
   "targetPlatforms": [
     "eBay - Great for reach and global audience.",
     "Facebook Marketplace - Best for local pickup, avoiding shipping costs."
-  ], (List 2 to 4 recommended listing platforms with brief reasons)
+  ],
   "sellingTips": [
     "Tip 1 on how to photograph, pack, or clean this specific item to maximize value.",
     "Tip 2...",
     "Tip 3..."
-  ], (Provide 3 to 4 hyper-practical, specific reselling tips)
+  ],
   "category": "A refined, specific product category name",
-  "keywords": ["vintage", "retro", "collectible"] (An array of 5 to 8 powerful search keywords)
+  "keywords": ["vintage", "retro", "collectible"]
 }`;
 
     contents.push(promptText);
 
-    // Attach all provided images as inline data for multimodal analysis
+    // Attach provided images as inline data
     const imageList: string[] = images && Array.isArray(images) && images.length > 0 ? images : image ? [image] : [];
     
     imageList.forEach((imgStr: string, idx: number) => {
@@ -101,25 +149,10 @@ The JSON response MUST match this exact schema:
             mimeType: match[1],
           },
         });
-        console.log(`Attached image #${idx + 1} (${match[1]}) for Gemini multimodal research.`);
       }
     });
 
-    console.log(`Sending research request to Gemini 2.5 Flash for item: "${name || "Image analysis"}"...`);
-
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents,
-      config: {
-        responseMimeType: "application/json",
-      },
-    });
-
-    const responseText = response.text || "{}";
-    console.log("Received response from Gemini.");
-    
-    // Parse the JSON returned from Gemini
-    const researchResult = JSON.parse(responseText);
+    const researchResult = await callGeminiWithFallback(activeAi, contents);
     res.json(researchResult);
   } catch (error: any) {
     console.error("Error in AI research endpoint:", error);

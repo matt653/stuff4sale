@@ -254,8 +254,9 @@ export default function App() {
       });
 
       if (!response.ok) {
-        const errJson = await response.json();
-        throw new Error(errJson.error || "Failed to complete market research.");
+        const errJson = await response.json().catch(() => ({}));
+        const detailedMsg = errJson.details ? `${errJson.error} (${errJson.details})` : (errJson.error || "Failed to complete market research.");
+        throw new Error(detailedMsg);
       }
 
       const result: AIResearchResult = await response.json();
