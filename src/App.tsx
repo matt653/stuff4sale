@@ -5,8 +5,8 @@ import {
   Tag, Info, DollarSign, Archive, ShoppingBag, Eye, Star, LayoutGrid, LayoutList,
   Edit, Trash2, TrendingUp, Smartphone, Cloud, Share2, Clock, CheckCircle
 } from "lucide-react";
-import { collection, onSnapshot, addDoc, updateDoc, doc, deleteDoc, query, orderBy } from "firebase/firestore";
-import { db, dbDefault, dbCustom } from "./firebase";
+import { collection, onSnapshot, addDoc, setDoc, updateDoc, doc, deleteDoc, query, orderBy } from "firebase/firestore";
+import { db } from "./firebase";
 import { InventoryItem, ItemStatus, AIResearchResult } from "./types";
 import StatsGrid from "./components/StatsGrid";
 import ItemCard from "./components/ItemCard";
@@ -81,8 +81,36 @@ export default function App() {
   const [aiError, setAiError] = useState<string | null>(null);
   const [isOfflineVault, setIsOfflineVault] = useState(false);
 
+  // Deleted IDs Blacklist Registry - prevents zombie resurrection from legacy keys or snapshot delays
+  const getDeletedIds = (): Set<string> => {
+    try {
+      const stored = localStorage.getItem("stuff4sale_deleted_ids");
+      if (stored) {
+        return new Set(JSON.parse(stored));
+      }
+    } catch (e) {
+      console.error("Failed reading deleted IDs registry:", e);
+    }
+    return new Set();
+  };
+
+  const saveDeletedIds = (ids: Set<string>) => {
+    try {
+      localStorage.setItem("stuff4sale_deleted_ids", JSON.stringify(Array.from(ids)));
+    } catch (e) {
+      console.error("Failed writing deleted IDs registry:", e);
+    }
+  };
+
+  const markItemDeleted = (id: string) => {
+    const deletedSet = getDeletedIds();
+    deletedSet.add(id);
+    saveDeletedIds(deletedSet);
+  };
+
   // Helper to load items from local storage vault across all legacy keys
   const loadLocalVault = () => {
+    const deletedSet = getDeletedIds();
     const possibleKeys = [
       "stuff4sale_items_vault",
       "inventory_items",
@@ -93,50 +121,74 @@ export default function App() {
       "hustle_sheet_items"
     ];
 
+    const mergedMap = new Map<string, InventoryItem>();
+
     for (const key of possibleKeys) {
       try {
         const saved = localStorage.getItem(key);
         if (saved) {
           const parsed: InventoryItem[] = JSON.parse(saved);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            console.log(`Recovered ${parsed.length} items from key '${key}'`);
-            setItems(parsed);
-            return true;
+          if (Array.isArray(parsed)) {
+            for (const item of parsed) {
+              if (item && item.id && !deletedSet.has(item.id)) {
+                if (!mergedMap.has(item.id)) {
+                  mergedMap.set(item.id, item);
+                } else {
+                  const existing = mergedMap.get(item.id)!;
+                  if (new Date(item.updatedAt || 0) > new Date(existing.updatedAt || 0)) {
+                    mergedMap.set(item.id, item);
+                  }
+                }
+              }
+            }
           }
         }
       } catch (e) {
         console.error(`Failed loading key ${key}:`, e);
       }
     }
+
+    const mergedList = Array.from(mergedMap.values());
+    if (mergedList.length > 0) {
+      setItems(mergedList);
+      saveLocalVault(mergedList);
+      return true;
+    }
     return false;
   };
 
-  // Helper to save items to local storage vault
+  // Helper to save items to local storage vault, excluding deleted IDs
   const saveLocalVault = (newItems: InventoryItem[]) => {
     try {
-      localStorage.setItem("stuff4sale_items_vault", JSON.stringify(newItems));
-      localStorage.setItem("inventory_items", JSON.stringify(newItems));
+      const deletedSet = getDeletedIds();
+      const validItems = newItems.filter((item) => item && item.id && !deletedSet.has(item.id));
+      localStorage.setItem("stuff4sale_items_vault", JSON.stringify(validItems));
+      localStorage.setItem("inventory_items", JSON.stringify(validItems));
     } catch (e) {
       console.error("Failed writing to local storage vault:", e);
     }
   };
 
-  // Real-time Firestore subscription with local storage vault protection
+  // Real-time Firestore subscription with Local Storage & Blacklist Sync
   useEffect(() => {
-    // 1. Immediately attempt loading local vault on mount to eliminate initial delay
     loadLocalVault();
-
     setLoading(true);
+
     const q = collection(db, "inventory");
     
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
+        const deletedSet = getDeletedIds();
         const fetchedItems: InventoryItem[] = [];
-        snapshot.forEach((doc) => {
-          const data = doc.data();
+
+        snapshot.forEach((docSnap) => {
+          if (deletedSet.has(docSnap.id)) {
+            return;
+          }
+          const data = docSnap.data();
           fetchedItems.push({ 
-            id: doc.id, 
+            id: docSnap.id, 
             name: data.name || "Untitled Item",
             category: data.category || "General Item",
             status: data.status || "inventory",
@@ -168,7 +220,6 @@ export default function App() {
           setItems(fetchedItems);
           saveLocalVault(fetchedItems);
         } else {
-          // If Firestore returns 0 items, check if local storage vault has items
           const recovered = loadLocalVault();
           if (!recovered) {
             setItems([]);
@@ -382,20 +433,17 @@ export default function App() {
         setItems(updatedList);
         saveLocalVault(updatedList);
       } else {
-        // Create new doc in Firestore
-        let actualId = `ITEM-${Date.now()}`;
+        // Create new doc with deterministic ID in Firestore & Local
+        const targetId = `ITEM-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+        const newItemRecord: InventoryItem = { id: targetId, ...itemData };
+
         try {
-          const collectionRef = collection(db, "inventory");
-          const created = await addDoc(collectionRef, itemData);
-          if (created && created.id) {
-            actualId = created.id;
-          }
+          const docRef = doc(db, "inventory", targetId);
+          await setDoc(docRef, itemData);
         } catch (e) {
           console.warn("Firestore creation failed, saving locally:", e);
         }
 
-        // Update local state & vault with actual Firestore ID
-        const newItemRecord: InventoryItem = { id: actualId, ...itemData };
         const updatedList = [newItemRecord, ...items];
         setItems(updatedList);
         saveLocalVault(updatedList);
@@ -411,16 +459,19 @@ export default function App() {
   const handleDeleteItem = async (id: string) => {
     if (!id) return;
 
-    // Immediately remove from local state & local vault storage (optimistic UI update)
+    // 1. Mark ID in blacklist permanently so no sync or old local key can resurrect it
+    markItemDeleted(id);
+
+    // 2. Immediately update local React state & local vault storage
     const updated = items.filter((i) => i.id !== id);
     setItems(updated);
     saveLocalVault(updated);
 
-    // Delete document from Firestore
+    // 3. Delete document from Firestore
     try {
       await deleteDoc(doc(db, "inventory", id));
     } catch (err: any) {
-      console.warn("Firestore delete failed, kept local removal:", err);
+      console.warn("Firestore delete failed, saved in local blacklist:", err);
     }
   };
 
