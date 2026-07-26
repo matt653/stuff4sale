@@ -913,6 +913,27 @@ export default function App() {
                     </div>
                   </div>
 
+                  {/* Target List Price ($) - Always visible in front of Purchase Cost */}
+                  <div>
+                    <label className="text-xs font-bold text-emerald-800 uppercase tracking-wide flex items-center justify-between mb-1.5">
+                      <span>Target List Price ($)</span>
+                      <span className="text-[9px] text-emerald-600 font-bold bg-emerald-50 px-1.5 py-0.5 rounded">Controlled by Slider</span>
+                    </label>
+                    <div className="relative">
+                      <DollarSign size={13} className="absolute left-3.5 top-3 text-emerald-600 font-bold" />
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="0.00"
+                        value={listedPrice}
+                        onChange={(e) => setListedPrice(e.target.value)}
+                        className="w-full text-xs border border-emerald-300 bg-emerald-50/20 rounded-xl pl-9 pr-3.5 py-2.5 focus:outline-none focus:ring-1 focus:ring-emerald-500 text-slate-900 font-black text-sm"
+                        id="form-item-listed-price"
+                      />
+                    </div>
+                  </div>
+
                   {/* Purchase Price */}
                   <div>
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wide block mb-1.5">
@@ -972,44 +993,25 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* CONDITIONAL: Listed Info */}
-                  {itemStatus === "listed" && (
-                    <>
-                      <div>
-                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wide block mb-1.5">List Price ($)</label>
-                        <div className="relative">
-                          <DollarSign size={13} className="absolute left-3.5 top-3 text-slate-400" />
-                          <input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            placeholder="0.00"
-                            value={listedPrice}
-                            onChange={(e) => setListedPrice(e.target.value)}
-                            className="w-full text-xs border border-slate-200 rounded-xl pl-9 pr-3.5 py-2.5 focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-800 font-semibold"
-                            id="form-item-listed-price"
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wide block mb-1.5">Listing Platform</label>
-                        <select
-                          value={listedPlatform}
-                          onChange={(e) => setListedPlatform(e.target.value)}
-                          className="w-full text-xs border border-slate-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-700 bg-white"
-                          id="form-item-listed-platform"
-                        >
-                          <option value="eBay">eBay</option>
-                          <option value="Facebook Marketplace">Facebook Marketplace</option>
-                          <option value="Mercari">Mercari</option>
-                          <option value="Poshmark">Poshmark</option>
-                          <option value="Craigslist">Craigslist</option>
-                          <option value="OfferUp">OfferUp</option>
-                          <option value="Other">Other Platform</option>
-                        </select>
-                      </div>
-                    </>
+                  {/* Listing Platform */}
+                  {(itemStatus === "listed" || itemStatus === "inventory") && (
+                    <div>
+                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wide block mb-1.5">Listing Platform</label>
+                      <select
+                        value={listedPlatform}
+                        onChange={(e) => setListedPlatform(e.target.value)}
+                        className="w-full text-xs border border-slate-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-700 bg-white"
+                        id="form-item-listed-platform"
+                      >
+                        <option value="Facebook Marketplace">Facebook Marketplace</option>
+                        <option value="eBay">eBay</option>
+                        <option value="Mercari">Mercari</option>
+                        <option value="Poshmark">Poshmark</option>
+                        <option value="Craigslist">Craigslist</option>
+                        <option value="OfferUp">OfferUp</option>
+                        <option value="Other">Other Platform</option>
+                      </select>
+                    </div>
                   )}
 
                   {/* CONDITIONAL: Sold Info */}
