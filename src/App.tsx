@@ -328,13 +328,28 @@ export default function App() {
   };
 
   const handleApplyAllAi = (research: AIResearchResult) => {
-    setItemName(research.suggestedTitle);
-    setNotes(research.suggestedDescription);
-    setItemCategory(research.category || itemCategory);
+    if (research.suggestedTitle) {
+      setItemName(research.suggestedTitle);
+    }
+    if (research.suggestedDescription) {
+      setNotes(research.suggestedDescription);
+    }
     
-    // Set listed price as midpoint of recommended range
-    const midpoint = Math.round((research.estimatedValueMin + research.estimatedValueMax) / 2);
-    setListedPrice(midpoint.toString());
+    const matchedCat = matchBestCategory(research.category, research.suggestedTitle);
+    setItemCategory(matchedCat);
+    
+    // Set listed price as midpoint of recommended range or max value
+    const valMax = Number(research.estimatedValueMax) || 0;
+    const valMin = Number(research.estimatedValueMin) || 0;
+    let calculatedPrice = 35;
+    if (valMax > 0 && valMin > 0) {
+      calculatedPrice = Math.round((valMin + valMax) / 2);
+    } else if (valMax > 0) {
+      calculatedPrice = valMax;
+    } else if (valMin > 0) {
+      calculatedPrice = valMin;
+    }
+    setListedPrice(calculatedPrice.toString());
     
     // Auto progress to listed status if not already progressed
     if (itemStatus === "inventory") {
@@ -342,7 +357,7 @@ export default function App() {
     }
     
     // Auto apply first recommended platform
-    if (research.targetPlatforms.length > 0) {
+    if (research.targetPlatforms && research.targetPlatforms.length > 0) {
       const platformName = research.targetPlatforms[0].split("-")[0].trim();
       setListedPlatform(platformName);
     }
