@@ -14,6 +14,7 @@ import ItemCard from "./components/ItemCard";
 import CameraCapture from "./components/CameraCapture";
 import AIResearchView from "./components/AIResearchView";
 import FBHubModal from "./components/FBHubModal";
+import FBNotificationCenter from "./components/FBNotificationCenter";
 import { fbRealtimeService } from "./services/fbRealtimeService";
 import { getNextSequentialStockNumber, matchBestCategory } from "./utils/stockUtils";
 
@@ -88,6 +89,7 @@ export default function App() {
   const [fbNotifications, setFbNotifications] = useState<FBNotification[]>([]);
   const [fbConnected, setFbConnected] = useState(false);
   const [activeToast, setActiveToast] = useState<FBNotification | null>(null);
+  const [showNotificationsModal, setShowNotificationsModal] = useState(false);
 
   // Real-Time Facebook SSE Connection Hook
   useEffect(() => {
@@ -683,6 +685,22 @@ export default function App() {
               <p className="text-slate-500 text-sm">Manage your sourcing and sales pipeline in real-time.</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowNotificationsModal(true)}
+                className="relative px-3 py-2 bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+                id="btn-show-notifications"
+                title="View Buyer Inquiries & Activity Notifications"
+              >
+                <Bell size={16} className="text-blue-600" />
+                <span className="hidden sm:inline">Notifications</span>
+                {fbNotifications.filter(n => !n.read).length > 0 && (
+                  <span className="bg-rose-500 text-white text-[10px] font-black px-1.5 py-0.2 rounded-full animate-pulse">
+                    {fbNotifications.filter(n => !n.read).length}
+                  </span>
+                )}
+              </button>
+
               <button
                 type="button"
                 onClick={() => {
@@ -1628,6 +1646,22 @@ export default function App() {
             selectedItem={fbSelectedItem}
             onStatusChange={handleQuickStatusUpdate}
             onClose={() => setShowFBHub(false)}
+          />
+        )}
+
+        {/* Facebook Live Activity & Notification Center Modal */}
+        {showNotificationsModal && (
+          <FBNotificationCenter
+            notifications={fbNotifications}
+            items={items}
+            onMarkAsRead={(id) => setFbNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n))}
+            onMarkAllAsRead={() => setFbNotifications(prev => prev.map(n => ({ ...n, read: true })))}
+            onClearAll={() => setFbNotifications([])}
+            onClose={() => setShowNotificationsModal(false)}
+            onOpenSetupModal={() => {
+              setShowNotificationsModal(false);
+              setShowFBHub(true);
+            }}
           />
         )}
 
