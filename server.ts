@@ -107,19 +107,15 @@ Do not wrap your JSON response in markdown blocks or any other formatting.
 The JSON response MUST match this exact schema:
 {
   "suggestedTitle": "An SEO-optimized, highly click-worthy listing title (max 80 chars) highlighting brand, model, features, or condition",
-  "suggestedDescription": "A professional, detailed listing description text ready for copy-paste. Highlight key selling points, structure it with clean sections, and leave placeholders [like condition details] for manual editing if needed.",
+  "suggestedDescription": "A professional, attractive listing description ready for copy-paste. Highlight key selling points and upsell value, while transparently mentioning any identified issues/flaws (e.g. rust, wear, missing parts, untested condition) so buyers know exact condition.",
   "estimatedValueMin": 15,
   "estimatedValueMax": 45,
   "demandScore": 7,
   "worthSelling": "YES",
   "triageReason": "A clear, punchy 1-sentence sourcing verdict advising the user why this item is worth reselling or why they should pass/scrap it",
-  "cleaningInstructions": [
-    "Cleaning step 1: Specific advice on how to clean, restore, or test this exact item to maximize selling price.",
-    "Cleaning step 2..."
-  ],
-  "prepChecklist": [
-    "Prep step 1: What to test or photograph before listing.",
-    "Prep step 2..."
+  "issuesFound": [
+    "Issue 1: Specific flaw, blemish, rust, wear, missing part, or condition note found on this item.",
+    "Issue 2: Additional condition note..."
   ],
   "targetPlatforms": [
     "eBay - Great for reach and global audience.",

@@ -319,27 +319,37 @@ export default function AIResearchView({
 
           {/* Price Range & Demand Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="bg-white border border-slate-100 p-3.5 rounded-xl shadow-xs flex flex-col justify-between">
-              <div className="flex items-center justify-between mb-1.5">
+            <div className="bg-white border border-slate-100 p-3.5 rounded-xl shadow-xs flex flex-col justify-between space-y-2">
+              <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-slate-500 flex items-center gap-1">
                   <DollarSign size={13} className="text-indigo-600" />
-                  Resell Price Estimate
+                  Resell Price Valuation
                 </span>
-                {onApplyField && (
-                  <button
-                    type="button"
-                    onClick={() => onApplyField("listedPrice", Math.round((activeReport.estimatedValueMin + activeReport.estimatedValueMax) / 2))}
-                    className="text-[10px] text-indigo-600 hover:underline font-semibold"
-                  >
-                    Apply Midpoint (${Math.round((activeReport.estimatedValueMin + activeReport.estimatedValueMax) / 2)})
-                  </button>
-                )}
+                <span className="text-[10px] text-slate-400 font-bold uppercase">Strategy</span>
               </div>
               <div className="flex items-baseline gap-1">
                 <span className="text-2xl font-extrabold text-slate-800">${activeReport.estimatedValueMin}</span>
                 <span className="text-slate-400 font-semibold text-sm">to</span>
                 <span className="text-2xl font-extrabold text-slate-800">${activeReport.estimatedValueMax}</span>
               </div>
+              {onApplyField && (
+                <div className="grid grid-cols-2 gap-1.5 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => onApplyField("listedPrice", activeReport.estimatedValueMin)}
+                    className="py-1.5 px-2 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 rounded-lg text-[10px] font-bold transition flex items-center justify-center gap-1 cursor-pointer"
+                  >
+                    ⚡ Quick Sale (${activeReport.estimatedValueMin})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onApplyField("listedPrice", activeReport.estimatedValueMax)}
+                    className="py-1.5 px-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 rounded-lg text-[10px] font-bold transition flex items-center justify-center gap-1 cursor-pointer"
+                  >
+                    💎 Full Retail (${activeReport.estimatedValueMax})
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="bg-white border border-slate-100 p-3.5 rounded-xl shadow-xs flex flex-col justify-between">
@@ -361,7 +371,7 @@ export default function AIResearchView({
             </div>
           </div>
 
-          {/* Suggested Title */}
+          {/* Identified SEO Title */}
           <div className="space-y-1">
             <div className="flex items-center justify-between text-xs">
               <span className="font-semibold text-slate-600 flex items-center gap-1">
@@ -382,40 +392,20 @@ export default function AIResearchView({
             </p>
           </div>
 
-          {/* Item Cleaning & Preparation Guide */}
-          {((activeReport.cleaningInstructions && activeReport.cleaningInstructions.length > 0) || (activeReport.prepChecklist && activeReport.prepChecklist.length > 0)) && (
-            <div className="bg-indigo-50/50 border border-indigo-100 rounded-xl p-3.5 space-y-3">
-              <h5 className="text-xs font-bold text-indigo-950 flex items-center gap-1.5">
-                🧼 Cleaning & Preparation Guide
+          {/* Issues & Flaws Found Section */}
+          {((activeReport.issuesFound && activeReport.issuesFound.length > 0) || (activeReport.cleaningInstructions && activeReport.cleaningInstructions.length > 0)) && (
+            <div className="bg-amber-50/50 border border-amber-200/80 rounded-xl p-3.5 space-y-2">
+              <h5 className="text-xs font-bold text-amber-950 flex items-center gap-1.5">
+                ⚠️ Issues & Flaws Found
               </h5>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                {activeReport.cleaningInstructions && activeReport.cleaningInstructions.length > 0 && (
-                  <div className="space-y-1">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Cleaning & Restoration</span>
-                    <ul className="space-y-1">
-                      {activeReport.cleaningInstructions.map((step, idx) => (
-                        <li key={idx} className="bg-white border border-indigo-100/60 rounded-lg px-2.5 py-1.5 text-[11px] text-slate-700 font-medium">
-                          🧽 {step}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {activeReport.prepChecklist && activeReport.prepChecklist.length > 0 && (
-                  <div className="space-y-1">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Listing Prep Checklist</span>
-                    <ul className="space-y-1">
-                      {activeReport.prepChecklist.map((step, idx) => (
-                        <li key={idx} className="bg-white border border-indigo-100/60 rounded-lg px-2.5 py-1.5 text-[11px] text-slate-700 font-medium">
-                          📋 {step}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
+              <ul className="space-y-1.5 text-xs">
+                {(activeReport.issuesFound || activeReport.cleaningInstructions || []).map((issue, idx) => (
+                  <li key={idx} className="bg-white border border-amber-200/60 rounded-lg px-3 py-2 text-[11px] text-amber-900 font-medium flex items-start gap-1.5">
+                    <span className="shrink-0">🔸</span>
+                    <span>{issue}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
 

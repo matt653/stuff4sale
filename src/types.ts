@@ -14,6 +14,8 @@ export interface AIResearchResult {
   triageReason?: string;
   cleaningInstructions?: string[];
   prepChecklist?: string[];
+  issuesFound?: string[];
+  pricingStrategy?: 'quick' | 'retail';
   stockNumber?: string;
   groupName?: string;
 }
