@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Sparkles, Copy, Check, FileText, DollarSign, RefreshCw, Star, Tag, ThumbsUp, Send, MessageSquare, AlertCircle } from "lucide-react";
+import { Sparkles, Copy, Check, FileText, DollarSign, RefreshCw, Star, Tag, ThumbsUp, Send, MessageSquare, AlertCircle, Zap } from "lucide-react";
 import { AIResearchResult, AIChatMessage } from "../types";
 
 interface AIResearchViewProps {
@@ -389,17 +389,24 @@ export default function AIResearchView({
                   </div>
                 </div>
 
-                {/* Interactive Pricing Strategy Slider */}
-                <div className="space-y-2 pt-1">
-                  <div className="flex items-center justify-between text-xs font-bold">
-                    <span className="text-amber-700 flex items-center gap-1">
-                      ⚡ Quick Sale (${minVal})
+                {/* Internal Sell Velocity & Pricing Estimator Tool */}
+                <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 space-y-2.5">
+                  <div className="flex items-center justify-between text-xs font-extrabold gap-2">
+                    <span className="text-slate-800 flex items-center gap-1.5 shrink-0">
+                      <Zap size={14} className="text-amber-500" />
+                      Internal Sell Velocity Tool:
                     </span>
-                    <span className="bg-indigo-600 text-white px-3 py-0.5 rounded-full font-black text-[11px] shadow-xs">
-                      Target Price: ${currentPriceFromSlider}
-                    </span>
-                    <span className="text-emerald-700 flex items-center gap-1">
-                      💎 Full Retail (${maxVal})
+                    <span className={`px-2.5 py-0.5 rounded-full text-white text-[11px] font-black shadow-xs truncate ${
+                      priceSliderPos <= 20 ? "bg-emerald-600" :
+                      priceSliderPos <= 40 ? "bg-blue-600" :
+                      priceSliderPos <= 60 ? "bg-indigo-600" :
+                      priceSliderPos <= 80 ? "bg-amber-600" : "bg-rose-600"
+                    }`}>
+                      {priceSliderPos <= 20 ? `⚡ 100% - Sell Immediately ($${currentPriceFromSlider})` :
+                       priceSliderPos <= 40 ? `🚀 75% - Fast Flip ($${currentPriceFromSlider})` :
+                       priceSliderPos <= 60 ? `⚖️ 50% - Balanced Comp ($${currentPriceFromSlider})` :
+                       priceSliderPos <= 80 ? `⏳ 25% - Slow Sale / Patient Seller ($${currentPriceFromSlider})` :
+                       `🛑 1% - Takes Forever to Sell ($${currentPriceFromSlider})`}
                     </span>
                   </div>
 
@@ -414,11 +421,19 @@ export default function AIResearchView({
                     id="pricing-strategy-slider"
                   />
 
-                  <div className="flex justify-between text-[10px] text-slate-400 font-semibold px-0.5">
-                    <span>Fast Cash Turnaround</span>
-                    <span>Balanced Comp</span>
-                    <span>Max Retail Profit</span>
+                  <div className="flex justify-between text-[10px] font-bold px-0.5">
+                    <span className="text-emerald-700">100% Sell Immediately (${minVal})</span>
+                    <span className="text-indigo-600">50% Balanced</span>
+                    <span className="text-rose-600">1% Takes Forever (${maxVal})</span>
                   </div>
+
+                  <p className="text-[11px] text-slate-600 bg-white border border-slate-200/60 rounded-lg p-2 font-medium leading-relaxed">
+                    {priceSliderPos <= 20 ? "⚡ Priced for immediate cash turnaround. Expect high buyer inquiry volume within 24-48 hours." :
+                     priceSliderPos <= 40 ? "🚀 Priced for a fast flip. Good balance of speed and profit margin." :
+                     priceSliderPos <= 60 ? "⚖️ Priced at fair market value. Normal turnaround time based on average buyer comps." :
+                     priceSliderPos <= 80 ? "⏳ Higher retail ask price. Turnaround will take longer; ideal if you are not in a rush." :
+                     "🛑 Maximum top-dollar list price. Turnaround will take significantly longer; low buyer response rate expected unless a specialized collector arrives."}
+                  </p>
                 </div>
               </div>
             );

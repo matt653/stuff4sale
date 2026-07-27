@@ -106,6 +106,11 @@ LOCATION & LOCAL DEMAND INSTRUCTION:
 - Factor in regional resale trends and local buyer preferences for ${location || "the general US market"}.
 - Evaluate whether this item is best suited for local pickup in ${location || "your local area"} (e.g. heavy/bulky items like vintage iron, tools, furniture) or shipped nationally via eBay.
 
+INDIVIDUALIZED ITEM & RARITY RESEARCH INSTRUCTION:
+- Analyze this specific item individually. NEVER treat items as generic commodity goods.
+- Carefully examine maker marks, branding, model numbers, vintage age, materials (cast iron, solid wood, patina, salvage), architectural salvage value, or unique collector oddities.
+- If the item is rare, vintage, an oddball find, or a specialized tool, highlight why it is unique in 'triageReason' and 'suggestedDescription' and set accurate minimum-to-maximum resale values based on true collector and niche market comps.
+
 CRITICAL INSTRUCTION FOR AD DESCRIPTION GENERATION:
 1. Identify 1-3 specific flaws, wear points, rust, surface patina, missing parts, or condition notes and return them in the 'issuesFound' array.
 2. In 'suggestedDescription', you MUST include a dedicated section titled "CONDITION & FLAWS / ISSUES:" that explicitly lists EVERY flaw from 'issuesFound' in complete detail so local buyers know exact condition before traveling.
