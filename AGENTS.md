@@ -17,7 +17,8 @@ Stuff4Sale is a full-stack AI-powered inventory management, item valuation, and 
 
 #### 2. AI Research & Sourcing Intake Inspector (`@google/genai` & `server.ts`)
 - **Multimodal Gemini AI Research**: Powered by Google Gemini (`@google/genai`) via Express server endpoint (`/api/research`). Accepts text queries and multi-image uploads with automatic model fallback (`gemini-2.5-flash` → `gemini-2.0-flash` → `gemini-1.5-flash`).
-- **Automated Reselling Valuation & Pricing Goal**: Estimates conservative (`estimatedValueMin`) to optimistic (`estimatedValueMax`) reselling list price ranges with a 2-mode strategy selector (`⚡ Quick Sale` vs `💎 Full Retail`).
+- **Internal Sell Velocity & Turnaround Estimator Tool**: Interactive slider tool evaluating sell speed probability from `⚡ 100% - Sell Immediately` down to `🛑 1% - Takes Forever to Sell`, acting purely as an internal pricing strategy guide without mutating Step 2.
+- **Individualized Rarity AI Research**: Gemini conducts granular item analysis evaluating maker marks, model numbers, antique patina, salvage value, and collector oddities rather than treating items as generic commodities.
 - **Issues & Flaws Found Generator**: Identifies 1–3 specific item flaws or condition issues (rust, wear, missing parts, untested condition) and incorporates them transparently into the generated ad copy alongside upsell features.
 - **AI Intake Inspector**: Modal interface (`AIIntakeInspector.tsx`) for rapid photo-first sourcing triage before adding items into active inventory.
 
