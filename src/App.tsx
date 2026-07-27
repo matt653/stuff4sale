@@ -262,6 +262,7 @@ export default function App() {
           name: itemName,
           category: itemCategory,
           notes: notes,
+          location: purchaseLocation || "",
           image: activeImage,
           images: activePhotosList.length > 0 ? activePhotosList : activeImage ? [activeImage] : [],
         }),

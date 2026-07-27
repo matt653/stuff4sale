@@ -85,7 +85,7 @@ app.post("/api/research", async (req, res) => {
   }
 
   try {
-    const { name, category, notes, image, images } = req.body;
+    const { name, category, notes, location, image, images } = req.body;
 
     if (!name && !image && (!images || images.length === 0)) {
       return res.status(400).json({ error: "Item name or image is required for research." });
@@ -94,12 +94,17 @@ app.post("/api/research", async (req, res) => {
     const contents: any[] = [];
 
     let promptText = `Perform professional reselling and side-hustle market research on this item. 
-Analyze historical sales, demand patterns, listing strategies, and typical value.
+Analyze historical sales, demand patterns, regional listing strategies, and typical resale value.
 
 Input Details provided:
 - Item Name: ${name || "Unidentified (Please analyze the attached images)"}
 - Initial Category: ${category || "Unknown"}
 - Notes/Condition: ${notes || "No extra notes"}
+- Seller Sourcing / Target Location: ${location || "General US Resale Market"}
+
+LOCATION & LOCAL DEMAND INSTRUCTION:
+- Factor in regional resale trends and local buyer preferences for ${location || "the general US market"}.
+- Evaluate whether this item is best suited for local pickup in ${location || "your local area"} (e.g. heavy/bulky items like vintage iron, tools, furniture) or shipped nationally via eBay.
 
 CRITICAL INSTRUCTION FOR AD DESCRIPTION GENERATION:
 1. Identify 1-3 specific flaws, wear points, rust, surface patina, missing parts, or condition notes and return them in the 'issuesFound' array.
