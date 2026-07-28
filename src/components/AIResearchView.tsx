@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Sparkles, Copy, Check, FileText, DollarSign, RefreshCw, Star, Tag, ThumbsUp, Send, MessageSquare, AlertCircle, Zap } from "lucide-react";
+import { Sparkles, Copy, Check, FileText, DollarSign, RefreshCw, Star, Tag, ThumbsUp, Send, MessageSquare, AlertCircle, Zap, MapPin, ListChecks, Store, ShoppingBag, Sliders, ChevronDown, ChevronUp } from "lucide-react";
 import { AIResearchResult, AIChatMessage } from "../types";
 
 interface AIResearchViewProps {
@@ -25,6 +25,7 @@ export default function AIResearchView({
 }: AIResearchViewProps) {
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [priceSliderPos, setPriceSliderPos] = useState(50);
+  const [showAllTiers, setShowAllTiers] = useState(false);
   const [finalReport, setFinalReport] = useState<AIResearchResult | null>(research);
   const [flawResponses, setFlawResponses] = useState<Record<number, string>>({});
 
@@ -348,13 +349,101 @@ export default function AIResearchView({
             </div>
           </div>
 
-          {/* Merged Resell Valuation & Demand Score Card with Interactive Strategy Slider */}
+          {/* Merged Resell Valuation & Demand Score Card with 5-Tier Reselling Strategy Engine */}
           {(() => {
             const minVal = Number(activeReport.estimatedValueMin) || 0;
             const maxVal = Number(activeReport.estimatedValueMax) || 0;
             const currentPriceFromSlider = minVal > 0 && maxVal > 0 
               ? Math.round(minVal + (priceSliderPos / 100) * (maxVal - minVal))
               : (maxVal || minVal || 35);
+
+            // Determine active tier index (0..4)
+            const activeTierIndex = 
+              priceSliderPos <= 20 ? 0 :
+              priceSliderPos <= 40 ? 1 :
+              priceSliderPos <= 60 ? 2 :
+              priceSliderPos <= 80 ? 3 : 4;
+
+            // Tier Metadata definitions for 5 tiers
+            const tierMeta = [
+              {
+                id: 0,
+                pct: "100%",
+                name: "Low End (Sell Immediately)",
+                sliderVal: 0,
+                bgBadge: "bg-emerald-600 text-white",
+                borderActive: "border-emerald-500 bg-emerald-50/40",
+                icon: "⚡",
+                defaultPrice: minVal,
+                defaultWhere: "Facebook Marketplace local pickup, OfferUp, or quick local garage sale",
+                defaultHow: "List as-is with quick basic photos. Price low for instant cash pickup within 24 hours. Minimal prep or cleaning required."
+              },
+              {
+                id: 1,
+                pct: "75%",
+                name: "1/4 Tier (Fast Flip)",
+                sliderVal: 25,
+                bgBadge: "bg-blue-600 text-white",
+                borderActive: "border-blue-500 bg-blue-50/40",
+                icon: "🚀",
+                defaultPrice: Math.round(minVal + 0.25 * (maxVal - minVal)),
+                defaultWhere: "Facebook Marketplace, OfferUp, local buy/sell groups",
+                defaultHow: "Wipe down item, take 3-4 clear photos, list at competitive price for a 2-4 day turnaround with local pickup."
+              },
+              {
+                id: 2,
+                pct: "50%",
+                name: "Mid End (Fair Market)",
+                sliderVal: 50,
+                bgBadge: "bg-indigo-600 text-white",
+                borderActive: "border-indigo-500 bg-indigo-50/40",
+                icon: "⚖️",
+                defaultPrice: Math.round(minVal + 0.50 * (maxVal - minVal)),
+                defaultWhere: "Cross-list on eBay & Facebook Marketplace",
+                defaultHow: "Clean thoroughly, detail model & condition flaws in description, offer standard shipping on eBay and local pickup on FB."
+              },
+              {
+                id: 3,
+                pct: "25%",
+                name: "3/4 Tier (Patient Sale)",
+                sliderVal: 75,
+                bgBadge: "bg-amber-600 text-white",
+                borderActive: "border-amber-500 bg-amber-50/40",
+                icon: "⏳",
+                defaultPrice: Math.round(minVal + 0.75 * (maxVal - minVal)),
+                defaultWhere: "eBay Buy-It-Now, Mercari, or specialized niche marketplace",
+                defaultHow: "Take studio quality photos with plain backdrop, use exact SEO keywords in title, list at patient ask price for a 2-4 week hold."
+              },
+              {
+                id: 4,
+                pct: "1%",
+                name: "High End (Top Dollar Collector)",
+                sliderVal: 100,
+                bgBadge: "bg-rose-600 text-white",
+                borderActive: "border-rose-500 bg-rose-50/40",
+                icon: "🛑",
+                defaultPrice: maxVal,
+                defaultWhere: "eBay Buy-It-Now with Best Offer, specialized collector forums/platforms, vintage boutiques",
+                defaultHow: "Deep clean/restore, document all serial numbers & maker marks, provide detailed testing proof/video, offer free shipping/returns, and hold out for a top-dollar collector."
+              }
+            ];
+
+            const explicitTiers = activeReport.pricingTiers || [];
+
+            // Compile resolved details for all 5 tiers
+            const resolvedTiers = tierMeta.map((t, idx) => {
+              const explicit = explicitTiers[idx];
+              return {
+                ...t,
+                tierName: explicit?.tierName || t.name,
+                percentageLabel: explicit?.percentageLabel || t.pct,
+                price: explicit?.price || t.defaultPrice || currentPriceFromSlider,
+                whereToList: explicit?.whereToList || t.defaultWhere,
+                howToList: explicit?.howToList || t.defaultHow,
+              };
+            });
+
+            const activeTier = resolvedTiers[activeTierIndex];
 
             return (
               <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-4">
@@ -363,7 +452,7 @@ export default function AIResearchView({
                   <div>
                     <span className="text-xs font-semibold text-slate-500 flex items-center gap-1 mb-0.5">
                       <DollarSign size={14} className="text-indigo-600" />
-                      Resell Price Valuation
+                      Resell Price Valuation Range
                     </span>
                     <div className="flex items-baseline gap-1.5">
                       <span className="text-2xl font-black text-slate-900">${minVal}</span>
@@ -389,51 +478,161 @@ export default function AIResearchView({
                   </div>
                 </div>
 
-                {/* Internal Sell Velocity & Pricing Estimator Tool */}
-                <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 space-y-2.5">
-                  <div className="flex items-center justify-between text-xs font-extrabold gap-2">
-                    <span className="text-slate-800 flex items-center gap-1.5 shrink-0">
-                      <Zap size={14} className="text-amber-500" />
-                      Internal Sell Velocity Tool:
+                {/* 5-Tier Reselling Strategy Engine Container */}
+                <div className="bg-slate-50 border border-slate-200/90 rounded-2xl p-4 space-y-4">
+                  {/* Slider Header */}
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-xs font-extrabold text-slate-900 flex items-center gap-1.5">
+                      <Zap size={15} className="text-amber-500 fill-amber-500" />
+                      5-Tier Pricing Strategy Estimator:
                     </span>
-                    <span className={`px-2.5 py-0.5 rounded-full text-white text-[11px] font-black shadow-xs truncate ${
-                      priceSliderPos <= 20 ? "bg-emerald-600" :
-                      priceSliderPos <= 40 ? "bg-blue-600" :
-                      priceSliderPos <= 60 ? "bg-indigo-600" :
-                      priceSliderPos <= 80 ? "bg-amber-600" : "bg-rose-600"
-                    }`}>
-                      {priceSliderPos <= 20 ? `⚡ 100% - Sell Immediately ($${currentPriceFromSlider})` :
-                       priceSliderPos <= 40 ? `🚀 75% - Fast Flip ($${currentPriceFromSlider})` :
-                       priceSliderPos <= 60 ? `⚖️ 50% - Balanced Comp ($${currentPriceFromSlider})` :
-                       priceSliderPos <= 80 ? `⏳ 25% - Slow Sale / Patient Seller ($${currentPriceFromSlider})` :
-                       `🛑 1% - Takes Forever to Sell ($${currentPriceFromSlider})`}
+                    <span className={`px-2.5 py-1 rounded-full text-xs font-black shadow-xs ${activeTier.bgBadge}`}>
+                      {activeTier.icon} {activeTier.percentageLabel} - {activeTier.tierName} (${activeTier.price})
                     </span>
                   </div>
 
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    step="5"
-                    value={priceSliderPos}
-                    onChange={(e) => setPriceSliderPos(Number(e.target.value))}
-                    className="w-full h-2.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
-                    id="pricing-strategy-slider"
-                  />
-
-                  <div className="flex justify-between text-[10px] font-bold px-0.5">
-                    <span className="text-emerald-700">100% Sell Immediately (${minVal})</span>
-                    <span className="text-indigo-600">50% Balanced</span>
-                    <span className="text-rose-600">1% Takes Forever (${maxVal})</span>
+                  {/* 5 Quick Selector Buttons */}
+                  <div className="grid grid-cols-5 gap-1.5 pt-1">
+                    {resolvedTiers.map((t, idx) => {
+                      const isActive = idx === activeTierIndex;
+                      return (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => setPriceSliderPos(t.sliderVal)}
+                          className={`py-1.5 px-1 rounded-xl text-center transition flex flex-col items-center justify-center gap-0.5 border ${
+                            isActive
+                              ? `${t.borderActive} shadow-xs font-extrabold ring-2 ring-indigo-500/20`
+                              : "bg-white border-slate-200 hover:bg-slate-100/80 text-slate-600 font-semibold"
+                          }`}
+                        >
+                          <span className="text-[11px] font-black">{t.icon} {t.percentageLabel}</span>
+                          <span className="text-[10px] text-slate-900 font-bold">${t.price}</span>
+                        </button>
+                      );
+                    })}
                   </div>
 
-                  <p className="text-[11px] text-slate-600 bg-white border border-slate-200/60 rounded-lg p-2 font-medium leading-relaxed">
-                    {priceSliderPos <= 20 ? "⚡ Priced for immediate cash turnaround. Expect high buyer inquiry volume within 24-48 hours." :
-                     priceSliderPos <= 40 ? "🚀 Priced for a fast flip. Good balance of speed and profit margin." :
-                     priceSliderPos <= 60 ? "⚖️ Priced at fair market value. Normal turnaround time based on average buyer comps." :
-                     priceSliderPos <= 80 ? "⏳ Higher retail ask price. Turnaround will take longer; ideal if you are not in a rush." :
-                     "🛑 Maximum top-dollar list price. Turnaround will take significantly longer; low buyer response rate expected unless a specialized collector arrives."}
-                  </p>
+                  {/* Interactive Slider Input */}
+                  <div className="space-y-1 pt-1">
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      step="5"
+                      value={priceSliderPos}
+                      onChange={(e) => setPriceSliderPos(Number(e.target.value))}
+                      className="w-full h-2.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                      id="pricing-strategy-slider"
+                    />
+                    <div className="flex justify-between text-[10px] font-bold text-slate-500 px-0.5">
+                      <span className="text-emerald-700">100% Sell Immediately (${minVal})</span>
+                      <span className="text-indigo-600">50% Mid Fair Comp</span>
+                      <span className="text-rose-600">1% Top Dollar (${maxVal})</span>
+                    </div>
+                  </div>
+
+                  {/* ACTIVE TIER DETAILED STRATEGY CARDS */}
+                  <div className="bg-white border border-slate-200 rounded-xl p-3.5 space-y-3 shadow-xs">
+                    {/* Active Tier Header Banner */}
+                    <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                      <div className="flex items-center gap-2">
+                        <span className="text-base">{activeTier.icon}</span>
+                        <div>
+                          <h4 className="text-xs font-extrabold text-slate-900 leading-tight">
+                            {activeTier.tierName}
+                          </h4>
+                          <span className="text-[10px] text-slate-500 font-semibold">
+                            Sell Speed Probability: {activeTier.percentageLabel}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-[10px] text-slate-400 font-bold uppercase block">Target Price</span>
+                        <span className="text-lg font-black text-indigo-600">${activeTier.price}</span>
+                      </div>
+                    </div>
+
+                    {/* WHERE TO LIST IT */}
+                    <div className="space-y-1">
+                      <span className="text-[11px] font-extrabold text-slate-800 flex items-center gap-1.5">
+                        <MapPin size={13} className="text-rose-500" />
+                        Where Should You Post / List It?
+                      </span>
+                      <div className="bg-rose-50/60 border border-rose-150 rounded-lg p-2.5 text-xs text-rose-950 font-semibold leading-relaxed">
+                        {activeTier.whereToList}
+                      </div>
+                    </div>
+
+                    {/* HOW TO LIST IT / WHAT YOU NEED TO DO */}
+                    <div className="space-y-1">
+                      <span className="text-[11px] font-extrabold text-slate-800 flex items-center gap-1.5">
+                        <ListChecks size={13} className="text-indigo-600" />
+                        How to List & What You Need To Do for ${activeTier.price}:
+                      </span>
+                      <div className="bg-indigo-50/60 border border-indigo-150 rounded-lg p-2.5 text-xs text-indigo-950 font-medium leading-relaxed">
+                        {activeTier.howToList}
+                      </div>
+                    </div>
+
+                    {/* Button to Apply This Tier's Price to Item */}
+                    {onApplyField && (
+                      <button
+                        type="button"
+                        onClick={() => onApplyField("listedPrice", activeTier.price)}
+                        className="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-lg flex items-center justify-center gap-1.5 transition active:scale-98"
+                      >
+                        <Tag size={13} className="text-amber-400" />
+                        Use ${activeTier.price} as My Target Listing Price
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Toggle All 5 Tiers Comparison Grid */}
+                  <div className="pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setShowAllTiers(!showAllTiers)}
+                      className="w-full py-1.5 bg-slate-100 hover:bg-slate-200/80 text-slate-700 font-bold text-[11px] rounded-xl flex items-center justify-center gap-1 transition"
+                    >
+                      <Sliders size={12} className="text-indigo-600" />
+                      {showAllTiers ? "Hide Full 5-Tier Comparison Matrix" : "View Full 5-Tier Comparison Matrix"}
+                      {showAllTiers ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                    </button>
+
+                    {showAllTiers && (
+                      <div className="mt-3 space-y-2 pt-2 border-t border-slate-200">
+                        <h5 className="text-[11px] font-extrabold text-slate-800 flex items-center gap-1">
+                          <Store size={12} className="text-indigo-600" />
+                          Full 5-Tier Strategy Roadmap:
+                        </h5>
+                        <div className="space-y-2 text-xs">
+                          {resolvedTiers.map((t, idx) => (
+                            <div
+                              key={idx}
+                              onClick={() => setPriceSliderPos(t.sliderVal)}
+                              className={`p-2.5 rounded-xl border cursor-pointer transition ${
+                                idx === activeTierIndex
+                                  ? "bg-white border-indigo-500 shadow-xs ring-1 ring-indigo-500"
+                                  : "bg-white border-slate-200 hover:border-slate-300"
+                              }`}
+                            >
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="font-extrabold text-slate-900 text-[11px]">
+                                  {t.icon} {t.percentageLabel} – {t.tierName}
+                                </span>
+                                <span className="font-black text-indigo-700">${t.price}</span>
+                              </div>
+                              <div className="text-[10px] text-slate-600 space-y-0.5">
+                                <p><b className="text-slate-800">Where:</b> {t.whereToList}</p>
+                                <p><b className="text-slate-800">Strategy:</b> {t.howToList}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             );

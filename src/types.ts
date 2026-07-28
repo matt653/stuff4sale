@@ -1,5 +1,13 @@
 export type ItemStatus = 'inventory' | 'listed' | 'sold' | 'archived';
 
+export interface PricingTierDetail {
+  tierName: string; // e.g. "Low End (Sell Immediately)", "1/4 Tier (Fast Flip)", "Mid End (Fair Market)", "3/4 Tier (Patient Sale)", "High End (Top Dollar Collector)"
+  percentageLabel: string; // "100%", "75%", "50%", "25%", "1%"
+  price: number;
+  whereToList: string; // Recommended marketplaces/platforms
+  howToList: string; // Instructions on prep, photos, shipping vs local pickup to earn this tier
+}
+
 export interface AIResearchResult {
   estimatedValueMin: number;
   estimatedValueMax: number;
@@ -18,6 +26,7 @@ export interface AIResearchResult {
   pricingStrategy?: 'quick' | 'retail';
   stockNumber?: string;
   groupName?: string;
+  pricingTiers?: PricingTierDetail[];
 }
 
 export interface AIChatMessage {

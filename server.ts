@@ -143,7 +143,44 @@ The JSON response MUST match this exact schema:
   ],
   "category": "Must strictly be one of: Clothing & Apparel, Shoes & Sneakers, Electronics & Gadgets, Video Games & Consoles, Toys & Collectibles, Books Comics & Media, Home Kitchen & Decor, Tools & Hardware, Sports & Outdoors, Jewelry & Accessories, Vintage & Antiques, Trading Cards, Other / Miscellaneous",
   "groupName": "A descriptive group or bundle collection name (e.g. Power Tool Set, Vintage Audio Gear, Retro Gaming Bundle, Kitchen Appliance Lot)",
-  "keywords": ["vintage", "retro", "collectible"]
+  "keywords": ["vintage", "retro", "collectible"],
+  "pricingTiers": [
+    {
+      "tierName": "Low End (Sell Immediately)",
+      "percentageLabel": "100%",
+      "price": 15,
+      "whereToList": "Facebook Marketplace local pickup, OfferUp, or quick local garage sale",
+      "howToList": "List as-is with quick basic photos. Price low for instant cash pickup within 24 hours. No shipping or detailed cleaning needed."
+    },
+    {
+      "tierName": "1/4 Tier (Fast Flip)",
+      "percentageLabel": "75%",
+      "price": 22,
+      "whereToList": "Facebook Marketplace, OfferUp, local resale groups",
+      "howToList": "Wipe down item, take 3-4 clear photos, list at competitive price for a 2-4 day turnaround with local pickup."
+    },
+    {
+      "tierName": "Mid End (Fair Market)",
+      "percentageLabel": "50%",
+      "price": 30,
+      "whereToList": "Cross-list on eBay & Facebook Marketplace",
+      "howToList": "Clean thoroughly, detail model & condition flaws in description, offer standard shipping on eBay and local pickup on FB."
+    },
+    {
+      "tierName": "3/4 Tier (Patient Sale)",
+      "percentageLabel": "25%",
+      "price": 38,
+      "whereToList": "eBay Buy-It-Now, Mercari, or specialized niche marketplace",
+      "howToList": "Take studio quality photos with plain backdrop, use exact keywords in title, list at patient ask price for a 2-4 week hold."
+    },
+    {
+      "tierName": "High End (Top Dollar Collector)",
+      "percentageLabel": "1%",
+      "price": 45,
+      "whereToList": "eBay Buy-It-Now with Best Offer, specialized collector forums/platforms, or vintage boutiques",
+      "howToList": "Deep clean/restore, document all serial numbers & maker marks, provide detailed testing proof/video, offer free shipping/returns, and hold out for collector buyer."
+    }
+  ]
 }`;
 
     contents.push(promptText);
