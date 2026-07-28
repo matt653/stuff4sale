@@ -364,11 +364,6 @@ export default function App() {
     const matchedCat = matchBestCategory(research.category, research.suggestedTitle);
     setItemCategory(matchedCat);
     
-    // Auto progress to listed status if not already progressed
-    if (itemStatus === "inventory") {
-      setItemStatus("listed");
-    }
-    
     // Auto apply first recommended platform
     if (research.targetPlatforms && research.targetPlatforms.length > 0) {
       const platformName = cleanPlatformName(research.targetPlatforms[0]);
