@@ -132,15 +132,21 @@ export default function App() {
     };
   }, [items]);
 
-  const fetchSupabaseItems = async () => {
+  const fetchSupabaseItems = async (retryCount = 0) => {
     try {
       const { data, error } = await supabase
         .from("Stuff4Sale")
         .select("*")
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .limit(100);
 
       if (error) {
         console.error("Supabase Stuff4Sale fetch error:", error);
+        if (retryCount < 2) {
+          console.log(`Retrying fetchSupabaseItems (Attempt ${retryCount + 1})...`);
+          setTimeout(() => fetchSupabaseItems(retryCount + 1), 1000);
+          return;
+        }
         setErrorMessage("Failed to load inventory from Supabase: " + error.message);
         setLoading(false);
         return;
