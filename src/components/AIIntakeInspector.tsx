@@ -11,7 +11,7 @@ interface AIIntakeInspectorProps {
 export default function AIIntakeInspector({ onAddToInventory, onClose }: AIIntakeInspectorProps) {
   const [photos, setPhotos] = useState<string[]>([]);
   const [itemName, setItemName] = useState("");
-  const [purchaseCost, setPurchaseCost] = useState("");
+  const [purchaseCost, setPurchaseCost] = useState("0");
   const [purchaseLocation, setPurchaseLocation] = useState("Garage Sale");
   
   const [loading, setLoading] = useState(false);
@@ -94,7 +94,7 @@ export default function AIIntakeInspector({ onAddToInventory, onClose }: AIIntak
         // Reset state for next item evaluation
         setPhotos([]);
         setItemName("");
-        setPurchaseCost("");
+        setPurchaseCost("0");
         setResearchResult(null);
         setAddedSuccess(false);
       }, 1500);

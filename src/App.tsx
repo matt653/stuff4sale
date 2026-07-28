@@ -62,7 +62,7 @@ export default function App() {
   const [itemCategory, setItemCategory] = useState("Clothing & Apparel");
   const [stockNumber, setStockNumber] = useState("");
   const [bundleTitle, setBundleTitle] = useState("");
-  const [purchasePrice, setPurchasePrice] = useState("");
+  const [purchasePrice, setPurchasePrice] = useState("0");
   const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().split("T")[0]);
   const [purchaseLocation, setPurchaseLocation] = useState("");
   const [notes, setNotes] = useState("");
@@ -220,7 +220,7 @@ export default function App() {
     setItemCategory("Clothing & Apparel");
     setStockNumber(getNextSequentialStockNumber(items));
     setBundleTitle("");
-    setPurchasePrice("");
+    setPurchasePrice("0");
     setPurchaseDate(new Date().toISOString().split("T")[0]);
     setPurchaseLocation("");
     setNotes("");
