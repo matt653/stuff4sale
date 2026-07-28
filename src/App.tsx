@@ -17,6 +17,7 @@ import FBHubModal from "./components/FBHubModal";
 import FBNotificationCenter from "./components/FBNotificationCenter";
 import { fbRealtimeService } from "./services/fbRealtimeService";
 import { getNextSequentialStockNumber, matchBestCategory } from "./utils/stockUtils";
+import { compressImageArray, compressImage } from "./utils/imageUtils";
 
 
 const COMMON_CATEGORIES = [
@@ -351,29 +352,36 @@ export default function App() {
     if (!itemName) return;
 
     try {
+      setErrorMessage(null);
       const pPrice = Number(purchasePrice) || 0;
       const sPrice = salePrice ? Number(salePrice) : null;
       const lPrice = listedPrice ? Number(listedPrice) : null;
 
       // Bulletproof photo retention: ensure primary cover photo and photo list are never wiped during editing
-      const finalPhotos = photos.length > 0 ? photos : photoUrl ? [photoUrl] : (editingItem?.photos || (editingItem?.photoUrl ? [editingItem.photoUrl] : []));
-      const finalCoverPhoto = finalPhotos[0] || photoUrl || editingItem?.photoUrl || null;
+      const rawPhotos = photos.length > 0 ? photos : photoUrl ? [photoUrl] : (editingItem?.photos || (editingItem?.photoUrl ? [editingItem.photoUrl] : []));
+      
+      // Auto-compress photos to prevent Firestore 1MB document limit rejections on mobile phones
+      const finalPhotos = await compressImageArray(rawPhotos, 1000, 0.75);
+      const finalCoverPhoto = finalPhotos[0] || (photoUrl ? await compressImage(photoUrl, 1000, 0.75) : null) || editingItem?.photoUrl || null;
 
-      const itemData: Omit<InventoryItem, "id"> = {
+      const assignedStockNumber = stockNumber.trim() || getNextSequentialStockNumber(items);
+      const targetDocId = editingItem ? editingItem.id : assignedStockNumber;
+
+      const rawItemData = {
         name: itemName,
         category: itemCategory,
-        stockNumber: stockNumber.trim() || getNextSequentialStockNumber(items),
-        bundleId: editingItem?.bundleId || (bundleTitle.trim() ? "BUNDLE-" + Date.now().toString().slice(-4) : null as any),
-        bundleTitle: bundleTitle.trim() || null as any,
-        bundledItemIds: editingItem?.bundledItemIds || null as any,
+        stockNumber: assignedStockNumber,
+        bundleId: editingItem?.bundleId || (bundleTitle.trim() ? "BUNDLE-" + Date.now().toString().slice(-4) : null),
+        bundleTitle: bundleTitle.trim() || null,
+        bundledItemIds: editingItem?.bundledItemIds || null,
         status: itemStatus,
         purchasePrice: pPrice,
-        purchaseDate,
-        purchaseLocation,
-        notes,
+        purchaseDate: purchaseDate || new Date().toISOString().split("T")[0],
+        purchaseLocation: purchaseLocation || "",
+        notes: notes || "",
         photoUrl: finalCoverPhoto,
         photos: finalPhotos,
-        videoUrl,
+        videoUrl: videoUrl || null,
         listedPrice: lPrice,
         listedPlatform: listedPlatform || "Facebook Marketplace",
         salePrice: sPrice,
@@ -384,13 +392,8 @@ export default function App() {
         updatedAt: new Date().toISOString(),
       };
 
-      const assignedStockNumber = stockNumber.trim() || getNextSequentialStockNumber(items);
-      const targetDocId = editingItem ? editingItem.id : assignedStockNumber;
-
-      const finalItemData: Omit<InventoryItem, "id"> = {
-        ...itemData,
-        stockNumber: assignedStockNumber,
-      };
+      // Strip any undefined values to ensure Firestore setDoc never rejects the payload
+      const finalItemData = JSON.parse(JSON.stringify(rawItemData));
 
       const docRef = doc(db, "inventory", targetDocId);
       await setDoc(docRef, finalItemData, { merge: true });
@@ -399,6 +402,7 @@ export default function App() {
       resetForm();
     } catch (err: any) {
       console.error("Error saving inventory item:", err);
+      setErrorMessage("Error saving item to database: " + (err.message || "Please check connection."));
     }
   };
 
