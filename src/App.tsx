@@ -391,7 +391,7 @@ export default function App() {
     const itemNamesList = selectedItems.map((i) => `• ${i.name} (Stock #${i.stockNumber || i.id})`).join("\n");
     
     // Calculate total price
-    const totalIndividualValue = selectedItems.reduce((sum, i) => sum + (i.listedPrice || i.purchasePrice * 2 || 35), 0);
+    const totalIndividualValue = selectedItems.reduce((sum, i) => sum + (i.listedPrice || i.purchasePrice || 0), 0);
     const bundleDiscountPrice = Math.round(totalIndividualValue * 0.85); // 15% bundle discount
 
     // Combine photos
@@ -1113,7 +1113,7 @@ Available for local cash pickup or fast shipping. Message now to claim the bundl
                                   </div>
                                 </div>
                                 <span className="text-xs font-extrabold text-purple-700 shrink-0 ml-2">
-                                  ${invItem.listedPrice || invItem.purchasePrice * 2 || 35}
+                                  ${invItem.listedPrice || invItem.purchasePrice || 0}
                                 </span>
                               </label>
                             );
@@ -1129,7 +1129,7 @@ Available for local cash pickup or fast shipping. Message now to claim the bundl
                           Bundle Est. Total Value:
                         </span>
                         <span className="text-sm font-extrabold text-purple-900">
-                          ${items.filter((i) => bundledItemIds.includes(i.id)).reduce((sum, i) => sum + (i.listedPrice || i.purchasePrice * 2 || 35), 0)}
+                          ${items.filter((i) => bundledItemIds.includes(i.id)).reduce((sum, i) => sum + (i.listedPrice || i.purchasePrice || 0), 0)}
                         </span>
                       </div>
                     )}

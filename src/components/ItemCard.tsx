@@ -348,7 +348,7 @@ export default function ItemCard({ item, allItems = [], onEdit, onDelete, onStat
                 onClick={() => onStatusChange(item.id, { 
                   status: "listed", 
                   listedPlatform: item.listedPlatform || "Facebook Marketplace",
-                  listedPrice: item.listedPrice || item.purchasePrice * 2 || 35,
+                  listedPrice: item.listedPrice || item.purchasePrice || 0,
                   updatedAt: new Date().toISOString()
                 })}
                 className="text-[11px] font-extrabold bg-blue-600 hover:bg-blue-700 text-white px-2.5 py-1.5 rounded-lg transition shadow-xs flex items-center gap-1 cursor-pointer"

@@ -27,7 +27,7 @@ export default function StatsGrid({ items }: StatsGridProps) {
       const midpoint = Math.round((item.research.estimatedValueMin + item.research.estimatedValueMax) / 2);
       return sum + midpoint;
     }
-    return sum + (item.purchasePrice * 2 || 35);
+    return sum + (item.purchasePrice || 0);
   }, 0);
 
   // Return on Investment: (Realized Net Profit / Cost of Sold Items) * 100

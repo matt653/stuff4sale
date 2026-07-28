@@ -66,7 +66,7 @@ export default function FBHubModal({
 
     if (!activeItem) return "";
 
-    const price = activeItem.listedPrice || activeItem.purchasePrice || 35;
+    const price = activeItem.listedPrice || activeItem.purchasePrice || 0;
     let text = `${activeItem.name}\n`;
     text += `Price: $${price}\n`;
     if (activeItem.stockNumber) {
@@ -141,7 +141,7 @@ export default function FBHubModal({
     setTimeout(() => setCopiedReply(null), 2500);
   };
 
-  const currentPrice = activeItem?.listedPrice || activeItem?.purchasePrice || 35;
+  const currentPrice = activeItem?.listedPrice || activeItem?.purchasePrice || 0;
 
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-fade-in" id="fb-hub-modal">
