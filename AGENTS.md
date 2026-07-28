@@ -12,7 +12,7 @@ Stuff4Sale is a full-stack AI-powered inventory management, item valuation, and 
 - **Rich Media & Multimodal Intake**: Supports primary cover photos, multi-image galleries (base64 photo array), and video URLs/uploads via a custom built-in `CameraCapture` component.
 - **Explicit Gemini Research Trigger**: Gemini AI identification is strictly triggered only when the user manually clicks the "✨ Gemini Find It!" button. No background or automatic research calls run on photo upload.
 - **Stock Numbering & Internal SKUs**: Automatic sequential stock number generator (`stockUtils.ts`) starting at `1` and incrementing upward (`1`, `2`, `3`...). Each item's Firestore Document ID is set directly to its Stock Number (`1`, `2`, `3`...) for exact 1-to-1 database mapping.
-- **Reselling Bundles**: Link multiple individual inventory items into cohesive bundle groups (`bundleId`, `bundleTitle`, `bundledItemIds`).
+- **Mobile Photo Compression & Payload Sanitization**: High-resolution smartphone camera photos are automatically scaled and compressed (canvas JPEG ~80KB) to prevent exceeding Firestore's 1MB document limit, ensuring item saves never get rejected or disappear.
 - **Comprehensive Financial Tracking**: Track purchase price, sourcing date, purchase location, listed price, listed platform (eBay, Facebook Marketplace, Mercari, Poshmark, OfferUp, etc.), sale price, sale date, and net profit / ROI.
 
 #### 2. AI Research & Sourcing Intake Inspector (`@google/genai` & `server.ts`)
