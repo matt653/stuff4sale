@@ -4,7 +4,7 @@ import {
   X, Check, AlertCircle, RefreshCw, Layers, MapPin, Calendar, 
   Tag, Info, DollarSign, Archive, ShoppingBag, Eye, Star, LayoutGrid, LayoutList,
   Edit, Trash2, TrendingUp, Smartphone, Cloud, Share2, Clock, CheckCircle,
-  Bell, MessageSquare, Zap, MessageCircle, Key
+  Bell, MessageSquare, Zap, MessageCircle, Key, ListChecks
 } from "lucide-react";
 import { supabase } from "./supabase";
 import { InventoryItem, ItemStatus, AIResearchResult, FBNotification } from "./types";
@@ -62,6 +62,8 @@ export default function App() {
   const [itemCategory, setItemCategory] = useState("Clothing & Apparel");
   const [stockNumber, setStockNumber] = useState("");
   const [bundleTitle, setBundleTitle] = useState("");
+  const [bundledItemIds, setBundledItemIds] = useState<string[]>([]);
+  const [showBundleDropdown, setShowBundleDropdown] = useState(false);
   const [purchasePrice, setPurchasePrice] = useState("0");
   const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().split("T")[0]);
   const [purchaseLocation, setPurchaseLocation] = useState("");
@@ -219,6 +221,8 @@ export default function App() {
     setItemCategory("Clothing & Apparel");
     setStockNumber(getNextSequentialStockNumber(items));
     setBundleTitle("");
+    setBundledItemIds([]);
+    setShowBundleDropdown(false);
     setPurchasePrice("0");
     setPurchaseDate(new Date().toISOString().split("T")[0]);
     setPurchaseLocation("");
@@ -243,6 +247,7 @@ export default function App() {
     setItemCategory(item.category);
     setStockNumber(item.stockNumber || "");
     setBundleTitle(item.bundleTitle || "");
+    setBundledItemIds(item.bundledItemIds || []);
     setPurchasePrice(item.purchasePrice.toString());
     setPurchaseDate(item.purchaseDate);
     setPurchaseLocation(item.purchaseLocation || "");
@@ -371,6 +376,65 @@ export default function App() {
     }
   };
 
+  // Generate unified multi-item bundle ad and valuation from checked live inventory items
+  const handleGenerateBundleAd = () => {
+    const selectedItems = items.filter((i) => bundledItemIds.includes(i.id));
+    if (selectedItems.length === 0) {
+      alert("Please check at least 1 item from your live inventory to create a bundle.");
+      return;
+    }
+
+    const bundleName = bundleTitle.trim() || `Bundle of ${selectedItems.length} Items`;
+
+    // Combine titles
+    const itemNamesList = selectedItems.map((i) => `• ${i.name} (Stock #${i.stockNumber || i.id})`).join("\n");
+    
+    // Calculate total price
+    const totalIndividualValue = selectedItems.reduce((sum, i) => sum + (i.listedPrice || i.purchasePrice * 2 || 35), 0);
+    const bundleDiscountPrice = Math.round(totalIndividualValue * 0.85); // 15% bundle discount
+
+    // Combine photos
+    const allPhotos: string[] = [];
+    selectedItems.forEach((item) => {
+      if (item.photos && item.photos.length > 0) {
+        item.photos.forEach((p) => { if (!allPhotos.includes(p)) allPhotos.push(p); });
+      } else if (item.photoUrl && !allPhotos.includes(item.photoUrl)) {
+        allPhotos.push(item.photoUrl);
+      }
+    });
+
+    // Build full Bundle Ad Copy
+    const bundleAdText = `🔥 SPECIAL MULTI-ITEM BUNDLE DEAL: ${bundleName.toUpperCase()} 🔥
+
+Save money by taking the entire set!
+
+📦 ITEMS INCLUDED IN THIS BUNDLE (${selectedItems.length} Total):
+${itemNamesList}
+
+💰 PRICING BREAKDOWN:
+• Total value if bought separately: $${totalIndividualValue}
+• 🔥 BUNDLE DISCOUNT PRICE: $${bundleDiscountPrice} (Save $${totalIndividualValue - bundleDiscountPrice}!)
+
+📝 ITEM DETAILS & CONDITION:
+${selectedItems.map((item) => `---
+▶ ${item.name}
+Category: ${item.category}
+Condition Notes: ${item.notes || "Good pre-owned condition."}`).join("\n\n")}
+
+🚗 LOCAL PICKUP & SHIPPING:
+Available for local cash pickup or fast shipping. Message now to claim the bundle before it's sold separately!`;
+
+    // Auto-fill form fields
+    setItemName(`[BUNDLE DEAL] ${bundleName}`);
+    setBundleTitle(bundleName);
+    setListedPrice(bundleDiscountPrice.toString());
+    setNotes(bundleAdText);
+    if (allPhotos.length > 0) {
+      setPhotos(allPhotos);
+      setPhotoUrl(allPhotos[0]);
+    }
+  };
+
   // Supabase single-table operations ("Stuff4Sale")
   const handleSubmitItem = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -390,14 +454,15 @@ export default function App() {
       const finalCoverPhoto = finalPhotos[0] || (photoUrl ? await compressImage(photoUrl, 1000, 0.75) : null) || editingItem?.photoUrl || null;
 
       const assignedStockNumber = stockNumber.trim() || getNextSequentialStockNumber(items);
+      const targetBundleId = editingItem?.bundleId || (bundleTitle.trim() || bundledItemIds.length > 0 ? "BUNDLE-" + Date.now().toString().slice(-4) : null);
 
       const itemPayload = {
         name: itemName,
         category: itemCategory,
         stock_number: assignedStockNumber,
-        bundle_id: editingItem?.bundleId || (bundleTitle.trim() ? "BUNDLE-" + Date.now().toString().slice(-4) : null),
+        bundle_id: targetBundleId,
         bundle_title: bundleTitle.trim() || null,
-        bundled_item_ids: editingItem?.bundledItemIds || null,
+        bundled_item_ids: bundledItemIds.length > 0 ? bundledItemIds : null,
         status: itemStatus,
         purchase_price: pPrice,
         purchase_date: purchaseDate || new Date().toISOString().split("T")[0],
@@ -428,6 +493,23 @@ export default function App() {
           .insert([itemPayload]);
 
         if (error) throw error;
+      }
+
+      if (bundledItemIds.length > 0 && targetBundleId) {
+        // Also update all linked items in Supabase to share this bundle_id and bundle_title
+        for (const bId of bundledItemIds) {
+          supabase
+            .from("Stuff4Sale")
+            .update({
+              bundle_id: targetBundleId,
+              bundle_title: bundleTitle.trim() || null,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", Number(bId))
+            .then(({ error }) => {
+              if (error) console.error("Error linking bundled item in Supabase:", error);
+            });
+        }
       }
 
       // Reset filters so saved item is never hidden by active filter tabs
@@ -939,23 +1021,129 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Bundle Name / Group Field */}
-                  <div>
-                    <label className="text-xs font-bold text-purple-900 uppercase tracking-wide flex items-center justify-between mb-1.5">
-                      <span>Bundle Group / Name</span>
-                      <span className="text-[9px] text-slate-400 font-normal">Optional</span>
-                    </label>
+                  {/* Bundle Group & Live Inventory Multi-Select Checklist Dropdown */}
+                  <div className="md:col-span-2 bg-purple-50/60 border border-purple-200/80 rounded-2xl p-3.5 space-y-3" id="bundle-section-container">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-extrabold text-purple-900 uppercase tracking-wide flex items-center gap-1.5">
+                        <Layers size={14} className="text-purple-600" />
+                        <span>Bundle Group & Live Inventory Selector</span>
+                      </label>
+                      <span className="text-[10px] bg-purple-200/60 text-purple-950 font-bold px-2 py-0.5 rounded-full">
+                        {bundledItemIds.length} {bundledItemIds.length === 1 ? "Item" : "Items"} Selected
+                      </span>
+                    </div>
+
+                    {/* Bundle Title Input */}
                     <div className="relative">
-                      <Layers size={13} className="absolute left-3.5 top-3 text-purple-600" />
                       <input
                         type="text"
-                        placeholder="e.g. Gaming Setup Bundle, Stereo Set..."
+                        placeholder="e.g. Vintage Tools & Wheel Collection Bundle..."
                         value={bundleTitle}
                         onChange={(e) => setBundleTitle(e.target.value)}
-                        className="w-full text-xs border border-purple-200 bg-purple-50/30 rounded-xl pl-9 pr-3.5 py-2.5 focus:outline-none focus:ring-1 focus:ring-purple-500 text-slate-900 font-bold"
+                        className="w-full text-xs border border-purple-200 bg-white rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-1 focus:ring-purple-500 text-slate-900 font-bold placeholder-purple-300 shadow-2xs"
                         id="form-item-bundle-title"
                       />
                     </div>
+
+                    {/* Toggle Live Inventory Checklist Dropdown Button */}
+                    <button
+                      type="button"
+                      onClick={() => setShowBundleDropdown(!showBundleDropdown)}
+                      className="w-full bg-white hover:bg-purple-100/50 border border-purple-200/80 rounded-xl px-3 py-2 text-xs font-bold text-purple-900 flex items-center justify-between transition shadow-2xs cursor-pointer"
+                      id="btn-toggle-bundle-inventory-dropdown"
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <ListChecks size={14} className="text-purple-600" />
+                        {showBundleDropdown ? "Hide Live Inventory Checklist" : "Select Items from Live Inventory to Bundle..."}
+                      </span>
+                      <span className="text-[10px] text-purple-700 font-bold">
+                        {showBundleDropdown ? "▲ Close" : "▼ Choose Items"}
+                      </span>
+                    </button>
+
+                    {/* Live Inventory Multi-Select Checklist Panel */}
+                    {showBundleDropdown && (
+                      <div className="bg-white border border-purple-200 rounded-xl p-3 max-h-60 overflow-y-auto space-y-2 shadow-inner" id="bundle-inventory-checklist-panel">
+                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">
+                          Check all items in your live inventory to add to this bundle:
+                        </p>
+                        {items.length === 0 ? (
+                          <p className="text-xs text-slate-400 italic py-2">No inventory items available to bundle.</p>
+                        ) : (
+                          items.map((invItem) => {
+                            const isChecked = bundledItemIds.includes(invItem.id);
+                            return (
+                              <label
+                                key={invItem.id}
+                                className={`flex items-center justify-between p-2 rounded-lg border transition cursor-pointer ${
+                                  isChecked
+                                    ? "bg-purple-50 border-purple-300 text-purple-950 font-bold shadow-2xs"
+                                    : "bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700"
+                                }`}
+                              >
+                                <div className="flex items-center gap-2.5 truncate">
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    onChange={() => {
+                                      if (isChecked) {
+                                        setBundledItemIds(bundledItemIds.filter((id) => id !== invItem.id));
+                                      } else {
+                                        setBundledItemIds([...bundledItemIds, invItem.id]);
+                                        if (!bundleTitle.trim()) {
+                                          setBundleTitle(`Bundle of ${bundledItemIds.length + 1} Items`);
+                                        }
+                                      }
+                                    }}
+                                    className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500 cursor-pointer"
+                                  />
+                                  <div className="w-8 h-8 rounded bg-slate-200 overflow-hidden shrink-0 border border-slate-200 flex items-center justify-center">
+                                    {invItem.photoUrl ? (
+                                      <img src={invItem.photoUrl} alt="" className="object-cover w-full h-full" />
+                                    ) : (
+                                      <ShoppingBag size={14} className="text-slate-400" />
+                                    )}
+                                  </div>
+                                  <div className="truncate">
+                                    <span className="text-xs block font-bold truncate max-w-[200px]">{invItem.name}</span>
+                                    <span className="text-[9px] text-slate-400 font-semibold">
+                                      Stock #{invItem.stockNumber || invItem.id} • {invItem.category}
+                                    </span>
+                                  </div>
+                                </div>
+                                <span className="text-xs font-extrabold text-purple-700 shrink-0 ml-2">
+                                  ${invItem.listedPrice || invItem.purchasePrice * 2 || 35}
+                                </span>
+                              </label>
+                            );
+                          })
+                        )}
+                      </div>
+                    )}
+
+                    {/* Generate Bundle Ad Action Bar (Visible when 1+ items selected) */}
+                    {bundledItemIds.length > 0 && (
+                      <div className="pt-2 border-t border-purple-200/60 flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <span className="text-[10px] text-purple-800 font-extrabold uppercase tracking-wider block">
+                            Bundle Est. Total Value:
+                          </span>
+                          <span className="text-sm font-extrabold text-purple-900">
+                            ${items.filter((i) => bundledItemIds.includes(i.id)).reduce((sum, i) => sum + (i.listedPrice || i.purchasePrice * 2 || 35), 0)}
+                          </span>
+                        </div>
+                        
+                        <button
+                          type="button"
+                          onClick={handleGenerateBundleAd}
+                          className="px-3.5 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-extrabold text-xs rounded-xl shadow-md transition flex items-center gap-1.5 cursor-pointer"
+                          id="btn-generate-bundle-ad"
+                        >
+                          <Sparkles size={13} className="text-amber-300 fill-amber-300" />
+                          Generate Bundle Ad & Multi-Item Deal
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   {/* Purchase Location */}
