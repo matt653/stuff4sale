@@ -6,8 +6,7 @@ import {
   Edit, Trash2, TrendingUp, Smartphone, Cloud, Share2, Clock, CheckCircle,
   Bell, MessageSquare, Zap, MessageCircle, Key
 } from "lucide-react";
-import { collection, onSnapshot, addDoc, setDoc, updateDoc, doc, deleteDoc, query, orderBy } from "firebase/firestore";
-import { db } from "./firebase";
+import { supabase } from "./supabase";
 import { InventoryItem, ItemStatus, AIResearchResult, FBNotification } from "./types";
 import StatsGrid from "./components/StatsGrid";
 import ItemCard from "./components/ItemCard";
@@ -105,16 +104,21 @@ export default function App() {
       setActiveToast(notif);
       setTimeout(() => setActiveToast(null), 6500);
 
-      // Auto-update matched item inquiry count in Firestore if item is linked
+      // Auto-update matched item inquiry count in Supabase if item is linked
       if (notif.itemId) {
         const targetItem = items.find((i) => i.id === notif.itemId);
         if (targetItem) {
-          const itemRef = doc(db, "inventory", notif.itemId);
-          updateDoc(itemRef, {
-            buyerInquiriesCount: (targetItem.buyerInquiriesCount || 0) + 1,
-            lastInquiryAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          }).catch((err) => console.error("Error auto-updating buyer inquiry count:", err));
+          supabase
+            .from("Stuff4Sale")
+            .update({
+              buyer_inquiries_count: (targetItem.buyerInquiriesCount || 0) + 1,
+              last_inquiry_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", Number(notif.itemId))
+            .then(({ error }) => {
+              if (error) console.error("Error auto-updating buyer inquiry count in Supabase:", error);
+            });
         }
       }
     });
@@ -126,59 +130,81 @@ export default function App() {
     };
   }, [items]);
 
-  // Real-time Firestore subscription (100% Direct Firestore Single Source of Truth)
+  // Real-time Supabase subscription for single table "Stuff4Sale"
   useEffect(() => {
     setLoading(true);
-    const q = collection(db, "inventory");
-    
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
 
-        const fetchedItems: InventoryItem[] = [];
-        snapshot.forEach((docSnap) => {
-          const data = docSnap.data();
-          fetchedItems.push({ 
-            id: docSnap.id, 
-            name: data.name || "Untitled Item",
-            category: data.category || "General Item",
-            status: data.status || "inventory",
-            purchasePrice: Number(data.purchasePrice) || 0,
-            purchaseDate: data.purchaseDate || new Date().toISOString().split("T")[0],
-            purchaseLocation: data.purchaseLocation || "",
-            salePrice: data.salePrice !== undefined && data.salePrice !== null ? Number(data.salePrice) : null,
-            saleDate: data.saleDate || null,
-            salePlatform: data.salePlatform || null,
-            listedPrice: data.listedPrice !== undefined && data.listedPrice !== null ? Number(data.listedPrice) : null,
-            listedPlatform: data.listedPlatform || "Facebook Marketplace",
-            notes: data.notes || "",
-            photoUrl: data.photoUrl || (data.photos && data.photos[0]) || null,
-            photos: data.photos || (data.photoUrl ? [data.photoUrl] : []),
-            stockNumber: data.stockNumber || undefined,
-            bundleId: data.bundleId || undefined,
-            bundleTitle: data.bundleTitle || undefined,
-            bundledItemIds: data.bundledItemIds || undefined,
-            videoUrl: data.videoUrl || null,
-            research: data.research || null,
-            createdAt: data.createdAt || new Date().toISOString(),
-            updatedAt: data.updatedAt || new Date().toISOString(),
-            buyerInquiriesCount: data.buyerInquiriesCount || 0,
-            lastInquiryAt: data.lastInquiryAt || undefined,
-          } as InventoryItem);
-        });
+    const fetchSupabaseItems = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("Stuff4Sale")
+          .select("*")
+          .order("created_at", { ascending: false });
 
-        setItems(fetchedItems);
+        if (error) {
+          console.error("Supabase Stuff4Sale fetch error:", error);
+          setErrorMessage("Failed to load inventory from Supabase: " + error.message);
+          setLoading(false);
+          return;
+        }
+
+        if (data) {
+          const fetchedItems: InventoryItem[] = data.map((row: any) => ({
+            id: String(row.id),
+            name: row.name || "Untitled Item",
+            category: row.category || "General Item",
+            status: row.status || "inventory",
+            purchasePrice: Number(row.purchase_price) || 0,
+            purchaseDate: row.purchase_date || new Date().toISOString().split("T")[0],
+            purchaseLocation: row.purchase_location || "",
+            salePrice: row.sale_price !== null && row.sale_price !== undefined ? Number(row.sale_price) : null,
+            saleDate: row.sale_date || null,
+            salePlatform: row.sale_platform || null,
+            listedPrice: row.listed_price !== null && row.listed_price !== undefined ? Number(row.listed_price) : null,
+            listedPlatform: row.listed_platform || "Facebook Marketplace",
+            notes: row.notes || "",
+            photoUrl: row.photo_url || (row.photos && row.photos[0]) || null,
+            photos: row.photos || (row.photo_url ? [row.photo_url] : []),
+            stockNumber: row.stock_number || undefined,
+            bundleId: row.bundle_id || undefined,
+            bundleTitle: row.bundle_title || undefined,
+            bundledItemIds: row.bundled_item_ids || undefined,
+            videoUrl: row.video_url || null,
+            research: row.research || null,
+            createdAt: row.created_at || new Date().toISOString(),
+            updatedAt: row.updated_at || new Date().toISOString(),
+            buyerInquiriesCount: row.buyer_inquiries_count || 0,
+            lastInquiryAt: row.last_inquiry_at || undefined,
+          }));
+
+          setItems(fetchedItems);
+        }
         setLoading(false);
         setErrorMessage(null);
-      },
-      (err) => {
-        console.error("Firestore subscription error:", err);
-        setErrorMessage("Failed to connect to Firestore live database.");
+      } catch (err: any) {
+        console.error("Error fetching Supabase items:", err);
+        setErrorMessage("Database connection error: " + err.message);
         setLoading(false);
       }
-    );
+    };
 
-    return () => unsubscribe();
+    fetchSupabaseItems();
+
+    // Subscribe to real-time changes on table Stuff4Sale
+    const channel = supabase
+      .channel("public:Stuff4Sale")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "Stuff4Sale" },
+        () => {
+          fetchSupabaseItems();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   // Auto-fill sequential stock number when items change if form is empty
@@ -346,7 +372,7 @@ export default function App() {
     }
   };
 
-  // Firestore operations
+  // Supabase single-table operations ("Stuff4Sale")
   const handleSubmitItem = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!itemName) return;
@@ -360,43 +386,50 @@ export default function App() {
       // Bulletproof photo retention: ensure primary cover photo and photo list are never wiped during editing
       const rawPhotos = photos.length > 0 ? photos : photoUrl ? [photoUrl] : (editingItem?.photos || (editingItem?.photoUrl ? [editingItem.photoUrl] : []));
       
-      // Auto-compress photos to prevent Firestore 1MB document limit rejections on mobile phones
+      // Auto-compress photos to optimize payload performance
       const finalPhotos = await compressImageArray(rawPhotos, 1000, 0.75);
       const finalCoverPhoto = finalPhotos[0] || (photoUrl ? await compressImage(photoUrl, 1000, 0.75) : null) || editingItem?.photoUrl || null;
 
       const assignedStockNumber = stockNumber.trim() || getNextSequentialStockNumber(items);
-      const targetDocId = editingItem ? editingItem.id : doc(collection(db, "inventory")).id;
 
-      const rawItemData = {
+      const itemPayload = {
         name: itemName,
         category: itemCategory,
-        stockNumber: assignedStockNumber,
-        bundleId: editingItem?.bundleId || (bundleTitle.trim() ? "BUNDLE-" + Date.now().toString().slice(-4) : null),
-        bundleTitle: bundleTitle.trim() || null,
-        bundledItemIds: editingItem?.bundledItemIds || null,
+        stock_number: assignedStockNumber,
+        bundle_id: editingItem?.bundleId || (bundleTitle.trim() ? "BUNDLE-" + Date.now().toString().slice(-4) : null),
+        bundle_title: bundleTitle.trim() || null,
+        bundled_item_ids: editingItem?.bundledItemIds || null,
         status: itemStatus,
-        purchasePrice: pPrice,
-        purchaseDate: purchaseDate || new Date().toISOString().split("T")[0],
-        purchaseLocation: purchaseLocation || "",
+        purchase_price: pPrice,
+        purchase_date: purchaseDate || new Date().toISOString().split("T")[0],
+        purchase_location: purchaseLocation || "",
         notes: notes || "",
-        photoUrl: finalCoverPhoto,
+        photo_url: finalCoverPhoto,
         photos: finalPhotos,
-        videoUrl: videoUrl || null,
-        listedPrice: lPrice,
-        listedPlatform: listedPlatform || "Facebook Marketplace",
-        salePrice: sPrice,
-        salePlatform: salePlatform || null,
-        saleDate: saleDate || null,
+        video_url: videoUrl || null,
+        listed_price: lPrice,
+        listed_platform: listedPlatform || "Facebook Marketplace",
+        sale_price: sPrice,
+        sale_platform: salePlatform || null,
+        sale_date: saleDate || null,
         research: aiResult || editingItem?.research || null,
-        createdAt: editingItem ? editingItem.createdAt : new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       };
 
-      // Strip any undefined values to ensure Firestore setDoc never rejects the payload
-      const finalItemData = JSON.parse(JSON.stringify(rawItemData));
+      if (editingItem) {
+        const { error } = await supabase
+          .from("Stuff4Sale")
+          .update(itemPayload)
+          .eq("id", Number(editingItem.id));
 
-      const docRef = doc(db, "inventory", targetDocId);
-      await setDoc(docRef, finalItemData, { merge: true });
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("Stuff4Sale")
+          .insert([itemPayload]);
+
+        if (error) throw error;
+      }
 
       // Reset filters so saved item is never hidden by active filter tabs
       setSelectedCategory("All");
@@ -406,7 +439,7 @@ export default function App() {
       setShowAddForm(false);
       resetForm();
     } catch (err: any) {
-      console.error("Error saving inventory item:", err);
+      console.error("Error saving inventory item to Supabase Stuff4Sale:", err);
       setErrorMessage("Error saving item to database: " + (err.message || "Please check connection."));
       alert("⚠️ Error saving item to database: " + (err.message || "Please check connection."));
     }
@@ -415,18 +448,37 @@ export default function App() {
   const handleDeleteItem = async (id: string) => {
     if (!id) return;
     try {
-      await deleteDoc(doc(db, "inventory", id));
+      const { error } = await supabase
+        .from("Stuff4Sale")
+        .delete()
+        .eq("id", Number(id));
+
+      if (error) throw error;
     } catch (err: any) {
-      console.error("Error deleting item from Firestore:", err);
+      console.error("Error deleting item from Supabase Stuff4Sale:", err);
+      setErrorMessage("Error deleting item: " + err.message);
     }
   };
 
   const handleQuickStatusUpdate = async (id: string, updates: Partial<InventoryItem>) => {
     try {
-      const docRef = doc(db, "inventory", id);
-      await updateDoc(docRef, updates);
+      const payload: Record<string, any> = {};
+      if (updates.status !== undefined) payload.status = updates.status;
+      if (updates.listedPrice !== undefined) payload.listed_price = updates.listedPrice;
+      if (updates.listedPlatform !== undefined) payload.listed_platform = updates.listedPlatform;
+      if (updates.salePrice !== undefined) payload.sale_price = updates.salePrice;
+      if (updates.salePlatform !== undefined) payload.sale_platform = updates.salePlatform;
+      if (updates.saleDate !== undefined) payload.sale_date = updates.saleDate;
+      payload.updated_at = new Date().toISOString();
+
+      const { error } = await supabase
+        .from("Stuff4Sale")
+        .update(payload)
+        .eq("id", Number(id));
+
+      if (error) throw error;
     } catch (err: any) {
-      console.error("Error updating status in Firestore:", err);
+      console.error("Error updating status in Supabase Stuff4Sale:", err);
     }
   };
 

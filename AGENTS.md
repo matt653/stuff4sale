@@ -43,6 +43,8 @@ Stuff4Sale is a full-stack AI-powered inventory management, item valuation, and 
 ### Agent Rule for Modifications
 > **Mandatory Rule for All Agents**: Each agent MUST update **The Project** section above after each modification made to the app to keep functionality, endpoints, components, and schema changes completely up to date.
 
+> **Mandatory Single Supabase Table Rule**: Agents MUST NOT create new database tables or fetch, edit, or store data outside the single Supabase table `Stuff4Sale` (URL: `https://yvekxqeltflessrblfbq.supabase.co/rest/v1/Stuff4Sale`). All app state, inventory items, and asset details must live strictly inside this single table.
+
 ---
 
 ## Your Job
