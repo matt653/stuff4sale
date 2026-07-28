@@ -130,64 +130,63 @@ export default function App() {
     };
   }, [items]);
 
+  const fetchSupabaseItems = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("Stuff4Sale")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error("Supabase Stuff4Sale fetch error:", error);
+        setErrorMessage("Failed to load inventory from Supabase: " + error.message);
+        setLoading(false);
+        return;
+      }
+
+      if (data) {
+        const fetchedItems: InventoryItem[] = data.map((row: any) => ({
+          id: String(row.id),
+          name: row.name || "Untitled Item",
+          category: row.category || "General Item",
+          status: row.status || "inventory",
+          purchasePrice: Number(row.purchase_price) || 0,
+          purchaseDate: row.purchase_date || new Date().toISOString().split("T")[0],
+          purchaseLocation: row.purchase_location || "",
+          salePrice: row.sale_price !== null && row.sale_price !== undefined ? Number(row.sale_price) : null,
+          saleDate: row.sale_date || null,
+          salePlatform: row.sale_platform || null,
+          listedPrice: row.listed_price !== null && row.listed_price !== undefined ? Number(row.listed_price) : null,
+          listedPlatform: row.listed_platform || "Facebook Marketplace",
+          notes: row.notes || "",
+          photoUrl: row.photo_url || (row.photos && row.photos[0]) || null,
+          photos: row.photos || (row.photo_url ? [row.photo_url] : []),
+          stockNumber: row.stock_number || undefined,
+          bundleId: row.bundle_id || undefined,
+          bundleTitle: row.bundle_title || undefined,
+          bundledItemIds: row.bundled_item_ids || undefined,
+          videoUrl: row.video_url || null,
+          research: row.research || null,
+          createdAt: row.created_at || new Date().toISOString(),
+          updatedAt: row.updated_at || new Date().toISOString(),
+          buyerInquiriesCount: row.buyer_inquiries_count || 0,
+          lastInquiryAt: row.last_inquiry_at || undefined,
+        }));
+
+        setItems(fetchedItems);
+      }
+      setLoading(false);
+      setErrorMessage(null);
+    } catch (err: any) {
+      console.error("Error fetching Supabase items:", err);
+      setErrorMessage("Database connection error: " + err.message);
+      setLoading(false);
+    }
+  };
+
   // Real-time Supabase subscription for single table "Stuff4Sale"
   useEffect(() => {
     setLoading(true);
-
-    const fetchSupabaseItems = async () => {
-      try {
-        const { data, error } = await supabase
-          .from("Stuff4Sale")
-          .select("*")
-          .order("created_at", { ascending: false });
-
-        if (error) {
-          console.error("Supabase Stuff4Sale fetch error:", error);
-          setErrorMessage("Failed to load inventory from Supabase: " + error.message);
-          setLoading(false);
-          return;
-        }
-
-        if (data) {
-          const fetchedItems: InventoryItem[] = data.map((row: any) => ({
-            id: String(row.id),
-            name: row.name || "Untitled Item",
-            category: row.category || "General Item",
-            status: row.status || "inventory",
-            purchasePrice: Number(row.purchase_price) || 0,
-            purchaseDate: row.purchase_date || new Date().toISOString().split("T")[0],
-            purchaseLocation: row.purchase_location || "",
-            salePrice: row.sale_price !== null && row.sale_price !== undefined ? Number(row.sale_price) : null,
-            saleDate: row.sale_date || null,
-            salePlatform: row.sale_platform || null,
-            listedPrice: row.listed_price !== null && row.listed_price !== undefined ? Number(row.listed_price) : null,
-            listedPlatform: row.listed_platform || "Facebook Marketplace",
-            notes: row.notes || "",
-            photoUrl: row.photo_url || (row.photos && row.photos[0]) || null,
-            photos: row.photos || (row.photo_url ? [row.photo_url] : []),
-            stockNumber: row.stock_number || undefined,
-            bundleId: row.bundle_id || undefined,
-            bundleTitle: row.bundle_title || undefined,
-            bundledItemIds: row.bundled_item_ids || undefined,
-            videoUrl: row.video_url || null,
-            research: row.research || null,
-            createdAt: row.created_at || new Date().toISOString(),
-            updatedAt: row.updated_at || new Date().toISOString(),
-            buyerInquiriesCount: row.buyer_inquiries_count || 0,
-            lastInquiryAt: row.last_inquiry_at || undefined,
-          }));
-
-          setItems(fetchedItems);
-        }
-        setLoading(false);
-        setErrorMessage(null);
-      } catch (err: any) {
-        console.error("Error fetching Supabase items:", err);
-        setErrorMessage("Database connection error: " + err.message);
-        setLoading(false);
-      }
-    };
-
     fetchSupabaseItems();
 
     // Subscribe to real-time changes on table Stuff4Sale
