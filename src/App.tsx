@@ -443,9 +443,9 @@ Available for local cash pickup or fast shipping. Message now to claim the bundl
 
     try {
       setErrorMessage(null);
-      const pPrice = Number(purchasePrice) || 0;
-      const sPrice = salePrice ? Number(salePrice) : null;
-      const lPrice = listedPrice ? Number(listedPrice) : null;
+      const pPrice = Math.round((Number(purchasePrice) || 0) * 100) / 100;
+      const sPrice = salePrice ? Math.round(Number(salePrice) * 100) / 100 : null;
+      const lPrice = listedPrice ? Math.round(Number(listedPrice) * 100) / 100 : null;
 
       // Bulletproof photo retention: ensure primary cover photo and photo list are never wiped during editing
       const rawPhotos = photos.length > 0 ? photos : photoUrl ? [photoUrl] : (editingItem?.photos || (editingItem?.photoUrl ? [editingItem.photoUrl] : []));

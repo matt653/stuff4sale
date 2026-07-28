@@ -19,9 +19,9 @@ export default function ItemCard({ item, allItems = [], onEdit, onDelete, onStat
   const [showStatusModal, setShowStatusModal] = useState<"list" | "sell" | null>(null);
   
   // Status form states
-  const [listedPrice, setListedPrice] = useState(item.listedPrice || item.purchasePrice * 2 || 0);
+  const [listedPrice, setListedPrice] = useState<number | string>(item.listedPrice || item.purchasePrice || 0);
   const [listedPlatform, setListedPlatform] = useState(item.listedPlatform || "Facebook Marketplace");
-  const [salePrice, setSalePrice] = useState(item.salePrice || item.listedPrice || item.purchasePrice * 2 || 0);
+  const [salePrice, setSalePrice] = useState<number | string>(item.salePrice || item.listedPrice || item.purchasePrice || 0);
   const [salePlatform, setSalePlatform] = useState(item.salePlatform || item.listedPlatform || "Facebook Marketplace");
   const [saleDate, setSaleDate] = useState(item.saleDate || new Date().toISOString().split("T")[0]);
 
