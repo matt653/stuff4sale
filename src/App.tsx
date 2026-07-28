@@ -1116,27 +1116,15 @@ Available for local cash pickup or fast shipping. Message now to claim the bundl
                       </div>
                     )}
 
-                    {/* Generate Bundle Ad Action Bar (Visible when 1+ items selected) */}
+                    {/* Bundle Total Value Bar (Visible when 1+ items selected) */}
                     {bundledItemIds.length > 0 && (
-                      <div className="pt-2 border-t border-purple-200/60 flex flex-wrap items-center justify-between gap-2">
-                        <div>
-                          <span className="text-[10px] text-purple-800 font-extrabold uppercase tracking-wider block">
-                            Bundle Est. Total Value:
-                          </span>
-                          <span className="text-sm font-extrabold text-purple-900">
-                            ${items.filter((i) => bundledItemIds.includes(i.id)).reduce((sum, i) => sum + (i.listedPrice || i.purchasePrice * 2 || 35), 0)}
-                          </span>
-                        </div>
-                        
-                        <button
-                          type="button"
-                          onClick={handleGenerateBundleAd}
-                          className="px-3.5 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-extrabold text-xs rounded-xl shadow-md transition flex items-center gap-1.5 cursor-pointer"
-                          id="btn-generate-bundle-ad"
-                        >
-                          <Sparkles size={13} className="text-amber-300 fill-amber-300" />
-                          Generate Bundle Ad & Multi-Item Deal
-                        </button>
+                      <div className="pt-2 border-t border-purple-200/60 flex items-center justify-between">
+                        <span className="text-[10px] text-purple-800 font-extrabold uppercase tracking-wider block">
+                          Bundle Est. Total Value:
+                        </span>
+                        <span className="text-sm font-extrabold text-purple-900">
+                          ${items.filter((i) => bundledItemIds.includes(i.id)).reduce((sum, i) => sum + (i.listedPrice || i.purchasePrice * 2 || 35), 0)}
+                        </span>
                       </div>
                     )}
                   </div>

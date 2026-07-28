@@ -124,9 +124,14 @@ CRITICAL REQUIREMENT 3: DYNAMIC 5-TIER PRICING & STRATEGY MATRIX
   2. 'whereToList': Specific platforms recommended for THIS item at this price tier (e.g. FB Marketplace, eBay, OfferUp, Mercari, Poshmark, Reverb, TCGPlayer, specialized collector forums). Explain WHY based on local vs shipped realities!
   3. 'howToList': Actionable step-by-step instructions on prep, photography, SEO title tags, local pickup vs shipping method, and negotiation strategy required to fetch that exact dollar amount.
 
-CRITICAL REQUIREMENT 4: HONEST FLAWS & CONDITION DISCLOSURE
+CRITICAL REQUIREMENT 4: COMPREHENSIVE 5-PART LISTING DESCRIPTION FORMAT
 1. Identify 1-3 specific flaws, wear points, rust, patina, missing parts, or untested notes and return them in 'issuesFound'.
-2. In 'suggestedDescription', include a dedicated section titled "CONDITION & FLAWS / ISSUES:" detailing all flaws explicitly.
+2. In 'suggestedDescription', you MUST write a rich, complete sales description structured into these 5 explicit section headings:
+   • 📌 WHAT IT IS & ORIGINAL USE: (Explain what the item is, brand/maker history, and original purpose)
+   • 💡 MODERN USES & STYLING / DECOR: (Explain how it can be repurposed today for decor, restoration, props, or collection)
+   • ⚠️ CONDITION & DAMAGE / FLAWS SEEN: (Detail all observed wear, rust, patina, missing parts, or untested condition)
+   • 📏 SPECS, MATERIALS & MEASUREMENTS: (Provide estimated dimensions, weight, material composition, stamps, or model info)
+   • 🔥 FINAL UPSELL & BUYER PITCH: (A compelling, urgency-driven closing pitch encouraging buyers to message now)
 
 Analyze this item carefully. You MUST return your response in standard, valid JSON format.
 Do not wrap your JSON response in markdown code blocks.
@@ -134,7 +139,7 @@ Do not wrap your JSON response in markdown code blocks.
 The JSON response MUST match this schema:
 {
   "suggestedTitle": "<SEO title max 80 chars highlighting brand, model, condition>",
-  "suggestedDescription": "<Full listing description with explicit CONDITION & FLAWS / ISSUES section>",
+  "suggestedDescription": "<Full listing description structured into the 5 explicit headings above>",
   "estimatedValueMin": <number>,
   "estimatedValueMax": <number>,
   "demandScore": <INTEGER 1-10 BASED ON TRUE ITEM LIQUIDITY - DO NOT DEFAULT TO 7!>,
