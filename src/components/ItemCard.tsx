@@ -295,8 +295,8 @@ export default function ItemCard({ item, allItems = [], onEdit, onDelete, onStat
           {/* Core financial numbers */}
           <div className="grid grid-cols-2 gap-2 mb-3 bg-slate-50/80 rounded-xl p-2.5 border border-slate-100 text-xs">
             <div>
-              <span className="text-[10px] text-slate-400 block font-semibold uppercase tracking-wider">Bought for</span>
-              <span className="font-bold text-slate-700">{formatCurrency(item.purchasePrice)}</span>
+              <span className="text-[10px] text-slate-400 block font-semibold uppercase tracking-wider">Selling for</span>
+              <span className="font-bold text-slate-700">{formatCurrency(item.listedPrice || item.purchasePrice)}</span>
             </div>
             {item.status === "sold" ? (
               <div>
