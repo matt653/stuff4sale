@@ -365,7 +365,7 @@ export default function App() {
       const finalCoverPhoto = finalPhotos[0] || (photoUrl ? await compressImage(photoUrl, 1000, 0.75) : null) || editingItem?.photoUrl || null;
 
       const assignedStockNumber = stockNumber.trim() || getNextSequentialStockNumber(items);
-      const targetDocId = editingItem ? editingItem.id : assignedStockNumber;
+      const targetDocId = editingItem ? editingItem.id : doc(collection(db, "inventory")).id;
 
       const rawItemData = {
         name: itemName,
