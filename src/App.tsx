@@ -15,7 +15,7 @@ import AIResearchView from "./components/AIResearchView";
 import FBHubModal from "./components/FBHubModal";
 import FBNotificationCenter from "./components/FBNotificationCenter";
 import { fbRealtimeService } from "./services/fbRealtimeService";
-import { getNextSequentialStockNumber, matchBestCategory } from "./utils/stockUtils";
+import { getNextSequentialStockNumber, matchBestCategory, cleanPlatformName } from "./utils/stockUtils";
 import { compressImageArray, compressImage } from "./utils/imageUtils";
 
 
@@ -155,9 +155,9 @@ export default function App() {
           purchaseLocation: row.purchase_location || "",
           salePrice: row.sale_price !== null && row.sale_price !== undefined ? Number(row.sale_price) : null,
           saleDate: row.sale_date || null,
-          salePlatform: row.sale_platform || null,
+          salePlatform: row.sale_platform ? cleanPlatformName(row.sale_platform) : null,
           listedPrice: row.listed_price !== null && row.listed_price !== undefined ? Number(row.listed_price) : null,
-          listedPlatform: row.listed_platform || "Facebook Marketplace",
+          listedPlatform: cleanPlatformName(row.listed_platform),
           notes: row.notes || "",
           photoUrl: row.photo_url || (row.photos && row.photos[0]) || null,
           photos: row.photos || (row.photo_url ? [row.photo_url] : []),
@@ -252,9 +252,9 @@ export default function App() {
     setVideoUrl(item.videoUrl || null);
     setItemStatus(item.status);
     setListedPrice(item.listedPrice ? item.listedPrice.toString() : "");
-    setListedPlatform(item.listedPlatform || "Facebook Marketplace");
+    setListedPlatform(cleanPlatformName(item.listedPlatform));
     setSalePrice(item.salePrice ? item.salePrice.toString() : "");
-    setSalePlatform(item.salePlatform || "Facebook Marketplace");
+    setSalePlatform(item.salePlatform ? cleanPlatformName(item.salePlatform) : "Facebook Marketplace");
     setSaleDate(item.saleDate || "");
     setAiResult(item.research);
     setShowAddForm(true);
@@ -366,7 +366,7 @@ export default function App() {
     
     // Auto apply first recommended platform
     if (research.targetPlatforms && research.targetPlatforms.length > 0) {
-      const platformName = research.targetPlatforms[0].split("-")[0].trim();
+      const platformName = cleanPlatformName(research.targetPlatforms[0]);
       setListedPlatform(platformName);
     }
   };

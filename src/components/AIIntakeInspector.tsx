@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Sparkles, Check, X, AlertTriangle, ShieldCheck, Trash2, DollarSign, Camera, Tag, ArrowRight, RefreshCw, Zap, MapPin, ListChecks } from "lucide-react";
 import CameraCapture from "./CameraCapture";
 import { AIResearchResult, InventoryItem } from "../types";
+import { cleanPlatformName } from "../utils/stockUtils";
 
 interface AIIntakeInspectorProps {
   onAddToInventory: (itemData: Omit<InventoryItem, "id">) => Promise<void>;
@@ -67,6 +68,10 @@ export default function AIIntakeInspector({ onAddToInventory, onClose }: AIIntak
       const pCost = Number(purchaseCost) || 0;
       const midpointValue = Math.round((researchResult.estimatedValueMin + researchResult.estimatedValueMax) / 2);
 
+      const recPlatform = researchResult.targetPlatforms && researchResult.targetPlatforms.length > 0 
+        ? cleanPlatformName(researchResult.targetPlatforms[0]) 
+        : "Facebook Marketplace";
+
       const newItem: Omit<InventoryItem, "id"> = {
         name: researchResult.suggestedTitle || itemName || "Sourced Item",
         category: researchResult.category || "General",
@@ -78,7 +83,7 @@ export default function AIIntakeInspector({ onAddToInventory, onClose }: AIIntak
         photoUrl: photos[0] || null,
         photos: photos,
         listedPrice: midpointValue,
-        listedPlatform: "Facebook Marketplace",
+        listedPlatform: recPlatform,
         salePrice: null,
         salePlatform: null,
         saleDate: null,

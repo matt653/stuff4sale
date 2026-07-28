@@ -71,3 +71,22 @@ export function matchBestCategory(rawCategory: string = "", titleHint: string = 
 
   return "Other / Miscellaneous";
 }
+
+/**
+ * Normalizes platform names (e.g. "eBay: Excellent for..." -> "eBay")
+ * to match exact HTML select dropdown values without defaulting to Facebook.
+ */
+export function cleanPlatformName(rawPlatform?: string | null): string {
+  if (!rawPlatform) return "Facebook Marketplace";
+  const str = rawPlatform.split(":")[0].trim();
+  const lower = str.toLowerCase();
+  if (lower.includes("ebay")) return "eBay";
+  if (lower.includes("facebook") || lower.includes("fb")) return "Facebook Marketplace";
+  if (lower.includes("mercari")) return "Mercari";
+  if (lower.includes("poshmark")) return "Poshmark";
+  if (lower.includes("offerup")) return "OfferUp";
+  if (lower.includes("craigslist")) return "Craigslist";
+  if (lower.includes("whatnot")) return "Whatnot";
+  if (lower.includes("etsy")) return "Etsy";
+  return str || "Facebook Marketplace";
+}

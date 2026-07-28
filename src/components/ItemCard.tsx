@@ -49,7 +49,7 @@ export default function ItemCard({ item, allItems = [], onEdit, onDelete, onStat
       case "inventory":
         return (
           <span className="text-[10px] font-extrabold bg-slate-900/80 backdrop-blur-md text-amber-300 border border-amber-400/40 px-2.5 py-1 rounded-full uppercase tracking-wider flex items-center gap-1 shadow-md" id={`badge-inventory-${item.id}`}>
-            <Clock size={10} /> NOT POSTED YET
+            <Clock size={10} /> NOT POSTED YET {item.listedPlatform ? `(${item.listedPlatform.toUpperCase()})` : ""}
           </span>
         );
       case "listed":
@@ -347,14 +347,14 @@ export default function ItemCard({ item, allItems = [], onEdit, onDelete, onStat
                 type="button"
                 onClick={() => onStatusChange(item.id, { 
                   status: "listed", 
-                  listedPlatform: "Facebook Marketplace",
+                  listedPlatform: item.listedPlatform || "Facebook Marketplace",
                   listedPrice: item.listedPrice || item.purchasePrice * 2 || 35,
                   updatedAt: new Date().toISOString()
                 })}
                 className="text-[11px] font-extrabold bg-blue-600 hover:bg-blue-700 text-white px-2.5 py-1.5 rounded-lg transition shadow-xs flex items-center gap-1 cursor-pointer"
                 id={`btn-quick-list-fb-${item.id}`}
               >
-                <Share2 size={11} /> Mark Posted on FB
+                <Share2 size={11} /> Mark Posted on {item.listedPlatform || "FB"}
               </button>
             )}
 
