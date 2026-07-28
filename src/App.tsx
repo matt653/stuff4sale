@@ -398,11 +398,17 @@ export default function App() {
       const docRef = doc(db, "inventory", targetDocId);
       await setDoc(docRef, finalItemData, { merge: true });
 
+      // Reset filters so saved item is never hidden by active filter tabs
+      setSelectedCategory("All");
+      setSelectedStatus("all");
+      setSearchQuery("");
+
       setShowAddForm(false);
       resetForm();
     } catch (err: any) {
       console.error("Error saving inventory item:", err);
       setErrorMessage("Error saving item to database: " + (err.message || "Please check connection."));
+      alert("⚠️ Error saving item to database: " + (err.message || "Please check connection."));
     }
   };
 
