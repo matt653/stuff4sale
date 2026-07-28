@@ -719,18 +719,6 @@ export default function AIResearchView({
               </div>
             </div>
           )}
-
-          {onApplyAll && (
-            <button
-              type="button"
-              onClick={handleGenerateDetails}
-              className="w-full py-3.5 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-extrabold text-xs rounded-2xl shadow-md transition active:scale-95 cursor-pointer flex items-center justify-center gap-2"
-              id="btn-generate-details"
-            >
-              <Sparkles size={16} />
-              ✨ Generate Details (Compile Description & Flaws to Form)
-            </button>
-          )}
         </div>
       )}
     </div>
