@@ -364,6 +364,35 @@ export default function AIResearchView({
               priceSliderPos <= 60 ? 2 :
               priceSliderPos <= 80 ? 3 : 4;
 
+            // Category & attribute-aware dynamic fallback generator
+            const catLower = (activeReport.category || "").toLowerCase();
+            const titleLower = (activeReport.suggestedTitle || "").toLowerCase();
+
+            const isHeavyOrBulky = catLower.includes("tool") || catLower.includes("decor") || catLower.includes("furniture") || titleLower.includes("table") || titleLower.includes("saw") || titleLower.includes("mower") || titleLower.includes("bench") || titleLower.includes("stand");
+            const isCollectibleOrSmall = catLower.includes("toy") || catLower.includes("card") || catLower.includes("apparel") || catLower.includes("shoe") || catLower.includes("vintage") || catLower.includes("game") || catLower.includes("media") || catLower.includes("jewelry");
+
+            const getDynamicFallbackWhere = (tierIdx: number) => {
+              if (isHeavyOrBulky) {
+                return tierIdx === 0
+                  ? "Facebook Marketplace local pickup or OfferUp (Priced low for fast local cash pick up within 24h; shipping NOT recommended due to heavy weight)"
+                  : tierIdx === 4
+                  ? "Facebook Marketplace & Craigslist local pickup (Highlight condition & brand; local pickup only due to heavy freight costs)"
+                  : "Facebook Marketplace local pickup & OfferUp (Local buyer pool)";
+              }
+              if (isCollectibleOrSmall) {
+                return tierIdx === 0
+                  ? "eBay 3-day Auction starting low, Mercari, or Poshmark (Local demand may be dead, national shipping gets instant collector eyes)"
+                  : tierIdx === 4
+                  ? "eBay Buy-It-Now with Best Offer, specialized collector forums, Mercari, or Poshmark (National shipping reaches true collectors)"
+                  : "Cross-list on eBay, Mercari / Poshmark, and Facebook Marketplace";
+              }
+              return tierIdx === 0
+                ? "Facebook Marketplace local pickup, OfferUp, or quick eBay auction"
+                : tierIdx === 4
+                ? "eBay Buy-It-Now with Best Offer, Mercari, or specialized resale sites"
+                : "Cross-list on eBay & Facebook Marketplace";
+            };
+
             // Tier Metadata definitions for 5 tiers
             const tierMeta = [
               {
@@ -375,8 +404,8 @@ export default function AIResearchView({
                 borderActive: "border-emerald-500 bg-emerald-50/40",
                 icon: "⚡",
                 defaultPrice: minVal,
-                defaultWhere: "Facebook Marketplace local pickup, OfferUp, or quick local garage sale",
-                defaultHow: "List as-is with quick basic photos. Price low for instant cash pickup within 24 hours. Minimal prep or cleaning required."
+                defaultWhere: getDynamicFallbackWhere(0),
+                defaultHow: "List as-is with quick basic photos. Price low for instant turnaround. Minimal prep or cleaning required."
               },
               {
                 id: 1,
@@ -387,8 +416,8 @@ export default function AIResearchView({
                 borderActive: "border-blue-500 bg-blue-50/40",
                 icon: "🚀",
                 defaultPrice: Math.round(minVal + 0.25 * (maxVal - minVal)),
-                defaultWhere: "Facebook Marketplace, OfferUp, local buy/sell groups",
-                defaultHow: "Wipe down item, take 3-4 clear photos, list at competitive price for a 2-4 day turnaround with local pickup."
+                defaultWhere: getDynamicFallbackWhere(1),
+                defaultHow: "Wipe down item, take 3-4 clear photos, list at competitive price for a 2-4 day turnaround."
               },
               {
                 id: 2,
@@ -399,8 +428,8 @@ export default function AIResearchView({
                 borderActive: "border-indigo-500 bg-indigo-50/40",
                 icon: "⚖️",
                 defaultPrice: Math.round(minVal + 0.50 * (maxVal - minVal)),
-                defaultWhere: "Cross-list on eBay & Facebook Marketplace",
-                defaultHow: "Clean thoroughly, detail model & condition flaws in description, offer standard shipping on eBay and local pickup on FB."
+                defaultWhere: getDynamicFallbackWhere(2),
+                defaultHow: "Clean thoroughly, detail model & condition flaws in description, offer standard shipping or local pickup."
               },
               {
                 id: 3,
@@ -411,7 +440,7 @@ export default function AIResearchView({
                 borderActive: "border-amber-500 bg-amber-50/40",
                 icon: "⏳",
                 defaultPrice: Math.round(minVal + 0.75 * (maxVal - minVal)),
-                defaultWhere: "eBay Buy-It-Now, Mercari, or specialized niche marketplace",
+                defaultWhere: getDynamicFallbackWhere(3),
                 defaultHow: "Take studio quality photos with plain backdrop, use exact SEO keywords in title, list at patient ask price for a 2-4 week hold."
               },
               {
@@ -423,7 +452,7 @@ export default function AIResearchView({
                 borderActive: "border-rose-500 bg-rose-50/40",
                 icon: "🛑",
                 defaultPrice: maxVal,
-                defaultWhere: "eBay Buy-It-Now with Best Offer, specialized collector forums/platforms, vintage boutiques",
+                defaultWhere: getDynamicFallbackWhere(4),
                 defaultHow: "Deep clean/restore, document all serial numbers & maker marks, provide detailed testing proof/video, offer free shipping/returns, and hold out for a top-dollar collector."
               }
             ];

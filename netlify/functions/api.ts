@@ -86,90 +86,102 @@ app.post("/api/research", async (req, res) => {
 
     const contents: any[] = [];
 
-    let promptText = `Perform professional reselling and side-hustle market research on this item. 
-Analyze historical sales, demand patterns, regional listing strategies, and typical value.
+    let promptText = `Perform REAL, UNBIASED, PROFESSIONAL reselling and side-hustle market research on this specific item using multimodal vision analysis and true historical sales comps.
 
 Input Details provided:
-- Item Name: ${name || "Unidentified (Please analyze the attached images)"}
+- Item Name: ${name || "Unidentified (Must inspect the attached images carefully for brand, model, serial #, maker marks)"}
 - Initial Category: ${category || "Unknown"}
 - Notes/Condition: ${notes || "No extra notes"}
 - Seller Sourcing / Target Location: ${location || "General US Resale Market"}
 
-LOCATION & LOCAL DEMAND INSTRUCTION:
-- Factor in regional resale trends and local buyer preferences for ${location || "the general US market"}.
-- Evaluate whether this item is best suited for local pickup in ${location || "your local area"} (e.g. heavy/bulky items like vintage iron, tools, furniture) or shipped nationally via eBay.
+CRITICAL REQUIREMENT 1: REAL DYNAMIC DEMAND SCORE (DO NOT DEFAULT TO 7/10!)
+- You MUST evaluate the true liquid demand for THIS specific item on a 1 to 10 scale.
+- DO NOT default to 7/10 or output generic mid-range scores for everything!
+- Use the ENTIRE 1-10 spectrum accurately:
+  * 9-10/10: Extremely high liquidity, massive buyer pool (e.g. current iPhones, popular Nintendo/PlayStation games, gold/silver bullion, brand name power tools).
+  * 6-8/10: Healthy mainstream demand, steady turnover (e.g. popular sneakers, solid kitchen appliances, quality laptops).
+  * 3-5/10: Niche or slower moving items (e.g. vintage china sets, obsolete electronics, heavy furniture, specialized industrial parts).
+  * 1-2/10: Very low demand, highly illiquid, small collector pool or heavy friction (e.g. broken CRT TV, generic old books, oversized worn sofa, obscure non-working machinery).
 
-INDIVIDUALIZED ITEM & RARITY RESEARCH INSTRUCTION:
-- Analyze this specific item individually. NEVER treat items as generic commodity goods.
-- Carefully examine maker marks, branding, model numbers, vintage age, materials (cast iron, solid wood, patina, salvage), architectural salvage value, or unique collector oddities.
-- If the item is rare, vintage, an oddball find, or a specialized tool, highlight why it is unique in 'triageReason' and 'suggestedDescription' and set accurate minimum-to-maximum resale values based on true collector and niche market comps.
+CRITICAL REQUIREMENT 2: REAL ITEM-TAILORED PLATFORM ANALYSIS (LOCAL VS SHIPPED)
+- Do NOT give generic "list on Facebook Marketplace for low end, eBay for high end" for every single item!
+- Perform a REAL evaluation of the physical item attributes (size, weight, shipping cost vs item value, local buyer density in ${location || "local markets"} vs global collector reach).
+  * SMALL/RARE/COLLECTIBLE (e.g. vintage action figure, rare trading card, camera lens): Local demand on FB Marketplace is often DEAD because local buyers don't exist in a small town. State explicitly if local FB is POOR, and recommend national shipping platforms like eBay, Mercari, Poshmark, TCGPlayer, or Reverb!
+  * HEAVY/BULKY/LOCAL ONLY (e.g. 60lb cast iron anvil, lawnmower, dresser, power tool stand): Shipping on eBay costs $100+ and is ridiculous. State explicitly that eBay shipping is NOT recommended, and recommend local platforms like Facebook Marketplace, OfferUp, or Craigslist for ALL pricing tiers!
+  * MAINSTREAM FAST MOVERS (e.g. iPhone, PS5, Dewalt drill): Highly liquid locally on FB Marketplace for quick cash, OR on eBay for max market price.
 
-CRITICAL INSTRUCTION FOR AD DESCRIPTION GENERATION:
-1. Identify 1-3 specific flaws, wear points, rust, surface patina, missing parts, or condition notes and return them in the 'issuesFound' array.
-2. In 'suggestedDescription', you MUST include a dedicated section titled "CONDITION & FLAWS / ISSUES:" that explicitly lists EVERY flaw from 'issuesFound' in complete detail so local buyers know exact condition before traveling.
-3. Keep the tone honest and fair—don't be overly dramatic, but make sure buyers know what they are buying while highlighting the item's key features and upsell appeal.
+CRITICAL REQUIREMENT 3: DYNAMIC 5-TIER PRICING & STRATEGY MATRIX
+- Provide 5 realistic pricing tiers (0% Low End to 100% High End) calculated from true comps for THIS specific item.
+- For EACH tier, specify:
+  1. 'price': Exact dollar value for this tier based on comps.
+  2. 'whereToList': Specific platforms recommended for THIS item at this price tier (e.g. FB Marketplace, eBay, OfferUp, Mercari, Poshmark, Reverb, TCGPlayer, specialized collector forums). Explain WHY based on local vs shipped realities!
+  3. 'howToList': Actionable step-by-step instructions on prep, photography, SEO title tags, local pickup vs shipping method, and negotiation strategy required to fetch that exact dollar amount.
 
-Analyze this item carefully. You must return your response in standard, valid JSON format. 
-Do not wrap your JSON response in markdown blocks or any other formatting.
+CRITICAL REQUIREMENT 4: HONEST FLAWS & CONDITION DISCLOSURE
+1. Identify 1-3 specific flaws, wear points, rust, patina, missing parts, or untested notes and return them in 'issuesFound'.
+2. In 'suggestedDescription', include a dedicated section titled "CONDITION & FLAWS / ISSUES:" detailing all flaws explicitly.
 
-The JSON response MUST match this exact schema:
+Analyze this item carefully. You MUST return your response in standard, valid JSON format.
+Do not wrap your JSON response in markdown code blocks.
+
+The JSON response MUST match this schema:
 {
-  "suggestedTitle": "An SEO-optimized listing title (max 80 chars) highlighting brand, model, features, or condition",
-  "suggestedDescription": "Full listing description ready for copy-paste. Must include item highlights AND an explicit 'CONDITION & FLAWS / ISSUES:' section detailing all flaws.",
-  "estimatedValueMin": 15,
-  "estimatedValueMax": 45,
-  "demandScore": 7,
-  "worthSelling": "YES",
-  "triageReason": "Clear 1-sentence verdict on whether to flip this find or pass/scrap it.",
+  "suggestedTitle": "<SEO title max 80 chars highlighting brand, model, condition>",
+  "suggestedDescription": "<Full listing description with explicit CONDITION & FLAWS / ISSUES section>",
+  "estimatedValueMin": <number>,
+  "estimatedValueMax": <number>,
+  "demandScore": <INTEGER 1-10 BASED ON TRUE ITEM LIQUIDITY - DO NOT DEFAULT TO 7!>,
+  "worthSelling": "<YES | MARGINAL | NO>",
+  "triageReason": "<Honest 1-2 sentence verdict explaining why this item is a great flip, marginal, or pass/scrap>",
   "issuesFound": [
-    "Issue 1: Detailed description of flaw, rust, wear, missing part, or condition note."
+    "<Specific flaw 1>",
+    "<Specific flaw 2>"
   ],
   "targetPlatforms": [
-    "eBay - Great for reach.",
-    "Facebook Marketplace - Best for local pickup."
+    "<Item-specific platform recommendation 1 with rationale>",
+    "<Item-specific platform recommendation 2 with rationale>"
   ],
   "sellingTips": [
-    "Tip 1...",
-    "Tip 2..."
+    "<Tip 1 for cleaning, photography, or listing strategy tailored to this item>"
   ],
   "category": "Must strictly be one of: Clothing & Apparel, Shoes & Sneakers, Electronics & Gadgets, Video Games & Consoles, Toys & Collectibles, Books Comics & Media, Home Kitchen & Decor, Tools & Hardware, Sports & Outdoors, Jewelry & Accessories, Vintage & Antiques, Trading Cards, Other / Miscellaneous",
-  "groupName": "A descriptive group or bundle collection name (e.g. Power Tool Set, Vintage Audio Gear, Retro Gaming Bundle)",
-  "keywords": ["vintage", "retro", "collectible"],
+  "groupName": "<Descriptive group or bundle name>",
+  "keywords": ["<keyword1>", "<keyword2>"],
   "pricingTiers": [
     {
       "tierName": "Low End (Sell Immediately)",
       "percentageLabel": "100%",
-      "price": 15,
-      "whereToList": "Facebook Marketplace local pickup, OfferUp, or quick local garage sale",
-      "howToList": "List as-is with quick basic photos. Price low for instant cash pickup within 24 hours. No shipping or detailed cleaning needed."
+      "price": <number min price>,
+      "whereToList": "<Specific recommended platforms for immediate low-end sale based on item size/weight/demand>",
+      "howToList": "<Actionable steps to move this item fast at this price>"
     },
     {
       "tierName": "1/4 Tier (Fast Flip)",
       "percentageLabel": "75%",
-      "price": 22,
-      "whereToList": "Facebook Marketplace, OfferUp, local resale groups",
-      "howToList": "Wipe down item, take 3-4 clear photos, list at competitive price for a 2-4 day turnaround with local pickup."
+      "price": <number 25% comp price>,
+      "whereToList": "<Specific recommended platforms for fast flip>",
+      "howToList": "<Actionable steps for 2-4 day turnaround>"
     },
     {
       "tierName": "Mid End (Fair Market)",
       "percentageLabel": "50%",
-      "price": 30,
-      "whereToList": "Cross-list on eBay & Facebook Marketplace",
-      "howToList": "Clean thoroughly, detail model & condition flaws in description, offer standard shipping on eBay and local pickup on FB."
+      "price": <number fair market price>,
+      "whereToList": "<Specific recommended platforms for fair market value>",
+      "howToList": "<Actionable steps for standard market turnaround>"
     },
     {
       "tierName": "3/4 Tier (Patient Sale)",
       "percentageLabel": "25%",
-      "price": 38,
-      "whereToList": "eBay Buy-It-Now, Mercari, or specialized niche marketplace",
-      "howToList": "Take studio quality photos with plain backdrop, use exact keywords in title, list at patient ask price for a 2-4 week hold."
+      "price": <number 75% comp price>,
+      "whereToList": "<Specific recommended platforms for patient seller>",
+      "howToList": "<Actionable steps for patient sale>"
     },
     {
       "tierName": "High End (Top Dollar Collector)",
       "percentageLabel": "1%",
-      "price": 45,
-      "whereToList": "eBay Buy-It-Now with Best Offer, specialized collector forums/platforms, or vintage boutiques",
-      "howToList": "Deep clean/restore, document all serial numbers & maker marks, provide detailed testing proof/video, offer free shipping/returns, and hold out for collector buyer."
+      "price": <number max top dollar price>,
+      "whereToList": "<Specific recommended platforms for top-dollar collector price>",
+      "howToList": "<Actionable steps to command maximum price point>"
     }
   ]
 }`;
