@@ -33,7 +33,7 @@ Stuff4Sale is a full-stack AI-powered inventory management, item valuation, and 
 
 #### 4. Analytics & Financial Reporting (`StatsGrid.tsx`)
 - **Real-Time Metrics**: Displays active inventory count, total inventory value, total sales, net profit, average ROI percentage, and active listing count.
-- **Filter, Sort & View Controls**: Filter by category and status, search by keyword/SKU/notes, multi-criteria sorting (newest, oldest, profit, ROI, cost), and toggle between Grid and List views.
+- **Filter, Sort & View Controls**: Filter by category and status, search by keyword/SKU/notes, multi-criteria sorting (defaults to **Stock # Highest to Lowest** e.g. #27 down to #1, plus oldest, profit, ROI, cost), and toggle between Grid and List views.
 - **CSV Data Export**: One-click data export functionality for accounting and tax reporting.
 
 #### 5. Technical Architecture & Tech Stack
