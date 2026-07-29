@@ -71,16 +71,21 @@ export default function FBMarketplacePostingTool({
   // Generate a fallback instantaneous template if AI is off/loading
   const generateDefaultAd = (item: InventoryItem, priceVal: number) => {
     const research = item.research;
-    const title = research?.suggestedTitle || item.name;
-    const category = research?.category || item.category || "Home & Garden";
-    const desc = research?.suggestedDescription || 
-      `Up for sale: ${item.name}.\n\nCondition/Details:\n${item.notes || "In good vintage/pre-owned condition. See photos for exact details."}\n\nPrice: $${priceVal}\nLocation: Local pickup available. Cash or Venmo accepted.\n\nMessage me if interested or if you have any questions!`;
-    const keywords = research?.keywords ? research.keywords.join(", ") : "yard art, vintage, garden decor, farm salvage";
+    const rawTitle = research?.suggestedTitle || item.name;
+    const stockPrefix = item.stockNumber ? `Stock #${item.stockNumber}: ` : "";
+    const title = rawTitle.includes("Stock #") ? rawTitle : `${stockPrefix}${rawTitle}`;
+    
+    const category = item.category || research?.category || "Antiques & Collectibles";
+    const desc = item.notes && item.notes.length > 20
+      ? item.notes 
+      : research?.suggestedDescription || `Up for sale: ${item.name} (Stock #${item.stockNumber || item.id}).\n\nCondition/Details:\n${item.notes || "In good vintage/pre-owned condition. See photos for exact details."}\n\nPrice: $${priceVal}\nLocation: Local pickup available. Cash or Venmo accepted.\n\nMessage me if interested or if you have any questions!`;
+      
+    const keywords = research?.keywords ? research.keywords.join(", ") : `${item.name.replace(/[^a-z0-9]/gi, " ")}, ${category}, vintage, local pickup`;
 
     setAdData({
       fbTitle: title.length > 90 ? title.substring(0, 90) : title,
       fbPrice: priceVal,
-      fbCategory: category.includes("Yard") || category.includes("Garden") ? "Garden & Outdoor" : "Antiques & Collectibles",
+      fbCategory: category,
       fbCondition: "Good",
       fbDescription: desc,
       fbTags: keywords,
