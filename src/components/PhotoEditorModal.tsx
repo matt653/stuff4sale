@@ -33,7 +33,11 @@ export default function PhotoEditorModal({ photoUrl, onSave, onClose }: PhotoEdi
   const [blurStart, setBlurStart] = useState<{ x: number; y: number } | null>(null);
   const [currentBlurBox, setCurrentBlurBox] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
 
-  // Crop states
+  // Crop states (4-side sliders in %: 0 to 45%)
+  const [cropTop, setCropTop] = useState(0);
+  const [cropBottom, setCropBottom] = useState(0);
+  const [cropLeft, setCropLeft] = useState(0);
+  const [cropRight, setCropRight] = useState(0);
   const [cropAspectRatio, setCropAspectRatio] = useState<"free" | "1:1" | "4:3" | "16:9">("1:1");
   const [cropBox, setCropBox] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
   const [isCropping, setIsCropping] = useState(false);
@@ -54,7 +58,7 @@ export default function PhotoEditorModal({ photoUrl, onSave, onClose }: PhotoEdi
   useEffect(() => {
     if (!imageObj || !canvasRef.current) return;
     renderCanvas();
-  }, [imageObj, brightness, contrast, saturation, rotation, overlayText, textColor, bgColor, textPosition, textBanner, blurBoxes, currentBlurBox, cropBox]);
+  }, [imageObj, brightness, contrast, saturation, rotation, overlayText, textColor, bgColor, textPosition, textBanner, blurBoxes, currentBlurBox, cropBox, cropTop, cropBottom, cropLeft, cropRight, activeTab]);
 
   const renderCanvas = () => {
     const canvas = canvasRef.current;
@@ -107,6 +111,33 @@ export default function PhotoEditorModal({ photoUrl, onSave, onClose }: PhotoEdi
       }
       ctx.restore();
     });
+
+    // Draw 4-side live crop mask & boundary guides
+    if (activeTab === "crop" && (cropTop > 0 || cropBottom > 0 || cropLeft > 0 || cropRight > 0)) {
+      const topPx = (cropTop / 100) * canvas.height;
+      const bottomPx = (cropBottom / 100) * canvas.height;
+      const leftPx = (cropLeft / 100) * canvas.width;
+      const rightPx = (cropRight / 100) * canvas.width;
+
+      ctx.save();
+      ctx.fillStyle = "rgba(0, 0, 0, 0.65)";
+
+      // Top masked area
+      if (topPx > 0) ctx.fillRect(0, 0, canvas.width, topPx);
+      // Bottom masked area
+      if (bottomPx > 0) ctx.fillRect(0, canvas.height - bottomPx, canvas.width, bottomPx);
+      // Left masked area
+      if (leftPx > 0) ctx.fillRect(0, topPx, leftPx, canvas.height - topPx - bottomPx);
+      // Right masked area
+      if (rightPx > 0) ctx.fillRect(canvas.width - rightPx, topPx, rightPx, canvas.height - topPx - bottomPx);
+
+      // Crop boundary dashed outline
+      ctx.strokeStyle = "#818cf8";
+      ctx.lineWidth = Math.max(3, Math.round(canvas.width * 0.005));
+      ctx.setLineDash([8, 6]);
+      ctx.strokeRect(leftPx, topPx, canvas.width - leftPx - rightPx, canvas.height - topPx - bottomPx);
+      ctx.restore();
+    }
 
     // Draw Text Overlay
     if (overlayText.trim()) {
@@ -182,44 +213,23 @@ export default function PhotoEditorModal({ photoUrl, onSave, onClose }: PhotoEdi
     setBlurStart(null);
   };
 
-  // Apply Crop
+  // Apply 4-Side Slider Crop
   const handleApplyCrop = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    let cropW = canvas.width;
-    let cropH = canvas.height;
-    let cropX = 0;
-    let cropY = 0;
+    let cropX = (cropLeft / 100) * canvas.width;
+    let cropY = (cropTop / 100) * canvas.height;
+    let cropW = canvas.width * (1 - (cropLeft + cropRight) / 100);
+    let cropH = canvas.height * (1 - (cropTop + cropBottom) / 100);
 
-    if (cropAspectRatio === "1:1") {
-      const minDim = Math.min(canvas.width, canvas.height);
-      cropW = minDim;
-      cropH = minDim;
-      cropX = (canvas.width - minDim) / 2;
-      cropY = (canvas.height - minDim) / 2;
-    } else if (cropAspectRatio === "4:3") {
-      if (canvas.width / canvas.height > 4 / 3) {
-        cropH = canvas.height;
-        cropW = cropH * (4 / 3);
-        cropX = (canvas.width - cropW) / 2;
-      } else {
-        cropW = canvas.width;
-        cropH = cropW * (3 / 4);
-        cropY = (canvas.height - cropH) / 2;
-      }
-    } else if (cropAspectRatio === "16:9") {
-      if (canvas.width / canvas.height > 16 / 9) {
-        cropH = canvas.height;
-        cropW = cropH * (16 / 9);
-        cropX = (canvas.width - cropW) / 2;
-      } else {
-        cropW = canvas.width;
-        cropH = cropW * (9 / 16);
-        cropY = (canvas.height - cropH) / 2;
-      }
+    if (cropW <= 10 || cropH <= 10) {
+      cropX = 0;
+      cropY = 0;
+      cropW = canvas.width;
+      cropH = canvas.height;
     }
 
     const croppedData = ctx.getImageData(cropX, cropY, cropW, cropH);
@@ -231,6 +241,10 @@ export default function PhotoEditorModal({ photoUrl, onSave, onClose }: PhotoEdi
     const newImg = new Image();
     newImg.onload = () => {
       setImageObj(newImg);
+      setCropTop(0);
+      setCropBottom(0);
+      setCropLeft(0);
+      setCropRight(0);
       setRotation(0);
     };
     newImg.src = canvas.toDataURL("image/jpeg", 0.85);
@@ -448,37 +462,125 @@ export default function PhotoEditorModal({ photoUrl, onSave, onClose }: PhotoEdi
             {/* CROP TAB */}
             {activeTab === "crop" && (
               <div className="space-y-4 text-xs">
-                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Aspect Ratio</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { label: "1:1 Square", val: "1:1" },
-                    { label: "4:3 Standard", val: "4:3" },
-                    { label: "16:9 Wide", val: "16:9" },
-                  ].map((preset) => (
+                <div className="flex items-center justify-between">
+                  <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">4-Side Crop Sliders</label>
+                  {(cropTop > 0 || cropBottom > 0 || cropLeft > 0 || cropRight > 0) && (
                     <button
-                      key={preset.val}
                       type="button"
-                      onClick={() => setCropAspectRatio(preset.val as any)}
-                      className={`py-2 px-2 rounded-xl border font-bold text-xs transition ${
-                        cropAspectRatio === preset.val
-                          ? "bg-indigo-600 border-indigo-400 text-white"
-                          : "bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700"
-                      }`}
-                      id={`btn-crop-preset-${preset.val}`}
+                      onClick={() => {
+                        setCropTop(0);
+                        setCropBottom(0);
+                        setCropLeft(0);
+                        setCropRight(0);
+                      }}
+                      className="text-[10px] text-indigo-400 hover:text-indigo-300 font-bold underline"
                     >
-                      {preset.label}
+                      Reset Sliders
                     </button>
-                  ))}
+                  )}
+                </div>
+
+                {/* Top Crop Slider */}
+                <div className="space-y-1">
+                  <div className="flex justify-between text-[11px] font-bold text-slate-300">
+                    <span>⬆️ Top Edge Crop</span>
+                    <span className="text-indigo-400">{cropTop}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="45"
+                    value={cropTop}
+                    onChange={(e) => setCropTop(Number(e.target.value))}
+                    className="w-full accent-indigo-500 cursor-pointer"
+                    id="slider-crop-top"
+                  />
+                </div>
+
+                {/* Bottom Crop Slider */}
+                <div className="space-y-1">
+                  <div className="flex justify-between text-[11px] font-bold text-slate-300">
+                    <span>⬇️ Bottom Edge Crop</span>
+                    <span className="text-indigo-400">{cropBottom}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="45"
+                    value={cropBottom}
+                    onChange={(e) => setCropBottom(Number(e.target.value))}
+                    className="w-full accent-indigo-500 cursor-pointer"
+                    id="slider-crop-bottom"
+                  />
+                </div>
+
+                {/* Left Crop Slider */}
+                <div className="space-y-1">
+                  <div className="flex justify-between text-[11px] font-bold text-slate-300">
+                    <span>⬅️ Left Edge Crop</span>
+                    <span className="text-indigo-400">{cropLeft}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="45"
+                    value={cropLeft}
+                    onChange={(e) => setCropLeft(Number(e.target.value))}
+                    className="w-full accent-indigo-500 cursor-pointer"
+                    id="slider-crop-left"
+                  />
+                </div>
+
+                {/* Right Crop Slider */}
+                <div className="space-y-1">
+                  <div className="flex justify-between text-[11px] font-bold text-slate-300">
+                    <span>➡️ Right Edge Crop</span>
+                    <span className="text-indigo-400">{cropRight}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="45"
+                    value={cropRight}
+                    onChange={(e) => setCropRight(Number(e.target.value))}
+                    className="w-full accent-indigo-500 cursor-pointer"
+                    id="slider-crop-right"
+                  />
                 </div>
 
                 <button
                   type="button"
                   onClick={handleApplyCrop}
-                  className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs rounded-xl shadow-md transition flex items-center justify-center gap-1.5 cursor-pointer"
+                  className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs rounded-xl shadow-md transition flex items-center justify-center gap-1.5 cursor-pointer mt-2"
                   id="btn-apply-crop"
                 >
-                  <Crop size={14} /> Apply Crop Ratio ({cropAspectRatio})
+                  <Crop size={14} /> Apply 4-Side Crop
                 </button>
+
+                <div className="pt-2 border-t border-slate-800 space-y-2">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Or 1-Click Aspect Ratio Presets</label>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {[
+                      { label: "1:1 Square", top: 10, bot: 10, l: 10, r: 10 },
+                      { label: "4:3 Standard", top: 5, bot: 5, l: 15, r: 15 },
+                      { label: "16:9 Wide", top: 15, bot: 15, l: 5, r: 5 },
+                    ].map((preset) => (
+                      <button
+                        key={preset.label}
+                        type="button"
+                        onClick={() => {
+                          setCropTop(preset.top);
+                          setCropBottom(preset.bot);
+                          setCropLeft(preset.l);
+                          setCropRight(preset.r);
+                        }}
+                        className="py-1.5 px-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-[10px] rounded-lg border border-slate-700 transition"
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
             )}
 
