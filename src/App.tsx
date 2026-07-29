@@ -45,7 +45,7 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [selectedStatus, setSelectedStatus] = useState<"all" | ItemStatus>("all");
-  const [sortBy, setSortBy] = useState<"newest" | "oldest" | "profit" | "roi" | "cost-desc" | "cost-asc">("newest");
+  const [sortBy, setSortBy] = useState<"stock-desc" | "stock-asc" | "newest" | "oldest" | "profit" | "roi" | "cost-desc" | "cost-asc">("stock-desc");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
   // Form states
@@ -649,6 +649,16 @@ Available for local cash pickup or fast shipping. Message now to claim the bundl
 
     return matchesSearch && matchesCategory && matchesStatus;
   }).sort((a, b) => {
+    if (sortBy === "stock-desc") {
+      const numA = parseInt(a.stockNumber || a.id || "0", 10) || 0;
+      const numB = parseInt(b.stockNumber || b.id || "0", 10) || 0;
+      return numB - numA;
+    }
+    if (sortBy === "stock-asc") {
+      const numA = parseInt(a.stockNumber || a.id || "0", 10) || 0;
+      const numB = parseInt(b.stockNumber || b.id || "0", 10) || 0;
+      return numA - numB;
+    }
     if (sortBy === "newest") {
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     }
@@ -1475,6 +1485,8 @@ Available for local cash pickup or fast shipping. Message now to claim the bundl
                   className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-600 focus:outline-none font-semibold cursor-pointer"
                   id="sort-select-field"
                 >
+                  <option value="stock-desc">Stock # (Highest to Lowest)</option>
+                  <option value="stock-asc">Stock # (Lowest to Highest)</option>
                   <option value="newest">Newest Scanned</option>
                   <option value="oldest">Oldest Scanned</option>
                   <option value="profit">Highest Profit (Sold)</option>
