@@ -370,17 +370,21 @@ Item Details:
 - Tone requested: ${tone || "casual"}
 - Is Bundle Deal: ${isBundle ? "Yes" : "No"}
 ${isBundle ? `
-CRITICAL BUNDLE PRICING INSTRUCTIONS:
+CRITICAL BUNDLE PRICING & STOCK NUMBER INSTRUCTIONS:
 - Total Individual Price Sum: $${totalIndividualPrice || price}
 - Discounted Bundle Package Price: $${price}
 - Customer Bundle Savings: $${discountSavings || 0}
 - Included Bundle Items: ${JSON.stringify(bundleItems)}
 
 Your fbDescription MUST BE STRUCTURED EXACTLY AS FOLLOWS FOR BUNDLES:
-1. Start with a bold package headline stating the DISCOUNTED BUNDLE PACKAGE PRICE ($${price} for everything!).
-2. List the INDIVIDUAL PRICE BREAKDOWN for each item separately (e.g., "• [Item Name] - $[Price] if bought individually").
-3. Include an explicit BUNDLE SAVINGS line (e.g., "🔥 Save $${discountSavings} when you take the whole bundle today!").
-4. List item condition notes, local pickup terms (Cash/Venmo accepted), and call to action.
+1. Bold Headline: "🔥 SPECIAL MULTI-ITEM BUNDLE DEAL ($${price} FOR ALL) 🔥"
+2. ITEMIZED BREAKDOWN (Every item MUST include Stock # and individual price):
+   • Stock #[StockNumber]: [Item Name] — $[IndividualPrice] (Individual Price)
+3. PRICING BREAKDOWN:
+   • Total Value of items bought separately: $${totalIndividualPrice}
+   • 🔥 BUNDLE DEAL PRICE (Take All): $${price}
+   • 🎉 YOU SAVE: $${discountSavings} by taking the whole bundle today!
+4. Item condition notes, local pickup terms (Cash/Venmo accepted), and call to action.
 ` : ""}
 
 Generate a JSON response matching this schema strictly without markdown or formatting: {

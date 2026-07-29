@@ -102,9 +102,34 @@ export default function FBMarketplacePostingTool({
   const currentBundlePrice = customPrice ? Number(customPrice) : recommendedBundleDiscountPrice;
   const currentBundleSavings = Math.max(0, totalBundleIndividualSum - currentBundlePrice);
 
+  const generateBundleDefaultAd = () => {
+    if (selectedBundleItems.length === 0) return;
+    const bundleTitleStr = `🔥 BUNDLE DEAL (${selectedBundleItems.length} ITEMS) - $${currentBundlePrice} ALL 🔥`;
+    const itemizedList = selectedBundleItems.map(i => {
+      const itemPrice = i.listedPrice || i.research?.estimatedValueMax || i.purchasePrice * 2 || 30;
+      return `• Stock #${i.stockNumber || i.id}: ${i.name} — $${itemPrice} (Individual Price)`;
+    }).join("\n");
+
+    const descStr = `🔥 SPECIAL MULTI-ITEM BUNDLE DEAL ($${currentBundlePrice} FOR ALL ${selectedBundleItems.length} ITEMS) 🔥\n\nSave money by taking the entire set together!\n\n📦 ITEMIZED BUNDLE BREAKDOWN:\n${itemizedList}\n\n💰 PRICING BREAKDOWN:\n• Total Value of items bought separately: $${totalBundleIndividualSum}\n• 🔥 BUNDLE DISCOUNT PRICE (Take All): $${currentBundlePrice}\n• 🎉 YOU SAVE: $${currentBundleSavings} when you buy the lot today!\n\n📝 ITEM DETAILS & CONDITION:\n${selectedBundleItems.map(i => `--- Stock #${i.stockNumber || i.id}: ${i.name}\n${i.notes || "In good pre-owned condition. See photos for exact details."}`).join("\n\n")}\n\n🚗 LOCAL PICKUP & SHIPPING:\nAvailable for local pickup. Cash or Venmo accepted. Message to claim!`;
+
+    setAdData({
+      fbTitle: bundleTitleStr.slice(0, 90),
+      fbPrice: currentBundlePrice,
+      fbCategory: "Antiques & Collectibles",
+      fbCondition: "Good",
+      fbDescription: descStr,
+      fbTags: selectedBundleItems.map(i => i.name.replace(/[^a-z0-9]/gi, " ")).join(", ").slice(0, 100),
+      fbTips: [
+        "Include clear photos of each item with its Stock # matching the description.",
+        "Highlight that buying the bundle saves money compared to buying items separately."
+      ]
+    });
+  };
+
   useEffect(() => {
     if (isBundleMode && selectedBundleItemIds.length > 0) {
       setCustomPrice(recommendedBundleDiscountPrice.toString());
+      generateBundleDefaultAd();
     }
   }, [isBundleMode, selectedBundleItemIds.length]);
 
@@ -119,6 +144,7 @@ export default function FBMarketplacePostingTool({
 
       if (isBundleMode) {
         const bundleItemsPayload = selectedBundleItems.map(i => ({
+          stockNumber: i.stockNumber || i.id,
           name: i.name,
           price: i.listedPrice || i.research?.estimatedValueMax || i.purchasePrice * 2 || 30,
           notes: i.notes || ""
@@ -736,36 +762,49 @@ export default function FBMarketplacePostingTool({
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                    {items.filter(i => selectedBundleItemIds.includes(i.id)).map(bundleItem => (
-                      <div key={bundleItem.id} className="bg-slate-50 border border-slate-200 p-2 rounded-xl flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2 truncate">
-                          {bundleItem.photoUrl ? (
-                            <img 
-                              src={bundleItem.photoUrl} 
-                              alt={bundleItem.name} 
-                              className="w-9 h-9 object-cover rounded-lg border border-slate-200 shrink-0" 
-                              referrerPolicy="no-referrer"
-                            />
-                          ) : (
-                            <div className="w-9 h-9 bg-slate-200 rounded-lg flex items-center justify-center text-slate-400 shrink-0">
-                              <ImageIcon size={14} />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {items.filter(i => selectedBundleItemIds.includes(i.id)).map(bundleItem => {
+                      const itemPrice = bundleItem.listedPrice || bundleItem.research?.estimatedValueMax || bundleItem.purchasePrice * 2 || 30;
+                      return (
+                        <div key={bundleItem.id} className="bg-white border border-slate-200 p-2.5 rounded-2xl flex items-center justify-between gap-2 shadow-2xs relative">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="relative shrink-0">
+                              {bundleItem.photoUrl ? (
+                                <img 
+                                  src={bundleItem.photoUrl} 
+                                  alt={bundleItem.name} 
+                                  className="w-12 h-12 object-cover rounded-xl border border-slate-200 shadow-xs" 
+                                  referrerPolicy="no-referrer"
+                                />
+                              ) : (
+                                <div className="w-12 h-12 bg-slate-200 rounded-xl flex items-center justify-center text-slate-400">
+                                  <ImageIcon size={18} />
+                                </div>
+                              )}
+                              {/* Stock Number Badge Overlay */}
+                              <span className="absolute -top-1.5 -left-1.5 bg-slate-950 text-amber-300 border border-amber-400/50 text-[10px] font-black px-1.5 py-0.5 rounded-md shadow-md">
+                                #{bundleItem.stockNumber || bundleItem.id}
+                              </span>
                             </div>
+                            <div className="min-w-0">
+                              <span className="text-xs font-extrabold text-slate-800 truncate block">{bundleItem.name}</span>
+                              <span className="text-[10px] font-bold text-emerald-700 block">Individual Price: ${itemPrice}</span>
+                            </div>
+                          </div>
+                          {bundleItem.photoUrl && (
+                            <button
+                              type="button"
+                              onClick={() => downloadMedia(bundleItem.photoUrl!, `Stock_${bundleItem.stockNumber || bundleItem.id}_${bundleItem.name.replace(/[^a-z0-9]/gi, "_")}.jpg`)}
+                              className="p-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl border border-indigo-200 transition shrink-0 font-bold text-xs flex items-center gap-1 cursor-pointer"
+                              title="Download Photo with Stock #"
+                            >
+                              <Download size={13} />
+                              <span className="hidden sm:inline">Download</span>
+                            </button>
                           )}
-                          <span className="text-[11px] font-bold text-slate-700 truncate">{bundleItem.name}</span>
                         </div>
-                        {bundleItem.photoUrl && (
-                          <button
-                            type="button"
-                            onClick={() => downloadMedia(bundleItem.photoUrl!, `${bundleItem.name.replace(/[^a-z0-9]/gi, "_")}.jpg`)}
-                            className="p-1.5 bg-white hover:bg-slate-100 text-indigo-600 rounded-lg border border-slate-200 transition"
-                            title="Download Photo"
-                          >
-                            <Download size={12} />
-                          </button>
-                        )}
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}

@@ -387,11 +387,14 @@ export default function App() {
 
     const bundleName = bundleTitle.trim() || `Bundle of ${selectedItems.length} Items`;
 
-    // Combine titles
-    const itemNamesList = selectedItems.map((i) => `• ${i.name} (Stock #${i.stockNumber || i.id})`).join("\n");
+    // Combine titles & individual prices
+    const itemNamesList = selectedItems.map((i) => {
+      const itemPrice = i.listedPrice || i.purchasePrice * 2 || 35;
+      return `• Stock #${i.stockNumber || i.id}: ${i.name} — $${itemPrice} (Individual Price)`;
+    }).join("\n");
     
     // Calculate total price
-    const totalIndividualValue = selectedItems.reduce((sum, i) => sum + (i.listedPrice || i.purchasePrice || 0), 0);
+    const totalIndividualValue = selectedItems.reduce((sum, i) => sum + (i.listedPrice || i.purchasePrice * 2 || 35), 0);
     const bundleDiscountPrice = Math.round(totalIndividualValue * 0.85); // 15% bundle discount
 
     // Combine photos
@@ -407,18 +410,18 @@ export default function App() {
     // Build full Bundle Ad Copy
     const bundleAdText = `🔥 SPECIAL MULTI-ITEM BUNDLE DEAL: ${bundleName.toUpperCase()} 🔥
 
-Save money by taking the entire set!
+Save money by taking the entire set together!
 
-📦 ITEMS INCLUDED IN THIS BUNDLE (${selectedItems.length} Total):
+📦 ITEMIZED BUNDLE BREAKDOWN (${selectedItems.length} Items Total):
 ${itemNamesList}
 
 💰 PRICING BREAKDOWN:
-• Total value if bought separately: $${totalIndividualValue}
-• 🔥 BUNDLE DISCOUNT PRICE: $${bundleDiscountPrice} (Save $${totalIndividualValue - bundleDiscountPrice}!)
+• Total Value of items bought separately: $${totalIndividualValue}
+• 🔥 BUNDLE DISCOUNT PRICE (Take All): $${bundleDiscountPrice}
+• 🎉 YOU SAVE: $${totalIndividualValue - bundleDiscountPrice} when you buy the lot together!
 
 📝 ITEM DETAILS & CONDITION:
-${selectedItems.map((item) => `---
-▶ ${item.name}
+${selectedItems.map((item) => `--- Stock #${item.stockNumber || item.id}: ${item.name}
 Category: ${item.category}
 Condition Notes: ${item.notes || "Good pre-owned condition."}`).join("\n\n")}
 
