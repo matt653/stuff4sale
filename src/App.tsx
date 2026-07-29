@@ -544,6 +544,9 @@ Available for local cash pickup or fast shipping. Message now to claim the bundl
 
   const handleQuickStatusUpdate = async (id: string, updates: Partial<InventoryItem>) => {
     try {
+      // Optimistically update React local items state for instant visual feedback
+      setItems((prev) => prev.map((item) => (item.id === id ? { ...item, ...updates } : item)));
+
       const payload: Record<string, any> = {};
       if (updates.status !== undefined) payload.status = updates.status;
       if (updates.listedPrice !== undefined) payload.listed_price = updates.listedPrice;
@@ -551,6 +554,8 @@ Available for local cash pickup or fast shipping. Message now to claim the bundl
       if (updates.salePrice !== undefined) payload.sale_price = updates.salePrice;
       if (updates.salePlatform !== undefined) payload.sale_platform = updates.salePlatform;
       if (updates.saleDate !== undefined) payload.sale_date = updates.saleDate;
+      if (updates.photoUrl !== undefined) payload.photo_url = updates.photoUrl;
+      if (updates.photos !== undefined) payload.photos = updates.photos;
       payload.updated_at = new Date().toISOString();
 
       const { error } = await supabase

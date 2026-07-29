@@ -22,11 +22,15 @@ export default function ItemCard({ item, allItems = [], onEdit, onDelete, onStat
   
   const handleSaveEditedPhotoCard = (editedUrl: string) => {
     const updatedPhotos = item.photos && item.photos.length > 0 ? [...item.photos] : [editedUrl];
-    if (updatedPhotos.length > 0) {
+    if (updatedPhotos.length > 0 && currentPhotoIdx < updatedPhotos.length) {
       updatedPhotos[currentPhotoIdx] = editedUrl;
+    } else {
+      updatedPhotos.push(editedUrl);
     }
+    const newCover = updatedPhotos[0] || editedUrl;
+
     onStatusChange(item.id, {
-      photoUrl: editedUrl,
+      photoUrl: newCover,
       photos: updatedPhotos,
       updatedAt: new Date().toISOString()
     });
