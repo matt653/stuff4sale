@@ -265,9 +265,12 @@ app.post("/api/valuation-chat", async (req, res) => {
       ? history.map((m: any) => `${m.sender === 'user' ? 'User' : 'Gemini'}: ${m.text}`).join('\n')
       : '';
 
+    const geminiQuestionCount = (history || []).filter((m: any) => m.sender === 'gemini' || m.sender === 'assistant').length;
+    const forceFinalReport = Boolean(generateFinalReport || geminiQuestionCount >= 2);
+
     let promptText = "";
 
-    if (generateFinalReport) {
+    if (forceFinalReport) {
       promptText = `You are Gemini AI Sourcing & Valuation Expert. 
 Synthesize all item details, photos, and conversation history below to generate the FINAL SOURCING & VALUATION REPORT.
 
@@ -297,9 +300,15 @@ Return a strictly valid JSON object matching this schema:
   }
 }`;
     } else {
-      promptText = `You are Gemini AI Sourcing Assistant. 
+      promptText = `You are Gemini AI Sourcing & Valuation Expert. 
 Analyze the uploaded item photo(s), name/notes, and conversation history below. 
-If this is the start of the chat or if critical condition details are unknown, ask 1 to 2 sharp, friendly follow-up questions about the item's condition, working order, accessories, or flaws before generating the final report. Also provide 3 quick-reply choices for the user!
+You are strictly allowed to ask AT MOST 1 or 2 high-stakes valuation questions to determine exact item pricing.
+
+CRITICAL RULES FOR QUESTIONS:
+1. NO IDLE SMALL TALK OR FLUFF: NEVER ask generic conversation starters like "Where did you find this?" or "How long have you owned it?".
+2. MANDATORY DOLLAR VALUE IMPACT: Every question MUST explicitly state how the user's answer directly increases or decreases the item's estimated dollar value!
+   Example format: "Does the motor power on cleanly? (If Working: Est. $150-$200 | If Non-working/Seized: Est. $30-$50)."
+3. STRICT 2-QUESTION CAP: This is question #${geminiQuestionCount + 1} of 2 max. After this question, the final report will be generated.
 
 Conversation History:
 ${conversationContext}
@@ -309,11 +318,11 @@ Item Name/Hint: ${name || "Image uploaded"}
 Return a strictly valid JSON object matching this schema:
 {
   "responseType": "QUESTION",
-  "aiMessage": "Your friendly, conversational response identifying what the item appears to be and asking 1 to 2 quick questions about condition/accessories/testing to determine exact value.",
+  "aiMessage": "Concise response identifying the item, asking 1 high-stakes question, and explicitly stating the estimated dollar value impact for each answer option.",
   "suggestedQuickReplies": [
-    "Choice 1: e.g. Powers on & works great!",
-    "Choice 2: e.g. Untested / Needs power cord",
-    "Choice 3: e.g. Has minor scratches / cosmetic flaws"
+    "Choice 1: e.g. Works 100% (Est. $150-$200)",
+    "Choice 2: e.g. Untested / Needs Cord (Est. $75-$100)",
+    "Choice 3: e.g. Non-working / For Parts (Est. $30-$50)"
   ]
 }`;
     }
