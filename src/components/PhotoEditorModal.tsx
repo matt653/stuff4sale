@@ -60,7 +60,7 @@ export default function PhotoEditorModal({ photoUrl, onSave, onClose }: PhotoEdi
     renderCanvas();
   }, [imageObj, brightness, contrast, saturation, rotation, overlayText, textColor, bgColor, textPosition, textBanner, blurBoxes, currentBlurBox, cropBox, cropTop, cropBottom, cropLeft, cropRight, activeTab]);
 
-  const renderCanvas = () => {
+  const renderCanvas = (isExporting = false) => {
     const canvas = canvasRef.current;
     if (!canvas || !imageObj) return;
     const ctx = canvas.getContext("2d");
@@ -112,8 +112,8 @@ export default function PhotoEditorModal({ photoUrl, onSave, onClose }: PhotoEdi
       ctx.restore();
     });
 
-    // Draw 4-side live crop mask & boundary guides
-    if (activeTab === "crop" && (cropTop > 0 || cropBottom > 0 || cropLeft > 0 || cropRight > 0)) {
+    // Draw 4-side live crop mask & boundary guides (ONLY during interactive editing, NEVER during export!)
+    if (!isExporting && activeTab === "crop" && (cropTop > 0 || cropBottom > 0 || cropLeft > 0 || cropRight > 0)) {
       const topPx = (cropTop / 100) * canvas.height;
       const bottomPx = (cropBottom / 100) * canvas.height;
       const leftPx = (cropLeft / 100) * canvas.width;
@@ -253,7 +253,29 @@ export default function PhotoEditorModal({ photoUrl, onSave, onClose }: PhotoEdi
   // Save Final Edited Base64 Photo
   const handleSaveFinal = () => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas || !imageObj) return;
+
+    // 1. If 4-side sliders have active crops, perform the pixel crop first!
+    const cropX = (cropLeft / 100) * canvas.width;
+    const cropY = (cropTop / 100) * canvas.height;
+    const cropW = canvas.width * (1 - (cropLeft + cropRight) / 100);
+    const cropH = canvas.height * (1 - (cropTop + cropBottom) / 100);
+
+    if (cropW > 10 && cropH > 10 && (cropTop > 0 || cropBottom > 0 || cropLeft > 0 || cropRight > 0)) {
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        // First re-render clean canvas without dark overlay masks
+        renderCanvas(true);
+        const croppedData = ctx.getImageData(cropX, cropY, cropW, cropH);
+        canvas.width = cropW;
+        canvas.height = cropH;
+        ctx.putImageData(croppedData, 0, 0);
+      }
+    } else {
+      // Re-render clean canvas without dark overlay masks
+      renderCanvas(true);
+    }
+
     const finalDataUrl = canvas.toDataURL("image/jpeg", 0.85);
     onSave(finalDataUrl);
   };
