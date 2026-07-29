@@ -110,14 +110,19 @@ Input Details provided:
 - Notes/Condition: ${notes || "No extra notes"}
 - Seller Sourcing / Target Location: ${location || "General US Resale Market"}
 
-CRITICAL REQUIREMENT 1: REAL DYNAMIC DEMAND SCORE (DO NOT DEFAULT TO 7/10!)
-- You MUST evaluate the true liquid demand for THIS specific item on a 1 to 10 scale.
-- DO NOT default to 7/10 or output generic mid-range scores for everything!
-- Use the ENTIRE 1-10 spectrum accurately:
-  * 9-10/10: Extremely high liquidity, massive buyer pool (e.g. current iPhones, popular Nintendo/PlayStation games, gold/silver bullion, brand name power tools).
-  * 6-8/10: Healthy mainstream demand, steady turnover (e.g. popular sneakers, solid kitchen appliances, quality laptops).
-  * 3-5/10: Niche or slower moving items (e.g. vintage china sets, obsolete electronics, heavy furniture, specialized industrial parts).
-  * 1-2/10: Very low demand, highly illiquid, small collector pool or heavy friction (e.g. broken CRT TV, generic old books, oversized worn sofa, obscure non-working machinery).
+CRITICAL REQUIREMENT 1: REAL, UNBIASED DYNAMIC DEMAND SCORE (1 TO 10 SPECTRUM)
+- DO NOT DEFAULT TO 4/10 OR 7/10! You MUST evaluate each item individually based on its brand, rarity, condition, and market liquidity.
+- Evaluate demand using 4 concrete factors:
+  1. BRAND & RECOGNITION: Name brands (DeWalt, Snap-on, Stihl, Red Crown, Milwaukee, Craftsman, Stanley, John Deere) score 7-10. Unbranded / generic rustic items score 2-5.
+  2. BUYER POOL: Mass-market daily tools / electronics score 8-10. Trendy farmhouse decor & vintage signs score 6-8. Heavy obscure farm implements score 2-5.
+  3. SELL-THROUGH SPEED: Sells within 48h = 9-10. Sells within 1-2 weeks = 6-8. Takes 1-3 months = 3-5. Takes 6+ months = 1-2.
+  4. SHIPPING VS FREIGHT FRICTION: Small shippable collectibles score higher national demand (7-10) than 50lb local-only iron wheels (3-5).
+- STRICT SCORING BENCHMARKS:
+  * Brand Name Power Tools / Current Electronics / Rare Signs / Precious Metals: MUST score 8-10/10.
+  * Popular Vintage Decor / Brand Name Hand Tools / Quality Crosscut Saws / Porcelain Signs: MUST score 6-7/10.
+  * Heavy Unbranded Wagon Wheels / Single-Wheel Cultivators / Heavy Local Iron Scrap: MUST score 3-5/10.
+  * Broken Non-Working Junk / Common Used Books / Damaged Worn Furniture: MUST score 1-2/10.
+- NEVER OUTPUT THE SAME DEMAND SCORE FOR ALL ITEMS! Differentiate every single item accurately!
 
 CRITICAL REQUIREMENT 2: REAL ITEM-TAILORED PLATFORM ANALYSIS (LOCAL VS SHIPPED)
 - Do NOT give generic "list on Facebook Marketplace for low end, eBay for high end" for every single item!
