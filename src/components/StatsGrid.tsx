@@ -44,7 +44,7 @@ export default function StatsGrid({ items }: StatsGridProps) {
   };
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 lg:gap-4 mb-6" id="stats-grid-dashboard">
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 lg:gap-4 mb-6" id="stats-grid-dashboard">
       {/* Realized Profit Card */}
       <div className="bg-gradient-to-br from-emerald-900 to-slate-900 border border-emerald-500/20 rounded-2xl p-4 text-white shadow-md flex flex-col justify-between" id="stat-net-profit">
         <div className="flex items-center justify-between mb-2">
@@ -54,7 +54,7 @@ export default function StatsGrid({ items }: StatsGridProps) {
           </div>
         </div>
         <div>
-          <span className="text-2xl font-bold tracking-tight text-emerald-100">
+          <span className="text-xl lg:text-2xl font-bold tracking-tight text-emerald-100">
             {formatCurrency(realizedNetProfit)}
           </span>
           <p className="text-[10px] text-emerald-300/70 mt-1">From {soldItems.length} sales</p>
@@ -70,10 +70,10 @@ export default function StatsGrid({ items }: StatsGridProps) {
           </div>
         </div>
         <div>
-          <span className="text-2xl font-bold text-slate-800 tracking-tight">
+          <span className="text-xl lg:text-2xl font-bold text-slate-800 tracking-tight">
             {roi.toFixed(1)}%
           </span>
-          <p className="text-[10px] text-slate-400 mt-1">Average return on sold</p>
+          <p className="text-[10px] text-slate-400 mt-1">Avg return on sold</p>
         </div>
       </div>
 
@@ -86,43 +86,59 @@ export default function StatsGrid({ items }: StatsGridProps) {
           </div>
         </div>
         <div>
-          <span className="text-2xl font-bold text-slate-800 tracking-tight">
+          <span className="text-xl lg:text-2xl font-bold text-slate-800 tracking-tight">
             {formatCurrency(totalSalesRevenue)}
           </span>
           <p className="text-[10px] text-slate-400 mt-1">Total turnover</p>
         </div>
       </div>
 
-      {/* Total Purchase Cost Card */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col justify-between" id="stat-inventory-cost">
+      {/* Stock Est. Value Card */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col justify-between" id="stat-stock-est-value">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-xs font-bold text-slate-500 tracking-wide uppercase">Purchase Cost</span>
+          <span className="text-xs font-bold text-indigo-900 tracking-wide uppercase">Stock Est. Value</span>
+          <div className="p-1.5 bg-indigo-50 text-indigo-600 rounded-lg">
+            <Tag size={16} />
+          </div>
+        </div>
+        <div>
+          <span className="text-xl lg:text-2xl font-extrabold text-indigo-950 tracking-tight">
+            {formatCurrency(activeEstimatedResaleValue)}
+          </span>
+          <p className="text-[10px] text-slate-400 mt-1">{activeItems.length} active in stock</p>
+        </div>
+      </div>
+
+      {/* Selling For (Total Asking Value) Card */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col justify-between" id="stat-total-selling">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs font-extrabold text-emerald-900 tracking-wide uppercase">Selling For</span>
+          <div className="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg">
+            <DollarSign size={16} />
+          </div>
+        </div>
+        <div>
+          <div className="text-[9px] font-extrabold text-emerald-600 uppercase tracking-wider mb-0.5">Total Asking Value</div>
+          <span className="text-xl lg:text-2xl font-extrabold text-emerald-950 tracking-tight">
+            {formatCurrency(activeEstimatedResaleValue)}
+          </span>
+          <p className="text-[10px] text-slate-400 mt-1">Active target value</p>
+        </div>
+      </div>
+
+      {/* Capital Invested Card */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col justify-between" id="stat-total-invested">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs font-semibold text-slate-500 tracking-wide uppercase">Capital Invested</span>
           <div className="p-1.5 bg-amber-50 text-amber-600 rounded-lg">
             <Package size={16} />
           </div>
         </div>
         <div>
-          <span className="text-2xl font-bold text-slate-800 tracking-tight">
+          <span className="text-xl lg:text-2xl font-bold text-slate-800 tracking-tight">
             {formatCurrency(activeInventoryCostValue)}
           </span>
-          <p className="text-[10px] text-slate-400 mt-1">{activeItems.length} active items in stock</p>
-        </div>
-      </div>
-
-      {/* Selling For (Total Est. Value) Card */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col justify-between col-span-2 lg:col-span-1" id="stat-total-selling">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-xs font-extrabold text-indigo-900 tracking-wide uppercase">Selling For</span>
-          <div className="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg">
-            <Tag size={16} />
-          </div>
-        </div>
-        <div>
-          <div className="text-[10px] font-extrabold text-emerald-600 uppercase tracking-wider mb-0.5">Total Asking Price</div>
-          <span className="text-2xl font-extrabold text-emerald-950 tracking-tight">
-            {formatCurrency(activeEstimatedResaleValue)}
-          </span>
-          <p className="text-[10px] text-slate-400 mt-1">Total list value in stock</p>
+          <p className="text-[10px] text-slate-400 mt-1">Total purchase cost</p>
         </div>
       </div>
     </div>
