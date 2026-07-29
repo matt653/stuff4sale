@@ -21,14 +21,9 @@ function getAiClient(req: express.Request): GoogleGenAI | null {
 function sanitizeDescriptionText(desc: string): string {
   if (!desc) return "";
   return desc
-    .replace(/🔥\s*FINAL UPSELL & BUYER PITCH:?/gi, "")
-    .replace(/📌\s*WHAT IT IS & ORIGINAL USE:?/gi, "")
-    .replace(/💡\s*MODERN USES & STYLING \/ DECOR:?/gi, "")
-    .replace(/⚠️\s*CONDITION, OBSERVED FACTS & UNTESTED QUESTIONS:?/gi, "")
-    .replace(/📏\s*SPECS, MATERIALS & MEASUREMENTS:?/gi, "")
-    .replace(/(FINAL UPSELL & BUYER PITCH:?)/gi, "")
-    .replace(/(WHAT IT IS & ORIGINAL USE:?)/gi, "")
-    .replace(/(MODERN USES & STYLING \/ DECOR:?)/gi, "")
+    .replace(/(?:🔥\s*)?FINAL UPSELL & BUYER PITCH:?/gi, "🚀 WHY THIS IS A GREAT DEAL & SELLER NOTE:")
+    .replace(/(?:BUYER PITCH:?)/gi, "SELLER NOTE:")
+    .replace(/(?:UPSELL:?)/gi, "GREAT DEAL:")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
@@ -138,10 +133,15 @@ CRITICAL REQUIREMENT 3: DYNAMIC 5-TIER PRICING & STRATEGY MATRIX
   2. 'whereToList': Specific platforms recommended for THIS item at this price tier (e.g. FB Marketplace, eBay, OfferUp, Mercari, Poshmark, Reverb, TCGPlayer, specialized collector forums). Explain WHY based on local vs shipped realities!
   3. 'howToList': Actionable step-by-step instructions on prep, photography, SEO title tags, local pickup vs shipping method, and negotiation strategy required to fetch that exact dollar amount.
 
-CRITICAL REQUIREMENT 4: STRICT FACTUAL CONDITION & CLEAN HIGH-CONVERTING SALES COPY
+CRITICAL REQUIREMENT 4: STRICT FACTUAL CONDITION & 5 CUSTOMER-FRIENDLY SECTION HEADINGS
 1. NO GUESSING OR PREDICTING FLAWS: Only state 100% visible, observable facts directly seen in the photos (e.g. "Visible surface patina", "Paint wear on metal rim"). NEVER guess, assume, or predict unseen internal flaws!
 2. ASK ABOUT UNKNOWNS: For any condition detail that CANNOT be visually verified from photos alone (e.g. liquid tightness, working condition, internal rust, power state, or seal integrity), explicitly frame it as an UNTESTED QUESTION in 'issuesFound' (e.g. "Untested: Does it hold liquid without leaking?", "Untested: Is the mechanical switch operational?").
-3. NO META LABELS OR INTERNAL PROMPT TAGS: In 'suggestedDescription', write a clean, natural, ready-to-paste sales description for Facebook Marketplace & eBay. DO NOT output internal prompt section titles like "🔥 FINAL UPSELL & BUYER PITCH:", "📌 WHAT IT IS & ORIGINAL USE:", or "💡 MODERN USES & STYLING / DECOR:". Write compelling, high-converting buyer copy with clean paragraphs, bullet points, specs, and a natural closing call to action encouraging buyers to message!
+3. CUSTOMER-FRIENDLY SECTION HEADINGS: Structure 'suggestedDescription' into these 5 clear, customer-friendly section headings:
+   • 📌 WHAT IT IS & ORIGINAL USE: (Observed item facts, brand markings, and original purpose)
+   • 💡 MODERN USES & STYLING / DECOR: (Factual modern repurposing, decor, or collection uses)
+   • ⚠️ CONDITION & OBSERVED FACTS: (Visible facts seen in photos, plus explicit untested questions about the unknown)
+   • 📏 SPECS, MATERIALS & MEASUREMENTS: (Visible dimensions, stamps, and material composition)
+   • 🚀 WHY THIS IS A GREAT DEAL & SELLER NOTE: (Customer-friendly closing value summary and local pickup/shipping details—NEVER use tacky internal jargon like "Upsell" or "Pitch")
 
 Analyze this item carefully. You MUST return your response in standard, valid JSON format.
 Do not wrap your JSON response in markdown code blocks.
