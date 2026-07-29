@@ -92,24 +92,26 @@ export default function PhotoEditorModal({ photoUrl, onSave, onClose }: PhotoEdi
     // Draw Blur Privacy Boxes
     const allBlurBoxes = [...blurBoxes, ...(currentBlurBox ? [currentBlurBox] : [])];
     allBlurBoxes.forEach((box) => {
+      if (box.width <= 2 || box.height <= 2) return;
       ctx.save();
-      // Apply pixelated blur effect to box area
-      const imageData = ctx.getImageData(box.x, box.y, box.width, box.height);
-      const data = imageData.data;
-      const pixelSize = 12;
+      ctx.beginPath();
+      ctx.rect(box.x, box.y, box.width, box.height);
+      ctx.clip();
 
-      for (let y = 0; y < box.height; y += pixelSize) {
-        for (let x = 0; x < box.width; x += pixelSize) {
-          const redIndex = (y * box.width + x) * 4;
-          const r = data[redIndex];
-          const g = data[redIndex + 1];
-          const b = data[redIndex + 2];
-
-          ctx.fillStyle = `rgb(${r},${g},${b})`;
-          ctx.fillRect(box.x + x, box.y + y, pixelSize, pixelSize);
-        }
-      }
+      ctx.filter = `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%) blur(18px)`;
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      ctx.rotate((rotation * Math.PI) / 180);
+      ctx.drawImage(imageObj, -origWidth / 2, -origHeight / 2, origWidth, origHeight);
       ctx.restore();
+
+      if (!isExporting && activeTab === "blur") {
+        ctx.save();
+        ctx.strokeStyle = "#f59e0b";
+        ctx.lineWidth = 2;
+        ctx.setLineDash([4, 4]);
+        ctx.strokeRect(box.x, box.y, box.width, box.height);
+        ctx.restore();
+      }
     });
 
     // Draw 4-side live crop mask & boundary guides (ONLY during interactive editing, NEVER during export!)
@@ -168,76 +170,89 @@ export default function PhotoEditorModal({ photoUrl, onSave, onClose }: PhotoEdi
     }
   };
 
-  // Handle Mouse / Touch for Blur Box drawing
-  const handleCanvasMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (activeTab !== "blur") return;
+  // Helper for mouse/touch coordinates relative to canvas resolution
+  const getCanvasCoords = (clientX: number, clientY: number) => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas) return { x: 0, y: 0 };
     const rect = canvas.getBoundingClientRect();
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
-
-    const startX = (e.clientX - rect.left) * scaleX;
-    const startY = (e.clientY - rect.top) * scaleY;
-
-    setIsDrawingBlur(true);
-    setBlurStart({ x: startX, y: startY });
+    return {
+      x: (clientX - rect.left) * scaleX,
+      y: (clientY - rect.top) * scaleY,
+    };
   };
 
-  const handleCanvasMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  // Mouse / Touch handlers for Blur Box drawing
+  const handleStartDraw = (clientX: number, clientY: number) => {
+    if (activeTab !== "blur") return;
+    const { x, y } = getCanvasCoords(clientX, clientY);
+    setIsDrawingBlur(true);
+    setBlurStart({ x, y });
+  };
+
+  const handleMoveDraw = (clientX: number, clientY: number) => {
     if (!isDrawingBlur || !blurStart || activeTab !== "blur") return;
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-
-    const currentX = (e.clientX - rect.left) * scaleX;
-    const currentY = (e.clientY - rect.top) * scaleY;
-
+    const { x, y } = getCanvasCoords(clientX, clientY);
     setCurrentBlurBox({
-      x: Math.min(blurStart.x, currentX),
-      y: Math.min(blurStart.y, currentY),
-      width: Math.abs(currentX - blurStart.x),
-      height: Math.abs(currentY - blurStart.y),
+      x: Math.min(blurStart.x, x),
+      y: Math.min(blurStart.y, y),
+      width: Math.abs(x - blurStart.x),
+      height: Math.abs(y - blurStart.y),
     });
   };
 
-  const handleCanvasMouseUp = () => {
+  const handleEndDraw = () => {
     if (!isDrawingBlur || activeTab !== "blur") return;
     setIsDrawingBlur(false);
     if (currentBlurBox && currentBlurBox.width > 5 && currentBlurBox.height > 5) {
-      setBlurBoxes([...blurBoxes, currentBlurBox]);
+      setBlurBoxes((prev) => [...prev, currentBlurBox]);
     }
     setCurrentBlurBox(null);
     setBlurStart(null);
   };
 
-  // Apply 4-Side Slider Crop
-  const handleApplyCrop = () => {
+  // Export clean cropped image slice via offscreen canvas
+  const generateExportImageDataUrl = (): string | null => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+    if (!canvas || !imageObj) return null;
 
-    let cropX = (cropLeft / 100) * canvas.width;
-    let cropY = (cropTop / 100) * canvas.height;
-    let cropW = canvas.width * (1 - (cropLeft + cropRight) / 100);
-    let cropH = canvas.height * (1 - (cropTop + cropBottom) / 100);
+    // 1. Render clean canvas without dark selection masks or guidelines
+    renderCanvas(true);
 
-    if (cropW <= 10 || cropH <= 10) {
-      cropX = 0;
-      cropY = 0;
-      cropW = canvas.width;
-      cropH = canvas.height;
+    // 2. Calculate crop box in canvas pixels
+    const cropX = Math.round((cropLeft / 100) * canvas.width);
+    const cropY = Math.round((cropTop / 100) * canvas.height);
+    const cropW = Math.round(canvas.width * (1 - (cropLeft + cropRight) / 100));
+    const cropH = Math.round(canvas.height * (1 - (cropTop + cropBottom) / 100));
+
+    // If no crop sliders are active, return clean full canvas
+    if (cropTop === 0 && cropBottom === 0 && cropLeft === 0 && cropRight === 0) {
+      return canvas.toDataURL("image/jpeg", 0.85);
     }
 
-    const croppedData = ctx.getImageData(cropX, cropY, cropW, cropH);
-    canvas.width = cropW;
-    canvas.height = cropH;
-    ctx.putImageData(croppedData, 0, 0);
+    if (cropW <= 10 || cropH <= 10) {
+      return canvas.toDataURL("image/jpeg", 0.85);
+    }
 
-    // Load cropped canvas back as imageObj so further edits apply on top
+    // Create offscreen canvas for exact cropped pixel region
+    const offscreen = document.createElement("canvas");
+    offscreen.width = cropW;
+    offscreen.height = cropH;
+    const offCtx = offscreen.getContext("2d");
+    if (!offCtx) return canvas.toDataURL("image/jpeg", 0.85);
+
+    // Slice exact cropped region from main canvas onto offscreen canvas
+    offCtx.drawImage(canvas, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
+
+    return offscreen.toDataURL("image/jpeg", 0.85);
+  };
+
+  // Apply 4-Side Slider Crop (manual button click)
+  const handleApplyCrop = () => {
+    const croppedUrl = generateExportImageDataUrl();
+    if (!croppedUrl) return;
+
     const newImg = new Image();
     newImg.onload = () => {
       setImageObj(newImg);
@@ -247,37 +262,15 @@ export default function PhotoEditorModal({ photoUrl, onSave, onClose }: PhotoEdi
       setCropRight(0);
       setRotation(0);
     };
-    newImg.src = canvas.toDataURL("image/jpeg", 0.85);
+    newImg.src = croppedUrl;
   };
 
   // Save Final Edited Base64 Photo
   const handleSaveFinal = () => {
-    const canvas = canvasRef.current;
-    if (!canvas || !imageObj) return;
-
-    // 1. If 4-side sliders have active crops, perform the pixel crop first!
-    const cropX = (cropLeft / 100) * canvas.width;
-    const cropY = (cropTop / 100) * canvas.height;
-    const cropW = canvas.width * (1 - (cropLeft + cropRight) / 100);
-    const cropH = canvas.height * (1 - (cropTop + cropBottom) / 100);
-
-    if (cropW > 10 && cropH > 10 && (cropTop > 0 || cropBottom > 0 || cropLeft > 0 || cropRight > 0)) {
-      const ctx = canvas.getContext("2d");
-      if (ctx) {
-        // First re-render clean canvas without dark overlay masks
-        renderCanvas(true);
-        const croppedData = ctx.getImageData(cropX, cropY, cropW, cropH);
-        canvas.width = cropW;
-        canvas.height = cropH;
-        ctx.putImageData(croppedData, 0, 0);
-      }
-    } else {
-      // Re-render clean canvas without dark overlay masks
-      renderCanvas(true);
+    const finalUrl = generateExportImageDataUrl();
+    if (finalUrl) {
+      onSave(finalUrl);
     }
-
-    const finalDataUrl = canvas.toDataURL("image/jpeg", 0.85);
-    onSave(finalDataUrl);
   };
 
   return (
@@ -324,9 +317,18 @@ export default function PhotoEditorModal({ photoUrl, onSave, onClose }: PhotoEdi
           <div className="lg:col-span-2 bg-slate-950 p-4 flex items-center justify-center relative overflow-hidden select-none min-h-[300px]">
             <canvas
               ref={canvasRef}
-              onMouseDown={handleCanvasMouseDown}
-              onMouseMove={handleCanvasMouseMove}
-              onMouseUp={handleCanvasMouseUp}
+              onMouseDown={(e) => handleStartDraw(e.clientX, e.clientY)}
+              onMouseMove={(e) => handleMoveDraw(e.clientX, e.clientY)}
+              onMouseUp={handleEndDraw}
+              onTouchStart={(e) => {
+                const touch = e.touches[0];
+                if (touch) handleStartDraw(touch.clientX, touch.clientY);
+              }}
+              onTouchMove={(e) => {
+                const touch = e.touches[0];
+                if (touch) handleMoveDraw(touch.clientX, touch.clientY);
+              }}
+              onTouchEnd={handleEndDraw}
               className={`max-w-full max-h-[60vh] object-contain rounded-xl shadow-2xl border border-slate-800 ${
                 activeTab === "blur" ? "cursor-crosshair" : "cursor-default"
               }`}
@@ -511,7 +513,7 @@ export default function PhotoEditorModal({ photoUrl, onSave, onClose }: PhotoEdi
                   <input
                     type="range"
                     min="0"
-                    max="45"
+                    max="75"
                     value={cropTop}
                     onChange={(e) => setCropTop(Number(e.target.value))}
                     className="w-full accent-indigo-500 cursor-pointer"
@@ -528,7 +530,7 @@ export default function PhotoEditorModal({ photoUrl, onSave, onClose }: PhotoEdi
                   <input
                     type="range"
                     min="0"
-                    max="45"
+                    max="75"
                     value={cropBottom}
                     onChange={(e) => setCropBottom(Number(e.target.value))}
                     className="w-full accent-indigo-500 cursor-pointer"
@@ -545,7 +547,7 @@ export default function PhotoEditorModal({ photoUrl, onSave, onClose }: PhotoEdi
                   <input
                     type="range"
                     min="0"
-                    max="45"
+                    max="75"
                     value={cropLeft}
                     onChange={(e) => setCropLeft(Number(e.target.value))}
                     className="w-full accent-indigo-500 cursor-pointer"
@@ -562,7 +564,7 @@ export default function PhotoEditorModal({ photoUrl, onSave, onClose }: PhotoEdi
                   <input
                     type="range"
                     min="0"
-                    max="45"
+                    max="75"
                     value={cropRight}
                     onChange={(e) => setCropRight(Number(e.target.value))}
                     className="w-full accent-indigo-500 cursor-pointer"
