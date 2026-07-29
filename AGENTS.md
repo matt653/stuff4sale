@@ -23,6 +23,7 @@ Stuff4Sale is a full-stack AI-powered inventory management, item valuation, and 
 - **Individualized Rarity AI Research**: Gemini conducts granular item analysis evaluating maker marks, model numbers, antique patina, salvage value, and collector oddities rather than treating items as generic commodities.
 - **Comprehensive 5-Part Description Generator**: Gemini AI now structures every generated item description into 5 explicit section headings: (1) 📌 WHAT IT IS & ORIGINAL USE, (2) 💡 MODERN USES & STYLING / DECOR, (3) ⚠️ CONDITION & OBSERVED FACTS, (4) 📏 SPECS, MATERIALS & MEASUREMENTS, and (5) 🚀 WHY THIS IS A GREAT DEAL & SELLER NOTE.
 - **Strict Factual Condition & Untested Question Generator**: Enforces zero guessing or predicting of unseen flaws. Gemini states 100% visible, observable facts directly seen in photos (patina, surface rust, paint wear) and explicitly frames unverified details (liquid tightness, internal mechanics, power state) as **Untested Questions** for the seller to answer.
+- **Valuation Chat 2-Question Limit & Price Impact Rule**: Valuation chat is strictly capped at **maximum 2 questions**. Every question asked MUST state the exact dollar value impact of the answer (e.g. *If Working: Est. $150-$200 | If Non-Working: Est. $30-$50*). No idle small talk allowed.
 - **AI Intake Inspector**: Modal interface (`AIIntakeInspector.tsx`) for rapid photo-first sourcing triage before adding items into active inventory.
 
 #### 3. Personal Facebook Marketplace Assistant (`FBHubModal.tsx`)
