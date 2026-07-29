@@ -1,5 +1,6 @@
 import React, { useRef, useState, useEffect } from "react";
-import { Camera, Image as ImageIcon, RefreshCw, X, Check, AlertCircle, Video, Plus, Star, Trash2 } from "lucide-react";
+import { Camera, Image as ImageIcon, RefreshCw, X, Check, AlertCircle, Video, Plus, Star, Trash2, Edit3, Crop } from "lucide-react";
+import PhotoEditorModal from "./PhotoEditorModal";
 
 interface CameraCaptureProps {
   onPhotoCaptured?: (base64Photo: string) => void;
@@ -33,6 +34,17 @@ export default function CameraCapture({
       : []
   );
   const [activePhotoIndex, setActivePhotoIndex] = useState<number>(0);
+  const [editingPhotoIndex, setEditingPhotoIndex] = useState<number | null>(null);
+
+  const handleSaveEditedPhoto = (editedPhotoUrl: string) => {
+    if (editingPhotoIndex === null) return;
+    const updated = [...photos];
+    updated[editingPhotoIndex] = editedPhotoUrl;
+    setPhotos(updated);
+    if (onPhotosCaptured) onPhotosCaptured(updated);
+    if (onPhotoCaptured && editingPhotoIndex === 0) onPhotoCaptured(editedPhotoUrl);
+    setEditingPhotoIndex(null);
+  };
   
   const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(initialVideoUrl || null);
   const [error, setError] = useState<string | null>(null);
@@ -558,6 +570,19 @@ export default function CameraCapture({
                     #{idx + 1} {idx === 0 ? "COVER" : ""}
                   </div>
 
+                  {/* Edit Studio Button Badge */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setEditingPhotoIndex(idx);
+                    }}
+                    className="absolute bottom-1 right-1 px-1.5 py-0.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md shadow transition flex items-center gap-0.5 text-[9px] font-extrabold cursor-pointer"
+                    title="Edit, Crop, Text Overlay & Blur"
+                  >
+                    <Crop size={10} /> Edit
+                  </button>
+
                   {/* Delete Button Badge */}
                   <button
                     type="button"
@@ -651,6 +676,14 @@ export default function CameraCapture({
           <AlertCircle size={14} className="shrink-0 mt-0.5" />
           <span>{error}</span>
         </div>
+      )}
+
+      {editingPhotoIndex !== null && photos[editingPhotoIndex] && (
+        <PhotoEditorModal
+          photoUrl={photos[editingPhotoIndex]}
+          onSave={handleSaveEditedPhoto}
+          onClose={() => setEditingPhotoIndex(null)}
+        />
       )}
     </div>
   );

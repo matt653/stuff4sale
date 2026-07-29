@@ -1,9 +1,10 @@
 import React, { useState } from "react";
 import { 
   Edit, Trash2, Tag, TrendingUp, Clock, MapPin, 
-  ExternalLink, Sparkles, CheckCircle, Archive, DollarSign, Calendar, ShoppingBag, Share2
+  ExternalLink, Sparkles, CheckCircle, Archive, DollarSign, Calendar, ShoppingBag, Share2, Crop
 } from "lucide-react";
 import { InventoryItem, ItemStatus } from "../types";
+import PhotoEditorModal from "./PhotoEditorModal";
 
 interface ItemCardProps {
   key?: string;
@@ -17,6 +18,20 @@ interface ItemCardProps {
 
 export default function ItemCard({ item, allItems = [], onEdit, onDelete, onStatusChange, onFBPost }: ItemCardProps) {
   const [showStatusModal, setShowStatusModal] = useState<"list" | "sell" | null>(null);
+  const [showPhotoEditor, setShowPhotoEditor] = useState(false);
+  
+  const handleSaveEditedPhotoCard = (editedUrl: string) => {
+    const updatedPhotos = item.photos && item.photos.length > 0 ? [...item.photos] : [editedUrl];
+    if (updatedPhotos.length > 0) {
+      updatedPhotos[currentPhotoIdx] = editedUrl;
+    }
+    onStatusChange(item.id, {
+      photoUrl: editedUrl,
+      photos: updatedPhotos,
+      updatedAt: new Date().toISOString()
+    });
+    setShowPhotoEditor(false);
+  };
   
   // Status form states
   const [listedPrice, setListedPrice] = useState<number | string>(item.listedPrice || item.purchasePrice || 0);
@@ -429,6 +444,19 @@ export default function ItemCard({ item, allItems = [], onEdit, onDelete, onStat
 
             <button
               type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowPhotoEditor(true);
+              }}
+              className="p-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg border border-indigo-200 transition font-bold text-[11px] flex items-center gap-1 cursor-pointer"
+              title="Crop, Add Text Overlays & Blur Photo"
+              id={`btn-photo-editor-${item.id}`}
+            >
+              <Crop size={12} className="text-indigo-600" /> Photo Studio
+            </button>
+
+            <button
+              type="button"
               onClick={() => onEdit(item)}
               className="p-1.5 bg-slate-50 hover:bg-slate-150 text-slate-500 rounded-lg border border-slate-200/50 transition hover:text-slate-800"
               title="Edit Item details"
@@ -453,6 +481,15 @@ export default function ItemCard({ item, allItems = [], onEdit, onDelete, onStat
             </button>
           </div>
         </div>
+
+        {/* Photo Studio Editor Modal */}
+        {showPhotoEditor && (itemPhotos[currentPhotoIdx] || item.photoUrl) && (
+          <PhotoEditorModal
+            photoUrl={itemPhotos[currentPhotoIdx] || item.photoUrl!}
+            onSave={handleSaveEditedPhotoCard}
+            onClose={() => setShowPhotoEditor(false)}
+          />
+        )}
       </div>
 
       {/* Inline Popovers for Status Progression */}
