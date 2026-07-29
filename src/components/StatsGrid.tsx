@@ -21,7 +21,19 @@ export default function StatsGrid({ items }: StatsGridProps) {
   // Active items calculations
   const activeItems = items.filter((item) => item.status === "inventory" || item.status === "listed");
   const activeInventoryCostValue = activeItems.reduce((sum, item) => sum + (item.purchasePrice || 0), 0);
-  const activeEstimatedResaleValue = activeItems.reduce((sum, item) => {
+
+  // Gemini AI's estimated market value for active stock
+  const geminiEstimatedStockValue = activeItems.reduce((sum, item) => {
+    if (item.research && item.research.estimatedValueMax) {
+      const midpoint = Math.round((item.research.estimatedValueMin + item.research.estimatedValueMax) / 2);
+      return sum + midpoint;
+    }
+    if (item.listedPrice && item.listedPrice > 0) return sum + item.listedPrice;
+    return sum + (item.purchasePrice || 0);
+  }, 0);
+
+  // Total actual asking / listed price you are selling for
+  const totalSellingForValue = activeItems.reduce((sum, item) => {
     if (item.listedPrice && item.listedPrice > 0) return sum + item.listedPrice;
     if (item.research && item.research.estimatedValueMax) {
       const midpoint = Math.round((item.research.estimatedValueMin + item.research.estimatedValueMax) / 2);
@@ -29,6 +41,9 @@ export default function StatsGrid({ items }: StatsGridProps) {
     }
     return sum + (item.purchasePrice || 0);
   }, 0);
+
+  // Price variance between your asking price vs Gemini's market estimate
+  const priceVariance = totalSellingForValue - geminiEstimatedStockValue;
 
   // Return on Investment: (Realized Net Profit / Cost of Sold Items) * 100
   const roi = costOfSoldItems > 0 ? (realizedNetProfit / costOfSoldItems) * 100 : 0;
@@ -93,7 +108,7 @@ export default function StatsGrid({ items }: StatsGridProps) {
         </div>
       </div>
 
-      {/* Stock Est. Value Card */}
+      {/* Stock Est. Value (Gemini AI Market Valuation) Card */}
       <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col justify-between" id="stat-stock-est-value">
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs font-bold text-indigo-900 tracking-wide uppercase">Stock Est. Value</span>
@@ -103,13 +118,13 @@ export default function StatsGrid({ items }: StatsGridProps) {
         </div>
         <div>
           <span className="text-xl lg:text-2xl font-extrabold text-indigo-950 tracking-tight">
-            {formatCurrency(activeEstimatedResaleValue)}
+            {formatCurrency(geminiEstimatedStockValue)}
           </span>
-          <p className="text-[10px] text-slate-400 mt-1">{activeItems.length} active in stock</p>
+          <p className="text-[10px] text-slate-400 mt-1">Gemini AI Valuation</p>
         </div>
       </div>
 
-      {/* Selling For (Total Asking Value) Card */}
+      {/* Selling For (Your Active Asking Price & Variance) Card */}
       <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col justify-between" id="stat-total-selling">
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs font-extrabold text-emerald-900 tracking-wide uppercase">Selling For</span>
@@ -118,11 +133,16 @@ export default function StatsGrid({ items }: StatsGridProps) {
           </div>
         </div>
         <div>
-          <div className="text-[9px] font-extrabold text-emerald-600 uppercase tracking-wider mb-0.5">Total Asking Value</div>
           <span className="text-xl lg:text-2xl font-extrabold text-emerald-950 tracking-tight">
-            {formatCurrency(activeEstimatedResaleValue)}
+            {formatCurrency(totalSellingForValue)}
           </span>
-          <p className="text-[10px] text-slate-400 mt-1">Active target value</p>
+          <p className={`text-[10px] font-bold mt-1 ${priceVariance > 0 ? "text-emerald-600" : priceVariance < 0 ? "text-amber-600" : "text-slate-400"}`}>
+            {priceVariance > 0 
+              ? `+${formatCurrency(priceVariance)} vs Gemini` 
+              : priceVariance < 0 
+              ? `-${formatCurrency(Math.abs(priceVariance))} vs Gemini` 
+              : "100% matched to Gemini"}
+          </p>
         </div>
       </div>
 
