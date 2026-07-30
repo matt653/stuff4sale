@@ -39,9 +39,13 @@ export default function AIResearchView({
     setCompsError(null);
     try {
       const report = finalReport || research;
+      const apiKey = (import.meta as any).env?.VITE_GEMINI_API_KEY || (import.meta as any).env?.GEMINI_API_KEY || "";
       const res = await fetch("/api/comps", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          ...(apiKey ? { "x-gemini-api-key": apiKey } : {})
+        },
         body: JSON.stringify({
           name: report?.suggestedTitle || itemName,
           category: report?.category || "General",
@@ -50,7 +54,10 @@ export default function AIResearchView({
           images: photos
         })
       });
-      if (!res.ok) throw new Error("Failed to fetch local comps analysis.");
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || errJson.details || "Failed to fetch local comps analysis.");
+      }
       const data = await res.json();
       setLocalComps(data);
     } catch (err: any) {
