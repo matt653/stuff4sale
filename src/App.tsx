@@ -384,6 +384,73 @@ export default function App() {
     }
   };
 
+  const [isCompsLoading, setIsCompsLoading] = useState(false);
+  const [compsError, setCompsError] = useState<string | null>(null);
+
+  const handleFetchLocalCompsInApp = async () => {
+    if (!itemName && !photoUrl && photos.length === 0) {
+      setCompsError("Please enter an item name or take a photo first.");
+      return;
+    }
+    setIsCompsLoading(true);
+    setCompsError(null);
+    try {
+      const apiKey = (import.meta as any).env?.VITE_GEMINI_API_KEY || (import.meta as any).env?.GEMINI_API_KEY || "";
+      const res = await fetch("/api/comps", {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          ...(apiKey ? { "x-gemini-api-key": apiKey } : {})
+        },
+        body: JSON.stringify({
+          name: aiResult?.suggestedTitle || itemName,
+          category: itemCategory || "General",
+          notes: notes,
+          image: photoUrl || photos[0] || null,
+          images: photos
+        })
+      });
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || errJson.details || "Failed to fetch local comps analysis.");
+      }
+      const compsData = await res.json();
+      const updatedResearch: AIResearchResult = {
+        ...(aiResult || {
+          category: itemCategory,
+          suggestedTitle: itemName,
+          suggestedDescription: notes,
+          estimatedValueMin: 0,
+          estimatedValueMax: 0,
+          demandScore: 5,
+          sellThroughVelocity: "Medium",
+          issuesFound: [],
+          cleaningInstructions: [],
+          targetPlatforms: [],
+          sellingTips: [],
+          keywords: []
+        }),
+        localComps: compsData
+      };
+      setAiResult(updatedResearch);
+
+      if (editingItem) {
+        await supabase
+          .from("Stuff4Sale")
+          .update({
+            research: updatedResearch,
+            updated_at: new Date().toISOString()
+          })
+          .eq("id", Number(editingItem.id));
+      }
+    } catch (err: any) {
+      console.error("Local comps error:", err);
+      setCompsError(err.message || "Could not analyze local comps.");
+    } finally {
+      setIsCompsLoading(false);
+    }
+  };
+
   // Generate unified multi-item bundle ad and valuation from checked live inventory items
   const handleGenerateBundleAd = () => {
     const selectedItems = items.filter((i) => bundledItemIds.includes(i.id));
@@ -469,6 +536,12 @@ Available for local cash pickup or fast shipping. Message now to claim the bundl
 
       const finalStatus = (listingUrl.trim().length > 10 && itemStatus === "inventory") ? "listed" : itemStatus;
 
+      const baseResearch = aiResult || editingItem?.research || {};
+      const updatedResearch = {
+        ...baseResearch,
+        listingUrl: listingUrl.trim() || null,
+      };
+
       const itemPayload = {
         name: itemName,
         category: itemCategory,
@@ -486,11 +559,10 @@ Available for local cash pickup or fast shipping. Message now to claim the bundl
         video_url: videoUrl || null,
         listed_price: lPrice,
         listed_platform: listedPlatform || "Facebook Marketplace",
-        listing_url: listingUrl.trim() || null,
         sale_price: sPrice,
         sale_platform: salePlatform || null,
         sale_date: saleDate || null,
-        research: aiResult || editingItem?.research || null,
+        research: updatedResearch,
         updated_at: new Date().toISOString(),
       };
 
@@ -560,17 +632,22 @@ Available for local cash pickup or fast shipping. Message now to claim the bundl
       // Optimistically update React local items state for instant visual feedback
       setItems((prev) => prev.map((item) => (item.id === id ? { ...item, ...updates } : item)));
 
+      const existingItem = items.find((i) => i.id === id);
+      const currentResearch = updates.research || existingItem?.research || {};
+      const updatedResearch = updates.listingUrl !== undefined 
+        ? { ...currentResearch, listingUrl: updates.listingUrl }
+        : currentResearch;
+
       const payload: Record<string, any> = {};
       if (updates.status !== undefined) payload.status = updates.status;
       if (updates.listedPrice !== undefined) payload.listed_price = updates.listedPrice;
       if (updates.listedPlatform !== undefined) payload.listed_platform = updates.listedPlatform;
-      if (updates.listingUrl !== undefined) payload.listing_url = updates.listingUrl;
       if (updates.salePrice !== undefined) payload.sale_price = updates.salePrice;
       if (updates.salePlatform !== undefined) payload.sale_platform = updates.salePlatform;
       if (updates.saleDate !== undefined) payload.sale_date = updates.saleDate;
       if (updates.photoUrl !== undefined) payload.photo_url = updates.photoUrl;
       if (updates.photos !== undefined) payload.photos = updates.photos;
-      if (updates.research !== undefined) payload.research = updates.research;
+      payload.research = updatedResearch;
       payload.updated_at = new Date().toISOString();
 
       const { error } = await supabase
@@ -1430,52 +1507,83 @@ Available for local cash pickup or fast shipping. Message now to claim the bundl
                   </div>
                 </div>
 
-                {/* STEP 3: FIND LOCAL COMPS (ON RIGHT SIDE DIRECTLY UNDER STEP 2 FORM) */}
+                {/* STEP 3: FIND LOCAL COMPS (SOLE STEP 3 COMPONENT - ON RIGHT SIDE DIRECTLY UNDER STEP 2 FORM) */}
                 <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-2xl p-4.5 space-y-3.5 shadow-lg border border-indigo-500/30 mt-4" id="step3-local-comps-right-column">
-                  <div className="flex items-center justify-between gap-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-indigo-500/20 border border-indigo-400/40 flex items-center justify-center text-indigo-300 text-base font-black shadow-inner shrink-0">
+                      <div className="w-10 h-10 rounded-2xl bg-indigo-500/20 border border-indigo-400/40 flex items-center justify-center text-indigo-300 text-lg font-black shadow-inner shrink-0">
                         🔍
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
-                          <h4 className="text-xs font-black text-white">Step 3: Find Local Comps</h4>
-                          <span className="bg-emerald-500/30 text-emerald-300 text-[9px] font-black px-2 py-0.5 rounded-full border border-emerald-400/30 uppercase tracking-wider">
+                          <h4 className="text-sm font-black text-white">Step 3: Find Local Comps</h4>
+                          <span className="bg-emerald-500/30 text-emerald-300 text-[10px] font-black px-2.5 py-0.5 rounded-full border border-emerald-400/30 uppercase tracking-wider">
                             Strictly Local
                           </span>
                         </div>
-                        <p className="text-[11px] text-indigo-200/80 mt-0.5">
-                          Search active & sold comps across local FB Marketplace, Buy/Sell groups, OfferUp, Craigslist, & eBay Local.
+                        <p className="text-xs text-indigo-200/80 mt-0.5 leading-relaxed">
+                          Search active & sold comps across local Facebook Marketplace, Buy/Sell groups, OfferUp, Craigslist, & eBay Local.
                         </p>
                       </div>
                     </div>
+
+                    <button
+                      type="button"
+                      onClick={handleFetchLocalCompsInApp}
+                      disabled={isCompsLoading}
+                      className="py-2.5 px-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-black transition shadow-md flex items-center justify-center gap-2 shrink-0 cursor-pointer active:scale-95 disabled:opacity-50"
+                      id="btn-run-ai-local-comps-right"
+                    >
+                      {isCompsLoading ? <RefreshCw size={15} className="animate-spin" /> : <Search size={15} />}
+                      <span>{isCompsLoading ? "Analyzing Local Comps..." : "⚡ Run AI Local Comps Analysis"}</span>
+                    </button>
                   </div>
 
-                  {/* Saved Local Comps Display if available */}
+                  {compsError && (
+                    <div className="bg-amber-500/20 border border-amber-400/40 p-3 rounded-xl text-xs text-amber-200 flex items-center gap-2">
+                      <AlertCircle size={15} className="text-amber-400 shrink-0" />
+                      <span>{compsError}</span>
+                    </div>
+                  )}
+
+                  {/* AI Local Comps Analysis Breakdown (Saved & Live) */}
                   {aiResult?.localComps && (
-                    <div className="bg-white/10 border border-white/15 rounded-xl p-3 space-y-2 text-xs">
-                      <div className="flex items-center justify-between border-b border-white/10 pb-1.5">
-                        <span className="font-extrabold text-indigo-200 text-xs">Saved Local Cash Deal Comps</span>
-                        <span className="font-black text-emerald-400 text-xs">
+                    <div className="bg-white/10 border border-white/15 rounded-xl p-3.5 space-y-3 text-xs animate-fade-in">
+                      <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                        <span className="font-extrabold text-indigo-200 text-xs">Saved Local Cash Deal Comps Summary</span>
+                        <span className="font-black text-emerald-400 text-sm">
                           ${aiResult.localComps.estimatedLocalMin} – ${aiResult.localComps.estimatedLocalMax}
                         </span>
                       </div>
-                      <div className="grid grid-cols-2 gap-2 text-[10px]">
+
+                      <div className="grid grid-cols-2 gap-2 text-[11px]">
                         <div>
                           <span className="text-indigo-300 font-bold block">Local Demand Score:</span>
                           <span className="font-black text-white">{aiResult.localComps.localDemandScore}/10</span>
                         </div>
                         <div>
-                          <span className="text-indigo-300 font-bold block">Sell Velocity:</span>
+                          <span className="text-indigo-300 font-bold block">Local Sell-Through Speed:</span>
                           <span className="font-black text-emerald-300">{aiResult.localComps.sellThroughVelocity}</span>
                         </div>
                       </div>
+
+                      {aiResult.localComps.localTips && aiResult.localComps.localTips.length > 0 && (
+                        <div className="space-y-1 pt-1 border-t border-white/10">
+                          <span className="text-[10px] font-bold text-amber-300 uppercase tracking-wider block">💡 Local Resale Tips:</span>
+                          {aiResult.localComps.localTips.map((tip: string, idx: number) => (
+                            <div key={idx} className="flex items-start gap-1 text-[11px] text-indigo-100">
+                              <span className="text-amber-400 shrink-0">•</span>
+                              <span>{tip}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
 
                   {/* 1-Click Direct Local Search Launchers Grid */}
                   <div className="space-y-2 pt-2 border-t border-white/10">
-                    <span className="text-[10px] font-black text-indigo-200 uppercase tracking-wider block">
+                    <span className="text-[11px] font-black text-indigo-200 uppercase tracking-wider block">
                       ⚡ 1-Click Direct Local Search Launchers:
                     </span>
 
@@ -1484,55 +1592,55 @@ Available for local cash pickup or fast shipping. Message now to claim the bundl
                         href={`https://www.facebook.com/marketplace/search/?query=${encodeURIComponent(itemName || "Item Comps")}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="p-2 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-xl flex items-center justify-between gap-1 transition shadow-2xs cursor-pointer active:scale-95 text-[11px]"
+                        className="p-2.5 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-xl flex items-center justify-between gap-1.5 transition shadow-2xs cursor-pointer active:scale-95"
                         id="link-fb-marketplace-local-right"
                       >
                         <span className="truncate">🔵 FB Marketplace</span>
-                        <ExternalLink size={12} className="shrink-0" />
+                        <ExternalLink size={13} className="shrink-0" />
                       </a>
 
                       <a
                         href={`https://www.facebook.com/search/groups/?q=${encodeURIComponent(itemName || "Item Comps")}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="p-2 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-xl flex items-center justify-between gap-1 transition shadow-2xs cursor-pointer active:scale-95 text-[11px]"
+                        className="p-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-xl flex items-center justify-between gap-1.5 transition shadow-2xs cursor-pointer active:scale-95"
                         id="link-fb-groups-local-right"
                       >
                         <span className="truncate">👥 FB Buy/Sell Groups</span>
-                        <ExternalLink size={12} className="shrink-0" />
+                        <ExternalLink size={13} className="shrink-0" />
                       </a>
 
                       <a
                         href={`https://offerup.com/search?q=${encodeURIComponent(itemName || "Item Comps")}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="p-2 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl flex items-center justify-between gap-1 transition shadow-2xs cursor-pointer active:scale-95 text-[11px]"
+                        className="p-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl flex items-center justify-between gap-1.5 transition shadow-2xs cursor-pointer active:scale-95"
                         id="link-offerup-local-right"
                       >
                         <span className="truncate">🏷️ OfferUp Local</span>
-                        <ExternalLink size={12} className="shrink-0" />
+                        <ExternalLink size={13} className="shrink-0" />
                       </a>
 
                       <a
                         href={`https://craigslist.org/search/sss?query=${encodeURIComponent(itemName || "Item Comps")}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="p-2 bg-amber-600 hover:bg-amber-700 text-white font-black rounded-xl flex items-center justify-between gap-1 transition shadow-2xs cursor-pointer active:scale-95 text-[11px]"
+                        className="p-2.5 bg-amber-600 hover:bg-amber-700 text-white font-black rounded-xl flex items-center justify-between gap-1.5 transition shadow-2xs cursor-pointer active:scale-95"
                         id="link-craigslist-local-right"
                       >
                         <span className="truncate">📌 Craigslist Local</span>
-                        <ExternalLink size={12} className="shrink-0" />
+                        <ExternalLink size={13} className="shrink-0" />
                       </a>
 
                       <a
                         href={`https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(itemName || "Item Comps")}&LH_PrefLoc=99`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="p-2 bg-purple-600 hover:bg-purple-700 text-white font-black rounded-xl flex items-center justify-between gap-1 transition shadow-2xs cursor-pointer active:scale-95 text-[11px]"
+                        className="p-2.5 bg-purple-600 hover:bg-purple-700 text-white font-black rounded-xl flex items-center justify-between gap-1.5 transition shadow-2xs cursor-pointer active:scale-95"
                         id="link-ebay-local-right"
                       >
                         <span className="truncate">📦 eBay Local Pickup</span>
-                        <ExternalLink size={12} className="shrink-0" />
+                        <ExternalLink size={13} className="shrink-0" />
                       </a>
                     </div>
                   </div>
