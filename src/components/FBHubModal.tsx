@@ -224,30 +224,9 @@ Please fill in all fields line-by-line, upload the item photos, and STOP on the 
     }
   }, [activeItem]);
 
-  // Mark as Listed in Supabase ONLY when live ad link is provided!
+  // Mark as Listed in Supabase smoothly without annoying popup alerts
   const handleMarkAsListed = (providedUrl?: string): boolean => {
     const finalUrl = (providedUrl || liveAdLink).trim();
-    if (!finalUrl && viewTab !== "bundle") {
-      const inputUrl = prompt("🔗 Enter or paste your Live Facebook Marketplace Ad Link (e.g. https://www.facebook.com/marketplace/item/123456789) to mark item as LISTED:");
-      if (!inputUrl || !inputUrl.trim()) {
-        alert("⚠️ Item cannot be marked as LISTED until the ad is live and a link is provided.");
-        return false;
-      }
-      const cleanUrl = inputUrl.trim();
-      setLiveAdLink(cleanUrl);
-      if (activeItem) {
-        onStatusChange(activeItem.id, {
-          status: "listed",
-          listedPlatform: "Facebook Marketplace",
-          listingUrl: cleanUrl,
-          listedPrice: Number(fbPrice) || activeItem.listedPrice || 0,
-          updatedAt: new Date().toISOString()
-        });
-      }
-      setIsListedSuccess(true);
-      setTimeout(() => setIsListedSuccess(false), 3000);
-      return true;
-    }
 
     if (viewTab === "bundle") {
       if (selectedBundleItemIds.length === 0) return false;

@@ -153,15 +153,11 @@ export default function ItemCard({ item, allItems = [], onEdit, onDelete, onStat
 
   const handleListSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!listingUrl.trim()) {
-      alert("⚠️ Item cannot be marked as LISTED until the ad is live and a link is provided.");
-      return;
-    }
     onStatusChange(item.id, {
       status: "listed",
       listedPrice: Number(listedPrice),
       listedPlatform,
-      listingUrl: listingUrl.trim(),
+      listingUrl: listingUrl.trim() || null,
       updatedAt: new Date().toISOString(),
     });
     setShowStatusModal(null);
