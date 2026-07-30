@@ -721,7 +721,60 @@ export default function AIResearchView({
             );
           })()}
 
-          {/* STEP 3: FIND LOCAL COMPS CARD (DIRECTLY UNDER STEP 2) */}
+          {/* Identified SEO Title */}
+          <div className="space-y-1">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-semibold text-slate-600 flex items-center gap-1">
+                <Tag size={13} className="text-indigo-600" />
+                Identified SEO Title ({activeReport.suggestedTitle.length} chars)
+              </span>
+              <button
+                type="button"
+                onClick={() => copyToClipboard(activeReport.suggestedTitle, "title")}
+                className="text-slate-400 hover:text-slate-600 transition flex items-center gap-0.5 text-[10px]"
+              >
+                {copiedField === "title" ? <Check size={11} className="text-emerald-600" /> : <Copy size={11} />}
+                {copiedField === "title" ? "Copied" : "Copy"}
+              </button>
+            </div>
+            <p className="bg-white border border-slate-150 rounded-xl p-3 text-xs text-slate-700 font-medium tracking-tight">
+              {activeReport.suggestedTitle}
+            </p>
+          </div>
+
+          {/* Issues & Flaws Found Section with Interactive Seller Response Boxes */}
+          {((activeReport.issuesFound && activeReport.issuesFound.length > 0) || (activeReport.cleaningInstructions && activeReport.cleaningInstructions.length > 0)) && (
+            <div className="bg-amber-50/60 border border-amber-200/90 rounded-2xl p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <h5 className="text-xs font-bold text-amber-950 flex items-center gap-1.5">
+                  ⚠️ Issues & Flaws Found
+                </h5>
+                <span className="text-[10px] text-amber-700 font-bold bg-amber-100/70 px-2 py-0.5 rounded-full">
+                  Type your seller notes below
+                </span>
+              </div>
+              <div className="space-y-2 text-xs">
+                {(activeReport.issuesFound || activeReport.cleaningInstructions || []).map((issue, idx) => (
+                  <div key={idx} className="bg-white border border-amber-200/70 rounded-xl p-3 space-y-2 shadow-xs">
+                    <div className="flex items-start gap-1.5 text-xs text-amber-950 font-bold">
+                      <span className="shrink-0 text-amber-500">🔸</span>
+                      <span>{issue}</span>
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Type your response/clarification (e.g. 'Solid iron, no rust-through', 'Spins smoothly', 'Local pickup only')..."
+                      value={flawResponses[idx] || ""}
+                      onChange={(e) => setFlawResponses({ ...flawResponses, [idx]: e.target.value })}
+                      className="w-full text-xs border border-amber-200 bg-amber-50/20 rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-amber-500 text-slate-800 font-medium"
+                      id={`flaw-response-input-${idx}`}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* STEP 3: FIND LOCAL COMPS CARD (UNDER STEP 2 & FULL REPORT) */}
           {(() => {
             const queryVal = activeReport.suggestedTitle || itemName || "Item Comps";
             const displayComps = localComps || activeReport.localComps;
@@ -867,59 +920,6 @@ export default function AIResearchView({
               </div>
             );
           })()}
-
-          {/* Identified SEO Title */}
-          <div className="space-y-1">
-            <div className="flex items-center justify-between text-xs">
-              <span className="font-semibold text-slate-600 flex items-center gap-1">
-                <Tag size={13} className="text-indigo-600" />
-                Identified SEO Title ({activeReport.suggestedTitle.length} chars)
-              </span>
-              <button
-                type="button"
-                onClick={() => copyToClipboard(activeReport.suggestedTitle, "title")}
-                className="text-slate-400 hover:text-slate-600 transition flex items-center gap-0.5 text-[10px]"
-              >
-                {copiedField === "title" ? <Check size={11} className="text-emerald-600" /> : <Copy size={11} />}
-                {copiedField === "title" ? "Copied" : "Copy"}
-              </button>
-            </div>
-            <p className="bg-white border border-slate-150 rounded-xl p-3 text-xs text-slate-700 font-medium tracking-tight">
-              {activeReport.suggestedTitle}
-            </p>
-          </div>
-
-          {/* Issues & Flaws Found Section with Interactive Seller Response Boxes */}
-          {((activeReport.issuesFound && activeReport.issuesFound.length > 0) || (activeReport.cleaningInstructions && activeReport.cleaningInstructions.length > 0)) && (
-            <div className="bg-amber-50/60 border border-amber-200/90 rounded-2xl p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <h5 className="text-xs font-bold text-amber-950 flex items-center gap-1.5">
-                  ⚠️ Issues & Flaws Found
-                </h5>
-                <span className="text-[10px] text-amber-700 font-bold bg-amber-100/70 px-2 py-0.5 rounded-full">
-                  Type your seller notes below
-                </span>
-              </div>
-              <div className="space-y-2 text-xs">
-                {(activeReport.issuesFound || activeReport.cleaningInstructions || []).map((issue, idx) => (
-                  <div key={idx} className="bg-white border border-amber-200/70 rounded-xl p-3 space-y-2 shadow-xs">
-                    <div className="flex items-start gap-1.5 text-xs text-amber-950 font-bold">
-                      <span className="shrink-0 text-amber-500">🔸</span>
-                      <span>{issue}</span>
-                    </div>
-                    <input
-                      type="text"
-                      placeholder="Type your response/clarification (e.g. 'Solid iron, no rust-through', 'Spins smoothly', 'Local pickup only')..."
-                      value={flawResponses[idx] || ""}
-                      onChange={(e) => setFlawResponses({ ...flawResponses, [idx]: e.target.value })}
-                      className="w-full text-xs border border-amber-200 bg-amber-50/20 rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-amber-500 text-slate-800 font-medium"
-                      id={`flaw-response-input-${idx}`}
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       )}
     </div>
