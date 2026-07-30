@@ -20,7 +20,7 @@ export default function ItemCard({ item, allItems = [], onEdit, onDelete, onStat
   const [showStatusModal, setShowStatusModal] = useState<"list" | "sell" | null>(null);
   const [showPhotoEditor, setShowPhotoEditor] = useState(false);
   const [showCompsModal, setShowCompsModal] = useState(false);
-  const [localComps, setLocalComps] = useState<any | null>(null);
+  const [localComps, setLocalComps] = useState<any | null>(item.research?.localComps || null);
   const [isCompsLoading, setIsCompsLoading] = useState(false);
   const [compsError, setCompsError] = useState<string | null>(null);
 
@@ -49,6 +49,27 @@ export default function ItemCard({ item, allItems = [], onEdit, onDelete, onStat
       }
       const data = await res.json();
       setLocalComps(data);
+
+      // Auto-save localComps to item.research in Supabase!
+      if (onStatusChange && item) {
+        const existingResearch = item.research || {
+          estimatedValueMin: data.estimatedLocalMin || 0,
+          estimatedValueMax: data.estimatedLocalMax || 0,
+          suggestedTitle: item.name,
+          suggestedDescription: item.notes || "",
+          demandScore: data.localDemandScore || 5,
+          targetPlatforms: data.localPlatforms || ["Facebook Marketplace"],
+          sellingTips: data.localTips || [],
+          category: item.category || "General",
+          keywords: []
+        };
+        onStatusChange(item.id, {
+          research: {
+            ...existingResearch,
+            localComps: data
+          }
+        });
+      }
     } catch (err: any) {
       console.error(err);
       setCompsError(err.message || "Could not fetch local comps.");
@@ -586,40 +607,44 @@ export default function ItemCard({ item, allItems = [], onEdit, onDelete, onStat
                 </div>
               )}
 
-              {/* Local Comps AI Output */}
-              {localComps && (
-                <div className="bg-white/10 border border-white/15 rounded-2xl p-4 space-y-3 text-xs animate-fade-in">
-                  <div className="flex items-center justify-between border-b border-white/10 pb-2">
-                    <span className="font-extrabold text-indigo-200">Local Market Cash Range</span>
-                    <span className="font-black text-emerald-400 text-base">
-                      ${localComps.estimatedLocalMin} – ${localComps.estimatedLocalMax}
-                    </span>
-                  </div>
+              {/* Local Comps AI Output (Saved or Live) */}
+              {(() => {
+                const displayComps = localComps || item.research?.localComps;
+                if (!displayComps) return null;
+                return (
+                  <div className="bg-white/10 border border-white/15 rounded-2xl p-4 space-y-3 text-xs animate-fade-in">
+                    <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                      <span className="font-extrabold text-indigo-200">Saved Local Market Cash Range</span>
+                      <span className="font-black text-emerald-400 text-base">
+                        ${displayComps.estimatedLocalMin} – ${displayComps.estimatedLocalMax}
+                      </span>
+                    </div>
 
-                  <div className="grid grid-cols-2 gap-2 text-[11px]">
-                    <div>
-                      <span className="text-indigo-300 font-bold block">Local Buyer Demand:</span>
-                      <span className="font-black text-white">{localComps.localDemandScore}/10</span>
+                    <div className="grid grid-cols-2 gap-2 text-[11px]">
+                      <div>
+                        <span className="text-indigo-300 font-bold block">Local Buyer Demand:</span>
+                        <span className="font-black text-white">{displayComps.localDemandScore}/10</span>
+                      </div>
+                      <div>
+                        <span className="text-indigo-300 font-bold block">Local Sell-Through Speed:</span>
+                        <span className="font-black text-emerald-300">{displayComps.sellThroughVelocity}</span>
+                      </div>
                     </div>
-                    <div>
-                      <span className="text-indigo-300 font-bold block">Local Sell-Through Speed:</span>
-                      <span className="font-black text-emerald-300">{localComps.sellThroughVelocity}</span>
-                    </div>
-                  </div>
 
-                  {localComps.localTips && (
-                    <div className="space-y-1 pt-1 border-t border-white/10 text-[11px]">
-                      <span className="font-bold text-amber-300 uppercase tracking-wider block">💡 Local Resale Tips:</span>
-                      {localComps.localTips.map((tip: string, idx: number) => (
-                        <div key={idx} className="flex items-start gap-1 text-indigo-100">
-                          <span className="text-amber-400 shrink-0">•</span>
-                          <span>{tip}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
+                    {displayComps.localTips && (
+                      <div className="space-y-1 pt-1 border-t border-white/10 text-[11px]">
+                        <span className="font-bold text-amber-300 uppercase tracking-wider block">💡 Local Resale Tips:</span>
+                        {displayComps.localTips.map((tip: string, idx: number) => (
+                          <div key={idx} className="flex items-start gap-1 text-indigo-100">
+                            <span className="text-amber-400 shrink-0">•</span>
+                            <span>{tip}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* 1-Click Direct Local Search Launchers */}
               <div className="space-y-2 pt-1">

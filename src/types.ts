@@ -8,6 +8,22 @@ export interface PricingTierDetail {
   howToList: string; // Instructions on prep, photos, shipping vs local pickup to earn this tier
 }
 
+export interface LocalCompsData {
+  estimatedLocalMin: number;
+  estimatedLocalMax: number;
+  localDemandScore: number;
+  sellThroughVelocity: string;
+  localPlatforms?: string[];
+  searchQueries?: string[];
+  localTips?: string[];
+  comparableListings?: Array<{
+    title: string;
+    price: number;
+    platform: string;
+    notes?: string;
+  }>;
+}
+
 export interface AIResearchResult {
   estimatedValueMin: number;
   estimatedValueMax: number;
@@ -27,6 +43,7 @@ export interface AIResearchResult {
   stockNumber?: string;
   groupName?: string;
   pricingTiers?: PricingTierDetail[];
+  localComps?: LocalCompsData;
 }
 
 export interface AIChatMessage {

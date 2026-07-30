@@ -29,8 +29,10 @@ export default function AIResearchView({
   const [finalReport, setFinalReport] = useState<AIResearchResult | null>(research);
   const [flawResponses, setFlawResponses] = useState<Record<number, string>>({});
 
-  // Step 3 Local Comps State
-  const [localComps, setLocalComps] = useState<any | null>(null);
+  // Step 3 Local Comps State (Initializes from saved research.localComps if available)
+  const [localComps, setLocalComps] = useState<any | null>(
+    research?.localComps || null
+  );
   const [isCompsLoading, setIsCompsLoading] = useState(false);
   const [compsError, setCompsError] = useState<string | null>(null);
 
@@ -60,6 +62,18 @@ export default function AIResearchView({
       }
       const data = await res.json();
       setLocalComps(data);
+
+      // Auto-save localComps into report and sync to item state
+      if (report) {
+        const updatedReport: AIResearchResult = {
+          ...report,
+          localComps: data
+        };
+        setFinalReport(updatedReport);
+        if (onApplyAll) {
+          onApplyAll(updatedReport);
+        }
+      }
     } catch (err: any) {
       console.error(err);
       setCompsError(err.message || "Could not fetch local comps.");
@@ -93,7 +107,8 @@ export default function AIResearchView({
 
     onApplyAll({
       ...report,
-      suggestedDescription: compiledDesc
+      suggestedDescription: compiledDesc,
+      localComps: localComps || report.localComps
     });
   };
   
@@ -706,62 +721,10 @@ export default function AIResearchView({
             );
           })()}
 
-          {/* Identified SEO Title */}
-          <div className="space-y-1">
-            <div className="flex items-center justify-between text-xs">
-              <span className="font-semibold text-slate-600 flex items-center gap-1">
-                <Tag size={13} className="text-indigo-600" />
-                Identified SEO Title ({activeReport.suggestedTitle.length} chars)
-              </span>
-              <button
-                type="button"
-                onClick={() => copyToClipboard(activeReport.suggestedTitle, "title")}
-                className="text-slate-400 hover:text-slate-600 transition flex items-center gap-0.5 text-[10px]"
-              >
-                {copiedField === "title" ? <Check size={11} className="text-emerald-600" /> : <Copy size={11} />}
-                {copiedField === "title" ? "Copied" : "Copy"}
-              </button>
-            </div>
-            <p className="bg-white border border-slate-150 rounded-xl p-3 text-xs text-slate-700 font-medium tracking-tight">
-              {activeReport.suggestedTitle}
-            </p>
-          </div>
-
-          {/* Issues & Flaws Found Section with Interactive Seller Response Boxes */}
-          {((activeReport.issuesFound && activeReport.issuesFound.length > 0) || (activeReport.cleaningInstructions && activeReport.cleaningInstructions.length > 0)) && (
-            <div className="bg-amber-50/60 border border-amber-200/90 rounded-2xl p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <h5 className="text-xs font-bold text-amber-950 flex items-center gap-1.5">
-                  ⚠️ Issues & Flaws Found
-                </h5>
-                <span className="text-[10px] text-amber-700 font-bold bg-amber-100/70 px-2 py-0.5 rounded-full">
-                  Type your seller notes below
-                </span>
-              </div>
-              <div className="space-y-2 text-xs">
-                {(activeReport.issuesFound || activeReport.cleaningInstructions || []).map((issue, idx) => (
-                  <div key={idx} className="bg-white border border-amber-200/70 rounded-xl p-3 space-y-2 shadow-xs">
-                    <div className="flex items-start gap-1.5 text-xs text-amber-950 font-bold">
-                      <span className="shrink-0 text-amber-500">🔸</span>
-                      <span>{issue}</span>
-                    </div>
-                    <input
-                      type="text"
-                      placeholder="Type your response/clarification (e.g. 'Solid iron, no rust-through', 'Spins smoothly', 'Local pickup only')..."
-                      value={flawResponses[idx] || ""}
-                      onChange={(e) => setFlawResponses({ ...flawResponses, [idx]: e.target.value })}
-                      className="w-full text-xs border border-amber-200 bg-amber-50/20 rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-amber-500 text-slate-800 font-medium"
-                      id={`flaw-response-input-${idx}`}
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* STEP 3: FIND LOCAL COMPS CARD */}
+          {/* STEP 3: FIND LOCAL COMPS CARD (DIRECTLY UNDER STEP 2) */}
           {(() => {
             const queryVal = activeReport.suggestedTitle || itemName || "Item Comps";
+            const displayComps = localComps || activeReport.localComps;
             return (
               <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-2xl p-4.5 space-y-4 shadow-lg border border-indigo-500/30" id="step3-local-comps-section">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -803,31 +766,31 @@ export default function AIResearchView({
                   </div>
                 )}
 
-                {/* AI Local Comps Analysis Breakdown */}
-                {localComps && (
+                {/* AI Local Comps Analysis Breakdown (Saved & Live) */}
+                {displayComps && (
                   <div className="bg-white/10 border border-white/15 rounded-xl p-3.5 space-y-3 text-xs animate-fade-in">
                     <div className="flex items-center justify-between border-b border-white/10 pb-2">
-                      <span className="font-extrabold text-indigo-200 text-xs">Local Cash Deal Comps Summary</span>
+                      <span className="font-extrabold text-indigo-200 text-xs">Saved Local Cash Deal Comps Summary</span>
                       <span className="font-black text-emerald-400 text-sm">
-                        ${localComps.estimatedLocalMin} – ${localComps.estimatedLocalMax}
+                        ${displayComps.estimatedLocalMin} – ${displayComps.estimatedLocalMax}
                       </span>
                     </div>
 
                     <div className="grid grid-cols-2 gap-2 text-[11px]">
                       <div>
                         <span className="text-indigo-300 font-bold block">Local Demand Score:</span>
-                        <span className="font-black text-white">{localComps.localDemandScore}/10</span>
+                        <span className="font-black text-white">{displayComps.localDemandScore}/10</span>
                       </div>
                       <div>
                         <span className="text-indigo-300 font-bold block">Local Sell-Through Speed:</span>
-                        <span className="font-black text-emerald-300">{localComps.sellThroughVelocity}</span>
+                        <span className="font-black text-emerald-300">{displayComps.sellThroughVelocity}</span>
                       </div>
                     </div>
 
-                    {localComps.localTips && localComps.localTips.length > 0 && (
+                    {displayComps.localTips && displayComps.localTips.length > 0 && (
                       <div className="space-y-1 pt-1 border-t border-white/10">
                         <span className="text-[10px] font-bold text-amber-300 uppercase tracking-wider block">💡 Local Resale Tips:</span>
-                        {localComps.localTips.map((tip: string, idx: number) => (
+                        {displayComps.localTips.map((tip: string, idx: number) => (
                           <div key={idx} className="flex items-start gap-1 text-[11px] text-indigo-100">
                             <span className="text-amber-400 shrink-0">•</span>
                             <span>{tip}</span>
@@ -904,6 +867,59 @@ export default function AIResearchView({
               </div>
             );
           })()}
+
+          {/* Identified SEO Title */}
+          <div className="space-y-1">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-semibold text-slate-600 flex items-center gap-1">
+                <Tag size={13} className="text-indigo-600" />
+                Identified SEO Title ({activeReport.suggestedTitle.length} chars)
+              </span>
+              <button
+                type="button"
+                onClick={() => copyToClipboard(activeReport.suggestedTitle, "title")}
+                className="text-slate-400 hover:text-slate-600 transition flex items-center gap-0.5 text-[10px]"
+              >
+                {copiedField === "title" ? <Check size={11} className="text-emerald-600" /> : <Copy size={11} />}
+                {copiedField === "title" ? "Copied" : "Copy"}
+              </button>
+            </div>
+            <p className="bg-white border border-slate-150 rounded-xl p-3 text-xs text-slate-700 font-medium tracking-tight">
+              {activeReport.suggestedTitle}
+            </p>
+          </div>
+
+          {/* Issues & Flaws Found Section with Interactive Seller Response Boxes */}
+          {((activeReport.issuesFound && activeReport.issuesFound.length > 0) || (activeReport.cleaningInstructions && activeReport.cleaningInstructions.length > 0)) && (
+            <div className="bg-amber-50/60 border border-amber-200/90 rounded-2xl p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <h5 className="text-xs font-bold text-amber-950 flex items-center gap-1.5">
+                  ⚠️ Issues & Flaws Found
+                </h5>
+                <span className="text-[10px] text-amber-700 font-bold bg-amber-100/70 px-2 py-0.5 rounded-full">
+                  Type your seller notes below
+                </span>
+              </div>
+              <div className="space-y-2 text-xs">
+                {(activeReport.issuesFound || activeReport.cleaningInstructions || []).map((issue, idx) => (
+                  <div key={idx} className="bg-white border border-amber-200/70 rounded-xl p-3 space-y-2 shadow-xs">
+                    <div className="flex items-start gap-1.5 text-xs text-amber-950 font-bold">
+                      <span className="shrink-0 text-amber-500">🔸</span>
+                      <span>{issue}</span>
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Type your response/clarification (e.g. 'Solid iron, no rust-through', 'Spins smoothly', 'Local pickup only')..."
+                      value={flawResponses[idx] || ""}
+                      onChange={(e) => setFlawResponses({ ...flawResponses, [idx]: e.target.value })}
+                      className="w-full text-xs border border-amber-200 bg-amber-50/20 rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-amber-500 text-slate-800 font-medium"
+                      id={`flaw-response-input-${idx}`}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
