@@ -77,6 +77,7 @@ export default function App() {
   const [pricingStrategy, setPricingStrategy] = useState<"quick" | "retail">("quick");
   const [listedPrice, setListedPrice] = useState("");
   const [listedPlatform, setListedPlatform] = useState("Facebook Marketplace");
+  const [listingUrl, setListingUrl] = useState("");
   const [salePrice, setSalePrice] = useState("");
   const [salePlatform, setSalePlatform] = useState("Facebook Marketplace");
   const [saleDate, setSaleDate] = useState("");
@@ -240,6 +241,7 @@ export default function App() {
     setItemStatus("inventory");
     setListedPrice("");
     setListedPlatform("Facebook Marketplace");
+    setListingUrl("");
     setSalePrice("");
     setSalePlatform("Facebook Marketplace");
     setSaleDate("");
@@ -265,6 +267,7 @@ export default function App() {
     setItemStatus(item.status);
     setListedPrice(item.listedPrice ? item.listedPrice.toString() : "");
     setListedPlatform(cleanPlatformName(item.listedPlatform));
+    setListingUrl(item.listingUrl || "");
     setSalePrice(item.salePrice ? item.salePrice.toString() : "");
     setSalePlatform(item.salePlatform ? cleanPlatformName(item.salePlatform) : "Facebook Marketplace");
     setSaleDate(item.saleDate || "");
@@ -461,6 +464,8 @@ Available for local cash pickup or fast shipping. Message now to claim the bundl
       const assignedStockNumber = stockNumber.trim() || getNextSequentialStockNumber(items);
       const targetBundleId = editingItem?.bundleId || (bundleTitle.trim() || bundledItemIds.length > 0 ? "BUNDLE-" + Date.now().toString().slice(-4) : null);
 
+      const finalStatus = (listingUrl.trim().length > 10 && itemStatus === "inventory") ? "listed" : itemStatus;
+
       const itemPayload = {
         name: itemName,
         category: itemCategory,
@@ -468,7 +473,7 @@ Available for local cash pickup or fast shipping. Message now to claim the bundl
         bundle_id: targetBundleId,
         bundle_title: bundleTitle.trim() || null,
         bundled_item_ids: bundledItemIds.length > 0 ? bundledItemIds : null,
-        status: itemStatus,
+        status: finalStatus,
         purchase_price: pPrice,
         purchase_date: purchaseDate || new Date().toISOString().split("T")[0],
         purchase_location: purchaseLocation || "",
@@ -478,6 +483,7 @@ Available for local cash pickup or fast shipping. Message now to claim the bundl
         video_url: videoUrl || null,
         listed_price: lPrice,
         listed_platform: listedPlatform || "Facebook Marketplace",
+        listing_url: listingUrl.trim() || null,
         sale_price: sPrice,
         sale_platform: salePlatform || null,
         sale_date: saleDate || null,
@@ -1271,6 +1277,36 @@ Available for local cash pickup or fast shipping. Message now to claim the bundl
                       </select>
                     </div>
                   )}
+
+                  {/* Live Listing URL Input Field (Pasting/saving link transitions status to LISTED) */}
+                  <div className="md:col-span-2">
+                    <label className="text-xs font-extrabold text-blue-700 uppercase tracking-wide block mb-1.5 flex items-center justify-between">
+                      <span className="flex items-center gap-1.5">
+                        <ExternalLink size={13} className="text-blue-600" />
+                        Live Ad Link / URL (Saving a link automatically transitions item to LISTED)
+                      </span>
+                      {listingUrl && (
+                        <a href={listingUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] text-blue-700 hover:underline font-bold flex items-center gap-0.5">
+                          <span>View Live Ad</span>
+                          <ExternalLink size={10} />
+                        </a>
+                      )}
+                    </label>
+                    <input
+                      type="url"
+                      placeholder="Paste live listing URL (e.g. https://www.facebook.com/marketplace/item/123456789)..."
+                      value={listingUrl}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setListingUrl(val);
+                        if (val.trim().length > 10 && itemStatus === "inventory") {
+                          setItemStatus("listed");
+                        }
+                      }}
+                      className="w-full text-xs border border-blue-200 bg-white rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-1 focus:ring-blue-500 text-slate-800 font-mono shadow-2xs placeholder-blue-300"
+                      id="form-item-listing-url"
+                    />
+                  </div>
 
                   {/* CONDITIONAL: Sold Info */}
                   {itemStatus === "sold" && (
