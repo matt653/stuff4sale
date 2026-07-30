@@ -210,7 +210,9 @@ Please fill in all fields line-by-line, upload the item photos, and STOP on the 
     const promptText = getBrowserAgentPrompt();
     navigator.clipboard.writeText(promptText);
     setAgentCopied(true);
-    setTimeout(() => setAgentCopied(false), 3000);
+    // Open FB Marketplace item creation page in new tab
+    window.open("https://www.facebook.com/marketplace/create/item", "_blank");
+    setTimeout(() => setAgentCopied(false), 4000);
   };
 
   // Mark as Listed in Supabase & set Agent Complete
