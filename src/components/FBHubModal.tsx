@@ -217,7 +217,10 @@ Please fill in all fields line-by-line, upload the item photos, and STOP on the 
   const handleAgentComplete = () => {
     handleMarkAsListed();
     setAgentCompleted(true);
-    setTimeout(() => setAgentCompleted(false), 5000);
+    setTimeout(() => {
+      setAgentCompleted(false);
+      onClose();
+    }, 1200);
   };
 
   // Sequential Copy Wizard Steps Definition

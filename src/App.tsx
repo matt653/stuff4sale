@@ -559,6 +559,7 @@ Available for local cash pickup or fast shipping. Message now to claim the bundl
       if (updates.saleDate !== undefined) payload.sale_date = updates.saleDate;
       if (updates.photoUrl !== undefined) payload.photo_url = updates.photoUrl;
       if (updates.photos !== undefined) payload.photos = updates.photos;
+      if (updates.research !== undefined) payload.research = updates.research;
       payload.updated_at = new Date().toISOString();
 
       const { error } = await supabase
