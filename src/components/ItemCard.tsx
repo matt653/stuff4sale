@@ -96,9 +96,10 @@ export default function ItemCard({ item, allItems = [], onEdit, onDelete, onStat
   };
   
   // Status form states
-  const [listedPrice, setListedPrice] = useState<number | string>(item.listedPrice || item.purchasePrice || 0);
+  const [listedPrice, setListedPrice] = useState(item.listedPrice || item.purchasePrice || 0);
   const [listedPlatform, setListedPlatform] = useState(item.listedPlatform || "Facebook Marketplace");
-  const [salePrice, setSalePrice] = useState<number | string>(item.salePrice || item.listedPrice || item.purchasePrice || 0);
+  const [listingUrl, setListingUrl] = useState(item.listingUrl || "");
+  const [salePrice, setSalePrice] = useState(item.salePrice || item.listedPrice || item.purchasePrice || 0);
   const [salePlatform, setSalePlatform] = useState(item.salePlatform || item.listedPlatform || "Facebook Marketplace");
   const [saleDate, setSaleDate] = useState(item.saleDate || new Date().toISOString().split("T")[0]);
 
@@ -152,10 +153,15 @@ export default function ItemCard({ item, allItems = [], onEdit, onDelete, onStat
 
   const handleListSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!listingUrl.trim()) {
+      alert("⚠️ Item cannot be marked as LISTED until the ad is live and a link is provided.");
+      return;
+    }
     onStatusChange(item.id, {
       status: "listed",
       listedPrice: Number(listedPrice),
       listedPlatform,
+      listingUrl: listingUrl.trim(),
       updatedAt: new Date().toISOString(),
     });
     setShowStatusModal(null);
@@ -748,14 +754,26 @@ export default function ItemCard({ item, allItems = [], onEdit, onDelete, onStat
                   onChange={(e) => setListedPlatform(e.target.value)}
                   className="w-full text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-700"
                 >
-                  <option value="eBay">eBay</option>
                   <option value="Facebook Marketplace">Facebook Marketplace</option>
+                  <option value="eBay">eBay</option>
                   <option value="Mercari">Mercari</option>
                   <option value="Poshmark">Poshmark</option>
                   <option value="Craigslist">Craigslist</option>
                   <option value="OfferUp">OfferUp</option>
                   <option value="Other">Other Platform</option>
                 </select>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-extrabold text-blue-600 uppercase block mb-1">Live Ad URL (Required to List)</label>
+                <input
+                  type="url"
+                  required
+                  placeholder="Paste live ad link (https://facebook.com/marketplace/item/...)"
+                  value={listingUrl}
+                  onChange={(e) => setListingUrl(e.target.value)}
+                  className="w-full text-xs border border-blue-200 bg-white rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500 text-slate-800 font-mono"
+                />
               </div>
             </div>
 

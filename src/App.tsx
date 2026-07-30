@@ -170,6 +170,7 @@ export default function App() {
           photoUrl: row.photo_url || (row.photos && row.photos[0]) || null,
           photos: row.photos || (row.photo_url ? [row.photo_url] : []),
           stockNumber: row.stock_number || undefined,
+          listingUrl: row.listing_url || null,
           bundleId: row.bundle_id || undefined,
           bundleTitle: row.bundle_title || undefined,
           bundledItemIds: row.bundled_item_ids || undefined,
@@ -554,6 +555,7 @@ Available for local cash pickup or fast shipping. Message now to claim the bundl
       if (updates.status !== undefined) payload.status = updates.status;
       if (updates.listedPrice !== undefined) payload.listed_price = updates.listedPrice;
       if (updates.listedPlatform !== undefined) payload.listed_platform = updates.listedPlatform;
+      if (updates.listingUrl !== undefined) payload.listing_url = updates.listingUrl;
       if (updates.salePrice !== undefined) payload.sale_price = updates.salePrice;
       if (updates.salePlatform !== undefined) payload.sale_platform = updates.salePlatform;
       if (updates.saleDate !== undefined) payload.sale_date = updates.saleDate;
@@ -1386,6 +1388,114 @@ Available for local cash pickup or fast shipping. Message now to claim the bundl
                     >
                       {editingItem ? "Save Changes" : "Save to Live Sheet"}
                     </button>
+                  </div>
+                </div>
+
+                {/* STEP 3: FIND LOCAL COMPS (ON RIGHT SIDE DIRECTLY UNDER STEP 2 FORM) */}
+                <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-2xl p-4.5 space-y-3.5 shadow-lg border border-indigo-500/30 mt-4" id="step3-local-comps-right-column">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-indigo-500/20 border border-indigo-400/40 flex items-center justify-center text-indigo-300 text-base font-black shadow-inner shrink-0">
+                        🔍
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-xs font-black text-white">Step 3: Find Local Comps</h4>
+                          <span className="bg-emerald-500/30 text-emerald-300 text-[9px] font-black px-2 py-0.5 rounded-full border border-emerald-400/30 uppercase tracking-wider">
+                            Strictly Local
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-indigo-200/80 mt-0.5">
+                          Search active & sold comps across local FB Marketplace, Buy/Sell groups, OfferUp, Craigslist, & eBay Local.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Saved Local Comps Display if available */}
+                  {aiResult?.localComps && (
+                    <div className="bg-white/10 border border-white/15 rounded-xl p-3 space-y-2 text-xs">
+                      <div className="flex items-center justify-between border-b border-white/10 pb-1.5">
+                        <span className="font-extrabold text-indigo-200 text-xs">Saved Local Cash Deal Comps</span>
+                        <span className="font-black text-emerald-400 text-xs">
+                          ${aiResult.localComps.estimatedLocalMin} – ${aiResult.localComps.estimatedLocalMax}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-[10px]">
+                        <div>
+                          <span className="text-indigo-300 font-bold block">Local Demand Score:</span>
+                          <span className="font-black text-white">{aiResult.localComps.localDemandScore}/10</span>
+                        </div>
+                        <div>
+                          <span className="text-indigo-300 font-bold block">Sell Velocity:</span>
+                          <span className="font-black text-emerald-300">{aiResult.localComps.sellThroughVelocity}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 1-Click Direct Local Search Launchers Grid */}
+                  <div className="space-y-2 pt-2 border-t border-white/10">
+                    <span className="text-[10px] font-black text-indigo-200 uppercase tracking-wider block">
+                      ⚡ 1-Click Direct Local Search Launchers:
+                    </span>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+                      <a
+                        href={`https://www.facebook.com/marketplace/search/?query=${encodeURIComponent(itemName || "Item Comps")}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-2 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-xl flex items-center justify-between gap-1 transition shadow-2xs cursor-pointer active:scale-95 text-[11px]"
+                        id="link-fb-marketplace-local-right"
+                      >
+                        <span className="truncate">🔵 FB Marketplace</span>
+                        <ExternalLink size={12} className="shrink-0" />
+                      </a>
+
+                      <a
+                        href={`https://www.facebook.com/search/groups/?q=${encodeURIComponent(itemName || "Item Comps")}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-2 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-xl flex items-center justify-between gap-1 transition shadow-2xs cursor-pointer active:scale-95 text-[11px]"
+                        id="link-fb-groups-local-right"
+                      >
+                        <span className="truncate">👥 FB Buy/Sell Groups</span>
+                        <ExternalLink size={12} className="shrink-0" />
+                      </a>
+
+                      <a
+                        href={`https://offerup.com/search?q=${encodeURIComponent(itemName || "Item Comps")}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-2 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl flex items-center justify-between gap-1 transition shadow-2xs cursor-pointer active:scale-95 text-[11px]"
+                        id="link-offerup-local-right"
+                      >
+                        <span className="truncate">🏷️ OfferUp Local</span>
+                        <ExternalLink size={12} className="shrink-0" />
+                      </a>
+
+                      <a
+                        href={`https://craigslist.org/search/sss?query=${encodeURIComponent(itemName || "Item Comps")}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-2 bg-amber-600 hover:bg-amber-700 text-white font-black rounded-xl flex items-center justify-between gap-1 transition shadow-2xs cursor-pointer active:scale-95 text-[11px]"
+                        id="link-craigslist-local-right"
+                      >
+                        <span className="truncate">📌 Craigslist Local</span>
+                        <ExternalLink size={12} className="shrink-0" />
+                      </a>
+
+                      <a
+                        href={`https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(itemName || "Item Comps")}&LH_PrefLoc=99`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-2 bg-purple-600 hover:bg-purple-700 text-white font-black rounded-xl flex items-center justify-between gap-1 transition shadow-2xs cursor-pointer active:scale-95 text-[11px]"
+                        id="link-ebay-local-right"
+                      >
+                        <span className="truncate">📦 eBay Local Pickup</span>
+                        <ExternalLink size={12} className="shrink-0" />
+                      </a>
+                    </div>
                   </div>
                 </div>
               </form>

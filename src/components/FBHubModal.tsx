@@ -215,52 +215,47 @@ Please fill in all fields line-by-line, upload the item photos, and STOP on the 
     setTimeout(() => setAgentCopied(false), 4000);
   };
 
-  // Mark as Listed in Supabase & set Agent Complete
-  const handleAgentComplete = () => {
-    handleMarkAsListed();
-    setAgentCompleted(true);
-    setTimeout(() => {
-      setAgentCompleted(false);
-      onClose();
-    }, 1200);
-  };
+  // State for Live Listing URL
+  const [liveAdLink, setLiveAdLink] = useState(activeItem?.listingUrl || "");
 
-  // Sequential Copy Wizard Steps Definition
-  const wizardSteps = [
-    { label: "Step 1: Download Photos", key: "photos", text: "", action: handleDownloadPhotos },
-    { label: "Step 2: Copy Title", key: "title", text: fbTitle },
-    { label: "Step 3: Copy Price", key: "price", text: fbPrice },
-    { label: "Step 4: Copy Category", key: "category", text: fbCategory },
-    { label: "Step 5: Copy Condition", key: "condition", text: fbCondition },
-    { label: "Step 6: Copy Description", key: "description", text: fbDescription },
-    { label: "Step 7: Copy Tags", key: "tags", text: fbTags },
-    { label: "Step 8: Copy SKU", key: "sku", text: fbSku },
-  ];
+  useEffect(() => {
+    if (activeItem) {
+      setLiveAdLink(activeItem.listingUrl || "");
+    }
+  }, [activeItem]);
 
-  const handleWizardAdvance = () => {
-    const currentStepObj = wizardSteps[wizardStep];
-    if (!currentStepObj) return;
-
-    if (currentStepObj.action) {
-      currentStepObj.action();
-      copyToClipboard("Photos Downloaded!", "photos");
-    } else if (currentStepObj.text) {
-      copyToClipboard(currentStepObj.text, currentStepObj.key);
+  // Mark as Listed in Supabase ONLY when live ad link is provided!
+  const handleMarkAsListed = (providedUrl?: string): boolean => {
+    const finalUrl = (providedUrl || liveAdLink).trim();
+    if (!finalUrl && viewTab !== "bundle") {
+      const inputUrl = prompt("🔗 Enter or paste your Live Facebook Marketplace Ad Link (e.g. https://www.facebook.com/marketplace/item/123456789) to mark item as LISTED:");
+      if (!inputUrl || !inputUrl.trim()) {
+        alert("⚠️ Item cannot be marked as LISTED until the ad is live and a link is provided.");
+        return false;
+      }
+      const cleanUrl = inputUrl.trim();
+      setLiveAdLink(cleanUrl);
+      if (activeItem) {
+        onStatusChange(activeItem.id, {
+          status: "listed",
+          listedPlatform: "Facebook Marketplace",
+          listingUrl: cleanUrl,
+          listedPrice: Number(fbPrice) || activeItem.listedPrice || 0,
+          updatedAt: new Date().toISOString()
+        });
+      }
+      setIsListedSuccess(true);
+      setTimeout(() => setIsListedSuccess(false), 3000);
+      return true;
     }
 
-    if (wizardStep < wizardSteps.length - 1) {
-      setWizardStep(prev => prev + 1);
-    }
-  };
-
-  // Mark as Listed in Supabase
-  const handleMarkAsListed = () => {
     if (viewTab === "bundle") {
-      if (selectedBundleItemIds.length === 0) return;
+      if (selectedBundleItemIds.length === 0) return false;
       selectedBundleItemIds.forEach(id => {
         onStatusChange(id, {
           status: "listed",
           listedPlatform: "Facebook Marketplace",
+          listingUrl: finalUrl || null,
           updatedAt: new Date().toISOString()
         });
       });
@@ -268,12 +263,26 @@ Please fill in all fields line-by-line, upload the item photos, and STOP on the 
       onStatusChange(activeItem.id, {
         status: "listed",
         listedPlatform: "Facebook Marketplace",
+        listingUrl: finalUrl || null,
         listedPrice: Number(fbPrice) || activeItem.listedPrice || 0,
         updatedAt: new Date().toISOString()
       });
     }
     setIsListedSuccess(true);
     setTimeout(() => setIsListedSuccess(false), 3000);
+    return true;
+  };
+
+  // Mark as Listed in Supabase & set Agent Complete
+  const handleAgentComplete = () => {
+    const success = handleMarkAsListed();
+    if (success) {
+      setAgentCompleted(true);
+      setTimeout(() => {
+        setAgentCompleted(false);
+        onClose();
+      }, 1200);
+    }
   };
 
   // Launch FB Marketplace in new tab
@@ -1121,6 +1130,30 @@ Please fill in all fields line-by-line, upload the item photos, and STOP on the 
               </div>
             </div>
           )}
+
+          {/* Live Facebook Marketplace Listing URL Input Bar (Required to mark LISTED) */}
+          <div className="bg-blue-50/70 border border-blue-200 rounded-2xl p-3 space-y-1.5" id="live-ad-link-box">
+            <div className="flex items-center justify-between text-[11px] font-extrabold text-blue-950 uppercase tracking-wider">
+              <span className="flex items-center gap-1.5">
+                <ExternalLink size={13} className="text-blue-600" />
+                Live Listing URL (Required to mark item as LISTED)
+              </span>
+              {liveAdLink && (
+                <a href={liveAdLink} target="_blank" rel="noopener noreferrer" className="text-[10px] text-blue-700 hover:underline font-extrabold flex items-center gap-0.5">
+                  <span>View Live Ad</span>
+                  <ExternalLink size={10} />
+                </a>
+              )}
+            </div>
+            <input
+              type="url"
+              placeholder="Paste live FB Marketplace ad link here (e.g. https://www.facebook.com/marketplace/item/123456789)..."
+              value={liveAdLink}
+              onChange={(e) => setLiveAdLink(e.target.value)}
+              className="w-full text-xs border border-blue-200 bg-white rounded-xl px-3 py-2 text-slate-800 font-mono focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-2xs placeholder-blue-300"
+              id="input-live-ad-link"
+            />
+          </div>
 
           {/* Dual Main Bottom Buttons */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
