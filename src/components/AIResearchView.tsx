@@ -726,11 +726,11 @@ export default function AIResearchView({
             <div className="flex items-center justify-between text-xs">
               <span className="font-semibold text-slate-600 flex items-center gap-1">
                 <Tag size={13} className="text-indigo-600" />
-                Identified SEO Title ({activeReport.suggestedTitle.length} chars)
+                Identified SEO Title ({(activeReport.suggestedTitle || "").length} chars)
               </span>
               <button
                 type="button"
-                onClick={() => copyToClipboard(activeReport.suggestedTitle, "title")}
+                onClick={() => copyToClipboard(activeReport.suggestedTitle || "", "title")}
                 className="text-slate-400 hover:text-slate-600 transition flex items-center gap-0.5 text-[10px]"
               >
                 {copiedField === "title" ? <Check size={11} className="text-emerald-600" /> : <Copy size={11} />}
@@ -738,7 +738,7 @@ export default function AIResearchView({
               </button>
             </div>
             <p className="bg-white border border-slate-150 rounded-xl p-3 text-xs text-slate-700 font-medium tracking-tight">
-              {activeReport.suggestedTitle}
+              {activeReport.suggestedTitle || itemName || "Identified Item"}
             </p>
           </div>
 

@@ -4,7 +4,7 @@ import {
   X, Check, AlertCircle, RefreshCw, Layers, MapPin, Calendar, 
   Tag, Info, DollarSign, Archive, ShoppingBag, Eye, Star, LayoutGrid, LayoutList,
   Edit, Trash2, TrendingUp, Smartphone, Cloud, Share2, Clock, CheckCircle,
-  Bell, MessageSquare, Zap, MessageCircle, Key, ListChecks
+  Bell, MessageSquare, Zap, MessageCircle, Key, ListChecks, ExternalLink
 } from "lucide-react";
 import { supabase } from "./supabase";
 import { InventoryItem, ItemStatus, AIResearchResult, FBNotification } from "./types";
