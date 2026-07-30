@@ -36,8 +36,19 @@ const COMMON_CATEGORIES = [
 ];
 
 export default function App() {
-  // Inventory state
-  const [items, setItems] = useState<InventoryItem[]>([]);
+  // Inventory state with local cache fallback
+  const [items, setItems] = useState<InventoryItem[]>(() => {
+    try {
+      const cached = localStorage.getItem("stuff4sale_inventory_cache");
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+    } catch (e) {}
+    return [];
+  });
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -134,25 +145,27 @@ export default function App() {
 
   const fetchSupabaseItems = async (retryCount = 0) => {
     try {
-      const { data, error } = await supabase
+      const fetchPromise = supabase
         .from("Stuff4Sale")
         .select("*")
         .order("created_at", { ascending: false })
         .limit(100);
 
+      const timeoutPromise = new Promise<{ data: null; error: { message: string } }>((resolve) => {
+        setTimeout(() => resolve({ data: null, error: { message: "Cloud connection timeout (using local cache)" } }), 4000);
+      });
+
+      const res = await Promise.race([fetchPromise, timeoutPromise]);
+      const data = res.data;
+      const error = res.error;
+
       if (error) {
-        console.error("Supabase Stuff4Sale fetch error:", error);
-        if (retryCount < 2) {
-          console.log(`Retrying fetchSupabaseItems (Attempt ${retryCount + 1})...`);
-          setTimeout(() => fetchSupabaseItems(retryCount + 1), 1000);
-          return;
-        }
-        setErrorMessage("Failed to load inventory from Supabase: " + error.message);
+        console.warn("Supabase Stuff4Sale fetch notice:", error.message);
         setLoading(false);
         return;
       }
 
-      if (data) {
+      if (data && Array.isArray(data)) {
         const fetchedItems: InventoryItem[] = data.map((row: any) => ({
           id: String(row.id),
           name: row.name || "Untitled Item",
@@ -182,12 +195,14 @@ export default function App() {
         }));
 
         setItems(fetchedItems);
+        try {
+          localStorage.setItem("stuff4sale_inventory_cache", JSON.stringify(fetchedItems));
+        } catch (e) {}
       }
       setLoading(false);
       setErrorMessage(null);
     } catch (err: any) {
       console.error("Error fetching Supabase items:", err);
-      setErrorMessage("Database connection error: " + err.message);
       setLoading(false);
     }
   };
