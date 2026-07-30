@@ -371,6 +371,16 @@ Please fill in all fields line-by-line, upload the item photos, and STOP on the 
 
               <button
                 type="button"
+                onClick={handleLaunchFacebook}
+                className="py-2 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-extrabold transition flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                id="btn-launch-fb-top"
+              >
+                <ExternalLink size={14} />
+                <span>Launch FB Tab</span>
+              </button>
+
+              <button
+                type="button"
                 onClick={handleAgentComplete}
                 className={`py-2 px-3.5 rounded-xl text-xs font-extrabold transition flex items-center gap-1.5 cursor-pointer shadow-2xs ${
                   agentCompleted || isListedSuccess
