@@ -292,6 +292,35 @@ Please fill in all fields line-by-line, upload the item photos, and STOP on the 
     }
   };
 
+  const getAutoFillBookmarkletCode = () => {
+    const code = `javascript:(function(){
+      function setVal(sel, val) {
+        const el = document.querySelector(sel);
+        if (el) {
+          const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+          nativeSetter.call(el, val);
+          el.dispatchEvent(new Event('input', { bubbles: true }));
+          el.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      }
+      function setTxt(sel, val) {
+        const el = document.querySelector(sel);
+        if (el) {
+          const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value').set;
+          nativeSetter.call(el, val);
+          el.dispatchEvent(new Event('input', { bubbles: true }));
+          el.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      }
+      setVal('input[aria-label="Title"]', ${JSON.stringify(fbTitle)});
+      setVal('input[aria-label="Price"]', ${JSON.stringify(fbPrice)});
+      setTxt('textarea[aria-label="Description"]', ${JSON.stringify(fbDescription)});
+      setVal('input[aria-label="SKU"]', ${JSON.stringify(fbSku)});
+      alert("✨ Stuff4Sale Auto-Fill Complete! All fields filled automatically.");
+    })();`;
+    return code;
+  };
+
   // Launch FB Marketplace in new tab
   const handleLaunchFacebook = () => {
     copyToClipboard(getCompiledFullText(), "launch");
@@ -606,6 +635,31 @@ Please fill in all fields line-by-line, upload the item photos, and STOP on the 
                       <span>8. ✋ STOPS on Publish Screen for your review!</span>
                     </div>
                   </div>
+                </div>
+
+                {/* Instant 1-Click Auto-Fill Script Section */}
+                <div className="bg-gradient-to-r from-amber-500/20 via-purple-500/20 to-indigo-500/20 border border-amber-400/40 rounded-2xl p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black text-amber-200 uppercase tracking-wider flex items-center gap-1.5">
+                      <Zap size={15} className="text-amber-400" />
+                      ⚡ 1-Click Auto-Filler (No Manual Copy-Pasting Needed!)
+                    </span>
+                    <a
+                      href={getAutoFillBookmarkletCode()}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        navigator.clipboard.writeText(getAutoFillBookmarkletCode());
+                        alert("⚡ Auto-Fill Script copied! Open Facebook Marketplace, press F12 or paste into your address bar / browser console to auto-fill all fields instantly.");
+                      }}
+                      className="py-1 px-3 bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-black rounded-xl transition shadow-sm cursor-grab active:cursor-grabbing flex items-center gap-1"
+                      title="Drag to bookmarks bar or click to copy auto-fill script"
+                    >
+                      <span>⚡ 1-Click Auto-Filler</span>
+                    </a>
+                  </div>
+                  <p className="text-xs text-purple-100/90 leading-relaxed">
+                    Click <strong>"⚡ 1-Click Auto-Filler"</strong> or drag it to your browser bookmarks bar. When you are on Facebook Marketplace, clicking it automatically populates your Title, Asking Price, Full 5-Section Description, and SKU line-by-line in 1 millisecond!
+                  </p>
                 </div>
 
                 {/* Dual Action Buttons: Trigger Agent & Agent Complete */}
