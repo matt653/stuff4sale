@@ -462,10 +462,13 @@ Please fill in all fields line-by-line, upload the item photos, and STOP on the 
             <div className="bg-emerald-600 text-white rounded-2xl p-4 shadow-lg text-xs font-black flex items-center justify-between animate-fade-in">
               <div className="flex items-center gap-2.5">
                 <CheckCircle2 size={20} className="text-white shrink-0" />
-                <span>🎉 Agent Auto-Fill Complete! Item #{activeItem?.stockNumber || activeItem?.id} updated to LISTED on Facebook Marketplace.</span>
+                <div>
+                  <span className="block font-black text-xs">🎉 Item #{activeItem?.stockNumber || activeItem?.id} updated to LISTED in Stuff4Sale Inventory!</span>
+                  <span className="text-[11px] text-emerald-100 font-normal">Note: Remember to click "Publish" in your Facebook Marketplace browser tab to make your listing live to buyers on FB.</span>
+                </div>
               </div>
-              <span className="bg-white/20 text-white px-2.5 py-1 rounded-xl text-[10px] uppercase tracking-wider">
-                Saved in Database
+              <span className="bg-white/20 text-white px-2.5 py-1 rounded-xl text-[10px] uppercase tracking-wider shrink-0">
+                Inventory Updated
               </span>
             </div>
           )}
