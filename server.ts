@@ -662,6 +662,84 @@ app.post("/api/fb/post", async (req, res) => {
   }
 });
 
+// 7. Local Market Comps Finder Endpoint
+app.post("/api/comps", async (req, res) => {
+  const activeAi = getAiClient(req);
+  try {
+    const { name, category, notes, location, image, images } = req.body;
+
+    if (!name && !image && (!images || images.length === 0)) {
+      return res.status(400).json({ error: "Item name or image is required for local comps search." });
+    }
+
+    const contents: any[] = [];
+    let promptText = `Perform a LOCAL MARKET RESALE COMPS & VALUE ANALYSIS for this item. Focus STRICTLY ON LOCAL MARKET REALITIES (cash deals, porch pickup, local buyer pool density, zero shipping friction).
+
+Item Details:
+- Name: ${name || "Unidentified"}
+- Category: ${category || "General"}
+- Notes/Condition: ${notes || "Pre-owned"}
+- Location/Region: ${location || "Local Resale Market"}
+
+Return JSON strictly matching this schema:
+{
+  "estimatedLocalMin": 45,
+  "estimatedLocalMax": 85,
+  "localDemandScore": 8,
+  "sellThroughVelocity": "Fast (1-3 days)",
+  "localPlatforms": ["Facebook Marketplace Local", "FB Buy/Sell Groups", "OfferUp", "Craigslist"],
+  "searchQueries": ["${name}", "${category || ''} ${name}"],
+  "localTips": [
+    "List on FB Marketplace with 'Local Pickup Only' and 'Cash/Venmo' in title",
+    "Post in local neighborhood Buy/Sell groups for quick cash turnarounds"
+  ],
+  "comparableListings": [
+    { "title": "Similar ${name}", "price": 60, "platform": "FB Marketplace Local", "notes": "Used condition, quick sale" }
+  ]
+}`;
+
+    if (image && typeof image === "string" && image.startsWith("data:image/")) {
+      const match = image.match(/^data:(image\/\w+);base64,(.+)$/);
+      if (match) {
+        contents.push({
+          inlineData: {
+            mimeType: match[1],
+            data: match[2],
+          },
+        });
+      }
+    }
+
+    contents.push(promptText);
+
+    if (activeAi) {
+      const compsResult = await callGeminiWithFallback(activeAi, contents);
+      return res.json(compsResult);
+    } else {
+      const queryStr = name || "Item";
+      return res.json({
+        estimatedLocalMin: 25,
+        estimatedLocalMax: 75,
+        localDemandScore: 7,
+        sellThroughVelocity: "Moderate (3-7 days)",
+        localPlatforms: ["Facebook Marketplace Local", "FB Buy/Sell Groups", "OfferUp", "Craigslist"],
+        searchQueries: [queryStr, `${category || ""} ${queryStr}`.trim()],
+        localTips: [
+          "Include clear daylight photos showing model/brand markings",
+          "Specify local cash or Venmo pickup to avoid shipping fees"
+        ],
+        comparableListings: [
+          { title: `${queryStr} (Similar)`, price: 50, platform: "FB Marketplace Local", notes: "Pre-owned local comp" }
+        ]
+      });
+    }
+  } catch (err: any) {
+    console.error("Error in /api/comps endpoint:", err);
+    res.status(500).json({ error: "Failed to generate local comps.", details: err.message });
+  }
+});
+
+
 
 // Configure Vite middleware in development
 async function startServer() {

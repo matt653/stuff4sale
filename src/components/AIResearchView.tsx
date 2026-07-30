@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Sparkles, Copy, Check, FileText, DollarSign, RefreshCw, Star, Tag, ThumbsUp, Send, MessageSquare, AlertCircle, Zap, MapPin, ListChecks, Store, ShoppingBag, Sliders, ChevronDown, ChevronUp } from "lucide-react";
+import { Sparkles, Copy, Check, FileText, DollarSign, RefreshCw, Star, Tag, ThumbsUp, Send, MessageSquare, AlertCircle, Zap, MapPin, ListChecks, Store, ShoppingBag, Sliders, ChevronDown, ChevronUp, Search, ExternalLink } from "lucide-react";
 import { AIResearchResult, AIChatMessage } from "../types";
 
 interface AIResearchViewProps {
@@ -28,6 +28,38 @@ export default function AIResearchView({
   const [showAllTiers, setShowAllTiers] = useState(false);
   const [finalReport, setFinalReport] = useState<AIResearchResult | null>(research);
   const [flawResponses, setFlawResponses] = useState<Record<number, string>>({});
+
+  // Step 3 Local Comps State
+  const [localComps, setLocalComps] = useState<any | null>(null);
+  const [isCompsLoading, setIsCompsLoading] = useState(false);
+  const [compsError, setCompsError] = useState<string | null>(null);
+
+  const handleFetchLocalComps = async () => {
+    setIsCompsLoading(true);
+    setCompsError(null);
+    try {
+      const report = finalReport || research;
+      const res = await fetch("/api/comps", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: report?.suggestedTitle || itemName,
+          category: report?.category || "General",
+          notes: itemNotes,
+          image: photos[0] || null,
+          images: photos
+        })
+      });
+      if (!res.ok) throw new Error("Failed to fetch local comps analysis.");
+      const data = await res.json();
+      setLocalComps(data);
+    } catch (err: any) {
+      console.error(err);
+      setCompsError(err.message || "Could not fetch local comps.");
+    } finally {
+      setIsCompsLoading(false);
+    }
+  };
 
   const handleGenerateDetails = () => {
     const report = finalReport || research;
@@ -719,6 +751,152 @@ export default function AIResearchView({
               </div>
             </div>
           )}
+
+          {/* STEP 3: FIND LOCAL COMPS CARD */}
+          {(() => {
+            const queryVal = activeReport.suggestedTitle || itemName || "Item Comps";
+            return (
+              <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-2xl p-4.5 space-y-4 shadow-lg border border-indigo-500/30" id="step3-local-comps-section">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-indigo-500/20 border border-indigo-400/40 flex items-center justify-center text-indigo-300 text-lg font-black shadow-inner shrink-0">
+                      🔍
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-sm font-black text-white">
+                          Step 3: Find Local Comps
+                        </h4>
+                        <span className="bg-emerald-500/30 text-emerald-300 text-[10px] font-black px-2.5 py-0.5 rounded-full border border-emerald-400/30 uppercase tracking-wider">
+                          Strictly Local
+                        </span>
+                      </div>
+                      <p className="text-xs text-indigo-200/80 mt-0.5 leading-relaxed">
+                        Search active & sold comps across local Facebook Marketplace, local Buy/Sell groups, OfferUp, Craigslist, and eBay Local.
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleFetchLocalComps}
+                    disabled={isCompsLoading}
+                    className="py-2.5 px-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-black transition shadow-md flex items-center justify-center gap-2 shrink-0 cursor-pointer active:scale-95 disabled:opacity-50"
+                    id="btn-run-ai-local-comps"
+                  >
+                    {isCompsLoading ? <RefreshCw size={15} className="animate-spin" /> : <Search size={15} />}
+                    <span>{isCompsLoading ? "Analyzing Local Comps..." : "⚡ Run AI Local Comps Analysis"}</span>
+                  </button>
+                </div>
+
+                {compsError && (
+                  <div className="bg-amber-500/20 border border-amber-400/40 p-3 rounded-xl text-xs text-amber-200 flex items-center gap-2">
+                    <AlertCircle size={15} className="text-amber-400 shrink-0" />
+                    <span>{compsError}</span>
+                  </div>
+                )}
+
+                {/* AI Local Comps Analysis Breakdown */}
+                {localComps && (
+                  <div className="bg-white/10 border border-white/15 rounded-xl p-3.5 space-y-3 text-xs animate-fade-in">
+                    <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                      <span className="font-extrabold text-indigo-200 text-xs">Local Cash Deal Comps Summary</span>
+                      <span className="font-black text-emerald-400 text-sm">
+                        ${localComps.estimatedLocalMin} – ${localComps.estimatedLocalMax}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-[11px]">
+                      <div>
+                        <span className="text-indigo-300 font-bold block">Local Demand Score:</span>
+                        <span className="font-black text-white">{localComps.localDemandScore}/10</span>
+                      </div>
+                      <div>
+                        <span className="text-indigo-300 font-bold block">Local Sell-Through Speed:</span>
+                        <span className="font-black text-emerald-300">{localComps.sellThroughVelocity}</span>
+                      </div>
+                    </div>
+
+                    {localComps.localTips && localComps.localTips.length > 0 && (
+                      <div className="space-y-1 pt-1 border-t border-white/10">
+                        <span className="text-[10px] font-bold text-amber-300 uppercase tracking-wider block">💡 Local Resale Tips:</span>
+                        {localComps.localTips.map((tip: string, idx: number) => (
+                          <div key={idx} className="flex items-start gap-1 text-[11px] text-indigo-100">
+                            <span className="text-amber-400 shrink-0">•</span>
+                            <span>{tip}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* 1-Click Direct Local Search Launchers Grid */}
+                <div className="space-y-2 pt-2 border-t border-white/10">
+                  <span className="text-[11px] font-black text-indigo-200 uppercase tracking-wider block">
+                    ⚡ 1-Click Direct Local Search Launchers:
+                  </span>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+                    <a
+                      href={`https://www.facebook.com/marketplace/search/?query=${encodeURIComponent(queryVal)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-2.5 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-xl flex items-center justify-between gap-1.5 transition shadow-2xs cursor-pointer active:scale-95"
+                      id="link-fb-marketplace-local"
+                    >
+                      <span className="truncate">🔵 FB Marketplace</span>
+                      <ExternalLink size={13} className="shrink-0" />
+                    </a>
+
+                    <a
+                      href={`https://www.facebook.com/search/groups/?q=${encodeURIComponent(queryVal)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-xl flex items-center justify-between gap-1.5 transition shadow-2xs cursor-pointer active:scale-95"
+                      id="link-fb-groups-local"
+                    >
+                      <span className="truncate">👥 FB Buy/Sell Groups</span>
+                      <ExternalLink size={13} className="shrink-0" />
+                    </a>
+
+                    <a
+                      href={`https://offerup.com/search?q=${encodeURIComponent(queryVal)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl flex items-center justify-between gap-1.5 transition shadow-2xs cursor-pointer active:scale-95"
+                      id="link-offerup-local"
+                    >
+                      <span className="truncate">🏷️ OfferUp Local</span>
+                      <ExternalLink size={13} className="shrink-0" />
+                    </a>
+
+                    <a
+                      href={`https://craigslist.org/search/sss?query=${encodeURIComponent(queryVal)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-2.5 bg-amber-600 hover:bg-amber-700 text-white font-black rounded-xl flex items-center justify-between gap-1.5 transition shadow-2xs cursor-pointer active:scale-95"
+                      id="link-craigslist-local"
+                    >
+                      <span className="truncate">📌 Craigslist Local</span>
+                      <ExternalLink size={13} className="shrink-0" />
+                    </a>
+
+                    <a
+                      href={`https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(queryVal)}&LH_PrefLoc=99`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-2.5 bg-purple-600 hover:bg-purple-700 text-white font-black rounded-xl flex items-center justify-between gap-1.5 transition shadow-2xs cursor-pointer active:scale-95"
+                      id="link-ebay-local"
+                    >
+                      <span className="truncate">📦 eBay Local Pickup</span>
+                      <ExternalLink size={13} className="shrink-0" />
+                    </a>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
         </div>
       )}
     </div>

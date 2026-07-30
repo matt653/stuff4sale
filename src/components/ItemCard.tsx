@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { 
   Edit, Trash2, Tag, TrendingUp, Clock, MapPin, 
-  ExternalLink, Sparkles, CheckCircle, Archive, DollarSign, Calendar, ShoppingBag, Share2, Crop
+  ExternalLink, Sparkles, CheckCircle, Archive, DollarSign, Calendar, ShoppingBag, Share2, Crop, Search, X, RefreshCw, AlertCircle
 } from "lucide-react";
 import { InventoryItem, ItemStatus } from "../types";
 import PhotoEditorModal from "./PhotoEditorModal";
@@ -19,6 +19,36 @@ interface ItemCardProps {
 export default function ItemCard({ item, allItems = [], onEdit, onDelete, onStatusChange, onFBPost }: ItemCardProps) {
   const [showStatusModal, setShowStatusModal] = useState<"list" | "sell" | null>(null);
   const [showPhotoEditor, setShowPhotoEditor] = useState(false);
+  const [showCompsModal, setShowCompsModal] = useState(false);
+  const [localComps, setLocalComps] = useState<any | null>(null);
+  const [isCompsLoading, setIsCompsLoading] = useState(false);
+  const [compsError, setCompsError] = useState<string | null>(null);
+
+  const handleFetchLocalComps = async () => {
+    setIsCompsLoading(true);
+    setCompsError(null);
+    try {
+      const res = await fetch("/api/comps", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: item.name,
+          category: item.category,
+          notes: item.notes,
+          image: item.photoUrl || (item.photos && item.photos[0]) || null,
+          images: item.photos || (item.photoUrl ? [item.photoUrl] : [])
+        })
+      });
+      if (!res.ok) throw new Error("Failed to fetch local comps analysis.");
+      const data = await res.json();
+      setLocalComps(data);
+    } catch (err: any) {
+      console.error(err);
+      setCompsError(err.message || "Could not fetch local comps.");
+    } finally {
+      setIsCompsLoading(false);
+    }
+  };
   
   const handleSaveEditedPhotoCard = (editedUrl: string) => {
     const updatedPhotos = item.photos && item.photos.length > 0 ? [...item.photos] : [editedUrl];
@@ -450,6 +480,19 @@ export default function ItemCard({ item, allItems = [], onEdit, onDelete, onStat
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
+                setShowCompsModal(true);
+              }}
+              className="p-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-lg border border-emerald-200 transition font-black text-[11px] flex items-center gap-1 cursor-pointer"
+              title="Search Local Market Comps (FB Marketplace, Groups, OfferUp, Craigslist)"
+              id={`btn-find-comps-${item.id}`}
+            >
+              <Search size={12} className="text-emerald-600" /> Comps
+            </button>
+
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
                 setShowPhotoEditor(true);
               }}
               className="p-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg border border-indigo-200 transition font-bold text-[11px] flex items-center gap-1 cursor-pointer"
@@ -485,6 +528,153 @@ export default function ItemCard({ item, allItems = [], onEdit, onDelete, onStat
             </button>
           </div>
         </div>
+
+        {/* Step 3: Local Comps Finder Modal */}
+        {showCompsModal && (
+          <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-fade-in" id={`modal-comps-${item.id}`}>
+            <div className="bg-slate-900 border border-indigo-500/30 text-white rounded-3xl max-w-xl w-full shadow-2xl overflow-hidden my-auto p-5 space-y-4">
+              <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-2xl bg-indigo-500/20 border border-indigo-400/40 flex items-center justify-center text-indigo-300 font-black">
+                    🔍
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black text-white flex items-center gap-2">
+                      <span>Step 3: Find Local Comps</span>
+                      <span className="bg-emerald-500/30 text-emerald-300 text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
+                        Local Only
+                      </span>
+                    </h3>
+                    <p className="text-xs text-indigo-200/80 mt-0.5 truncate max-w-xs sm:max-w-sm">
+                      {item.name} (Stock #{item.stockNumber || item.id})
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setShowCompsModal(false)}
+                  className="p-2 hover:bg-white/10 rounded-xl transition text-white/80 hover:text-white cursor-pointer"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Action: Run AI Local Comps Analysis */}
+              <button
+                type="button"
+                onClick={handleFetchLocalComps}
+                disabled={isCompsLoading}
+                className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl text-xs font-black transition shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 active:scale-98"
+                id={`btn-run-comps-modal-${item.id}`}
+              >
+                {isCompsLoading ? <RefreshCw size={16} className="animate-spin" /> : <Sparkles size={16} className="text-amber-300" />}
+                <span>{isCompsLoading ? "Analyzing Local Comps..." : "⚡ Run AI Local Market Comps Analysis"}</span>
+              </button>
+
+              {compsError && (
+                <div className="bg-amber-500/20 border border-amber-400/40 p-3 rounded-xl text-xs text-amber-200 flex items-center gap-2">
+                  <AlertCircle size={15} className="text-amber-400 shrink-0" />
+                  <span>{compsError}</span>
+                </div>
+              )}
+
+              {/* Local Comps AI Output */}
+              {localComps && (
+                <div className="bg-white/10 border border-white/15 rounded-2xl p-4 space-y-3 text-xs animate-fade-in">
+                  <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                    <span className="font-extrabold text-indigo-200">Local Market Cash Range</span>
+                    <span className="font-black text-emerald-400 text-base">
+                      ${localComps.estimatedLocalMin} – ${localComps.estimatedLocalMax}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-[11px]">
+                    <div>
+                      <span className="text-indigo-300 font-bold block">Local Buyer Demand:</span>
+                      <span className="font-black text-white">{localComps.localDemandScore}/10</span>
+                    </div>
+                    <div>
+                      <span className="text-indigo-300 font-bold block">Local Sell-Through Speed:</span>
+                      <span className="font-black text-emerald-300">{localComps.sellThroughVelocity}</span>
+                    </div>
+                  </div>
+
+                  {localComps.localTips && (
+                    <div className="space-y-1 pt-1 border-t border-white/10 text-[11px]">
+                      <span className="font-bold text-amber-300 uppercase tracking-wider block">💡 Local Resale Tips:</span>
+                      {localComps.localTips.map((tip: string, idx: number) => (
+                        <div key={idx} className="flex items-start gap-1 text-indigo-100">
+                          <span className="text-amber-400 shrink-0">•</span>
+                          <span>{tip}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* 1-Click Direct Local Search Launchers */}
+              <div className="space-y-2 pt-1">
+                <span className="text-[11px] font-black text-indigo-200 uppercase tracking-wider block">
+                  ⚡ 1-Click Direct Local Search Launchers:
+                </span>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                  <a
+                    href={`https://www.facebook.com/marketplace/search/?query=${encodeURIComponent(item.name)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-3 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-xl flex items-center justify-between gap-2 transition shadow-sm cursor-pointer"
+                  >
+                    <span className="truncate">🔵 FB Marketplace Local Search</span>
+                    <ExternalLink size={14} className="shrink-0" />
+                  </a>
+
+                  <a
+                    href={`https://www.facebook.com/search/groups/?q=${encodeURIComponent(item.name)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-3 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-xl flex items-center justify-between gap-2 transition shadow-sm cursor-pointer"
+                  >
+                    <span className="truncate">👥 FB Buy/Sell Groups Search</span>
+                    <ExternalLink size={14} className="shrink-0" />
+                  </a>
+
+                  <a
+                    href={`https://offerup.com/search?q=${encodeURIComponent(item.name)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl flex items-center justify-between gap-2 transition shadow-sm cursor-pointer"
+                  >
+                    <span className="truncate">🏷️ OfferUp Local Search</span>
+                    <ExternalLink size={14} className="shrink-0" />
+                  </a>
+
+                  <a
+                    href={`https://craigslist.org/search/sss?query=${encodeURIComponent(item.name)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-3 bg-amber-600 hover:bg-amber-700 text-white font-black rounded-xl flex items-center justify-between gap-2 transition shadow-sm cursor-pointer"
+                  >
+                    <span className="truncate">📌 Craigslist Local Search</span>
+                    <ExternalLink size={14} className="shrink-0" />
+                  </a>
+
+                  <a
+                    href={`https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(item.name)}&LH_PrefLoc=99`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-3 bg-purple-600 hover:bg-purple-700 text-white font-black rounded-xl flex items-center justify-between gap-2 transition shadow-sm cursor-pointer sm:col-span-2"
+                  >
+                    <span className="truncate">📦 eBay Local Pickup Comps Search</span>
+                    <ExternalLink size={14} className="shrink-0" />
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Photo Studio Editor Modal */}
         {showPhotoEditor && (itemPhotos[currentPhotoIdx] || item.photoUrl) && (
