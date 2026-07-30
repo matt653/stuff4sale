@@ -251,31 +251,34 @@ export default function App() {
   };
 
   const handleEditClick = (item: InventoryItem) => {
+    if (!item) return;
     setEditingItem(item);
-    setItemName(item.name);
-    setItemCategory(item.category);
+    setItemName(item.name || "");
+    setItemCategory(item.category || "Clothing & Apparel");
     setStockNumber(item.stockNumber || "");
     setBundleTitle(item.bundleTitle || "");
-    setBundledItemIds(item.bundledItemIds || []);
-    setPurchasePrice(item.purchasePrice.toString());
-    setPurchaseDate(item.purchaseDate);
+    setBundledItemIds(Array.isArray(item.bundledItemIds) ? item.bundledItemIds : []);
+    setPurchasePrice(item.purchasePrice !== undefined && item.purchasePrice !== null ? String(item.purchasePrice) : "0");
+    setPurchaseDate(item.purchaseDate || new Date().toISOString().split("T")[0]);
     setPurchaseLocation(item.purchaseLocation || "");
     setNotes(item.notes || "");
-    setPhotoUrl(item.photoUrl);
-    setPhotos(item.photos && item.photos.length > 0 ? item.photos : item.photoUrl ? [item.photoUrl] : []);
+    setPhotoUrl(item.photoUrl || null);
+    setPhotos(Array.isArray(item.photos) && item.photos.length > 0 ? item.photos : item.photoUrl ? [item.photoUrl] : []);
     setVideoUrl(item.videoUrl || null);
-    setItemStatus(item.status);
-    setListedPrice(item.listedPrice ? item.listedPrice.toString() : "");
+    setItemStatus(item.status || "inventory");
+    setListedPrice(item.listedPrice !== undefined && item.listedPrice !== null ? String(item.listedPrice) : "");
     setListedPlatform(cleanPlatformName(item.listedPlatform));
     setListingUrl(item.listingUrl || "");
-    setSalePrice(item.salePrice ? item.salePrice.toString() : "");
+    setSalePrice(item.salePrice !== undefined && item.salePrice !== null ? String(item.salePrice) : "");
     setSalePlatform(item.salePlatform ? cleanPlatformName(item.salePlatform) : "Facebook Marketplace");
     setSaleDate(item.saleDate || "");
-    setAiResult(item.research);
+    setAiResult(item.research || null);
     setShowAddForm(true);
     
     // Scroll to form nicely
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    try {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch (e) {}
   };
 
   // Connect to server-side Gemini research API
