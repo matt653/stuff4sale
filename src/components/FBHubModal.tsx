@@ -273,6 +273,34 @@ Please fill in all fields line-by-line, upload the item photos, and STOP on the 
     return true;
   };
 
+  // Sequential Copy Wizard Steps Definition
+  const wizardSteps = [
+    { label: "Step 1: Download Photos", key: "photos", text: "", action: handleDownloadPhotos },
+    { label: "Step 2: Copy Title", key: "title", text: fbTitle },
+    { label: "Step 3: Copy Price", key: "price", text: fbPrice },
+    { label: "Step 4: Copy Category", key: "category", text: fbCategory },
+    { label: "Step 5: Copy Condition", key: "condition", text: fbCondition },
+    { label: "Step 6: Copy Description", key: "description", text: fbDescription },
+    { label: "Step 7: Copy Tags", key: "tags", text: fbTags },
+    { label: "Step 8: Copy SKU", key: "sku", text: fbSku },
+  ];
+
+  const handleWizardAdvance = () => {
+    const currentStepObj = wizardSteps[wizardStep];
+    if (!currentStepObj) return;
+
+    if (currentStepObj.action) {
+      currentStepObj.action();
+      copyToClipboard("Photos Downloaded!", "photos");
+    } else if (currentStepObj.text) {
+      copyToClipboard(currentStepObj.text, currentStepObj.key);
+    }
+
+    if (wizardStep < wizardSteps.length - 1) {
+      setWizardStep(prev => prev + 1);
+    }
+  };
+
   // Mark as Listed in Supabase & set Agent Complete
   const handleAgentComplete = () => {
     const success = handleMarkAsListed();
