@@ -3,7 +3,7 @@ import {
   Share2, Copy, Check, ExternalLink, 
   ShoppingBag, DollarSign, Tag, X, Download, MessageSquare, Bell, Image as ImageIcon,
   Sparkles, Layers, ChevronRight, ArrowRight, RefreshCw, CheckCircle2, ShieldCheck,
-  Bot, Globe, Play, FileText
+  Bot, Globe, Play, FileText, Zap
 } from "lucide-react";
 import { InventoryItem } from "../types";
 

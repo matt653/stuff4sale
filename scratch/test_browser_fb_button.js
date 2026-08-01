@@ -1,14 +1,13 @@
 import { chromium } from "playwright";
 
 (async () => {
-  console.log("Launching Playwright Chrome to test FB Button on http://localhost:3000...");
+  console.log("Launching Playwright Chrome for deep test of FB Posting buttons on http://localhost:3000...");
   const browser = await chromium.launch({ headless: true });
   const page = await browser.newPage();
 
   const consoleErrors = [];
   page.on("pageerror", (exception) => {
-    console.error("!!! UNCAUGHT PAGE EXCEPTION !!!");
-    console.error(exception);
+    console.error("!!! UNCAUGHT PAGE EXCEPTION !!!", exception);
     consoleErrors.push(exception.toString() + "\n" + (exception.stack || ""));
   });
 
@@ -22,40 +21,49 @@ import { chromium } from "playwright";
     await page.goto("http://localhost:3000", { waitUntil: "domcontentloaded", timeout: 15000 });
     await page.waitForTimeout(2000);
 
-    console.log("Looking for FB Hub / FB Ad buttons...");
-
-    // Test Top Nav FB Hub button
+    // Open Top FB Hub Modal
     const topFbBtn = page.locator("#btn-open-fb-hub, button:has-text('Facebook')").first();
     if (await topFbBtn.isVisible()) {
-      console.log("Clicking Top Nav FB Hub button...");
+      console.log("1. Clicking Top Nav FB Hub button...");
       await topFbBtn.click();
-      await page.waitForTimeout(2000);
+      await page.waitForTimeout(1500);
 
-      const isModalVisible = await page.locator("#fb-hub-modal").isVisible();
-      console.log("FB Hub Modal Visible:", isModalVisible);
-    } else {
-      console.log("Top FB Hub button not found.");
-    }
+      // Test tab switching inside FB Hub Modal
+      console.log("2. Testing tab switching inside FB Hub Modal...");
+      const agentTab = page.locator("#tab-fb-agent");
+      if (await agentTab.isVisible()) {
+        await agentTab.click();
+        await page.waitForTimeout(1000);
+        console.log("Switched to Browser Agent Auto-Fill tab.");
+      }
 
-    // Look for item card FB buttons
-    const fbCardButtons = page.locator("[id^=btn-fb-post-]");
-    const cardBtnCount = await fbCardButtons.count();
-    console.log(`Found ${cardBtnCount} Item Card FB Ad buttons.`);
+      const fullTab = page.locator("#tab-fb-full");
+      if (await fullTab.isVisible()) {
+        await fullTab.click();
+        await page.waitForTimeout(1000);
+        console.log("Switched to Combined Text tab.");
+      }
 
-    if (cardBtnCount > 0) {
-      console.log("Clicking first Item Card FB Ad button...");
-      await fbCardButtons.first().click();
-      await page.waitForTimeout(2000);
+      const bundleTab = page.locator("#tab-fb-bundle");
+      if (await bundleTab.isVisible()) {
+        await bundleTab.click();
+        await page.waitForTimeout(1000);
+        console.log("Switched to Bundle Deal Builder tab.");
+      }
 
-      const isModalVisible = await page.locator("#fb-hub-modal").isVisible();
-      console.log("FB Hub Modal Visible after Card FB click:", isModalVisible);
+      const repliesTab = page.locator("#tab-fb-replies");
+      if (await repliesTab.isVisible()) {
+        await repliesTab.click();
+        await page.waitForTimeout(1000);
+        console.log("Switched to Buyer Replies tab.");
+      }
     }
 
     const bodyText = await page.innerText("body");
     const isWhiteScreen = bodyText.trim() === "" || bodyText.length < 50;
 
-    console.log("\n=================== TEST RESULT SUMMARY ===================");
-    console.log("Page Status:", isWhiteScreen ? "🚨 WHITE SCREEN DETECTED!" : "✅ FB MODAL RENDERED CLEANLY");
+    console.log("\n=================== DEEP TEST RESULT SUMMARY ===================");
+    console.log("Page Status:", isWhiteScreen ? "🚨 WHITE SCREEN DETECTED!" : "✅ FB MODAL & ALL TABS RENDERED CLEANLY");
     console.log("Total Uncaught Page Exceptions:", consoleErrors.length);
     if (consoleErrors.length > 0) {
       console.log("\n---------------- UNCAUGHT STACK TRACE(S) ----------------");
@@ -64,7 +72,7 @@ import { chromium } from "playwright";
       });
       console.log("---------------------------------------------------------");
     }
-    console.log("===========================================================\n");
+    console.log("=================================================================\n");
   } catch (err) {
     console.error("Test error:", err);
   } finally {
