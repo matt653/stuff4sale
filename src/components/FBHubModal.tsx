@@ -113,9 +113,38 @@ export default function FBHubModal({
     setAgentCompleted(false);
   }, [activeItem]);
 
-  // Helper copy function with visual feedback
+  const fallbackCopyText = (text: string): boolean => {
+    try {
+      const textArea = document.createElement("textarea");
+      textArea.value = text;
+      textArea.style.position = "fixed";
+      textArea.style.left = "-9999px";
+      textArea.style.top = "-9999px";
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      const successful = document.execCommand("copy");
+      document.body.removeChild(textArea);
+      return successful;
+    } catch (err) {
+      console.warn("Fallback copy failed:", err);
+      return false;
+    }
+  };
+
+  // Helper copy function with visual feedback and bulletproof fallback
   const copyToClipboard = (text: string, fieldName: string) => {
-    navigator.clipboard.writeText(text);
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).catch(() => {
+          fallbackCopyText(text);
+        });
+      } else {
+        fallbackCopyText(text);
+      }
+    } catch (e) {
+      fallbackCopyText(text);
+    }
     setCopiedField(fieldName);
     setTimeout(() => setCopiedField(null), 2200);
   };
