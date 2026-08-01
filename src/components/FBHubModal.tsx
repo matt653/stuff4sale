@@ -392,6 +392,15 @@ Please fill in all fields line-by-line, upload the item photos, and STOP on the 
   );
   const recommendedBundlePrice = Math.round(totalBundleSum * 0.85);
 
+  // DOM Ref to bypass React JSX javascript: URL blocking security error
+  const bookmarkletRef = React.useRef<HTMLAnchorElement>(null);
+
+  useEffect(() => {
+    if (bookmarkletRef.current) {
+      bookmarkletRef.current.setAttribute("href", getAutoFillBookmarkletCode());
+    }
+  }, [fbTitle, fbPrice, fbDescription, fbSku, fbTags, viewTab]);
+
   return (
     <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-xs z-50 flex items-center justify-center p-2 sm:p-4 overflow-y-auto animate-fade-in" id="fb-hub-modal">
       <div className="bg-white border border-slate-200 rounded-3xl max-w-4xl w-full shadow-2xl overflow-hidden my-auto flex flex-col max-h-[92vh]">
@@ -696,15 +705,16 @@ Please fill in all fields line-by-line, upload the item photos, and STOP on the 
                       ⚡ 1-Click Auto-Filler (No Manual Copy-Pasting Needed!)
                     </span>
                     <a
-                      href={getAutoFillBookmarkletCode()}
+                      ref={bookmarkletRef}
                       onClick={(e) => {
                         e.preventDefault();
                         copyToClipboard(getAutoFillBookmarkletCode(), "autofill");
-                        alert("⚡ Auto-Fill Script Copied!\n\nIMPORTANT CHROME NOTE:\nWhen pasting into Chrome's top address bar, Chrome automatically strips the word 'javascript:'.\n\nTo run it:\n1. Press F12 on Facebook -> click Console -> paste & press Enter!\nOR\n2. If pasting in the address bar, type 'javascript:' back at the very start before hitting Enter!");
+                        alert("⚡ Auto-Fill Script Copied to Clipboard!\n\n3 WAYS TO RUN ON FACEBOOK MARKETPLACE:\n\n1. BOOKMARKLET (Easiest): Drag this gold button to your Chrome Bookmarks bar (Ctrl+Shift+B) & click it on Facebook!\n\n2. CONSOLE (F12): On Facebook, press F12 -> Console tab -> paste & press Enter!\n\n3. ADDRESS BAR: If pasting in the top URL bar, type 'javascript:' at the very front before hitting Enter!");
                       }}
-                      className="py-1 px-3 bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-black rounded-xl transition shadow-sm cursor-grab active:cursor-grabbing flex items-center gap-1"
+                      className="py-1.5 px-3.5 bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-black rounded-xl transition shadow-sm cursor-grab active:cursor-grabbing flex items-center gap-1.5"
                       title="Drag to bookmarks bar or click to copy auto-fill script"
                     >
+                      <Zap size={14} className="fill-slate-950 text-slate-950" />
                       <span>⚡ 1-Click Auto-Filler</span>
                     </a>
                   </div>
