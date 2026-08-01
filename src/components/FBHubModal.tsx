@@ -322,7 +322,7 @@ Please fill in all fields line-by-line, upload the item photos, and STOP on the 
   };
 
   const getAutoFillBookmarkletCode = () => {
-    const code = `javascript:(function(){
+    const code = `(function(){
       function setInputValue(el, val) {
         if (!el) return false;
         try {
