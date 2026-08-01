@@ -323,29 +323,51 @@ Please fill in all fields line-by-line, upload the item photos, and STOP on the 
 
   const getAutoFillBookmarkletCode = () => {
     const code = `javascript:(function(){
-      function setVal(sel, val) {
-        const el = document.querySelector(sel);
-        if (el) {
-          const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
-          nativeSetter.call(el, val);
+      function setInputValue(el, val) {
+        if (!el) return false;
+        try {
+          const proto = el.tagName === 'TEXTAREA' ? window.HTMLTextAreaElement.prototype : window.HTMLInputElement.prototype;
+          const setter = Object.getOwnPropertyDescriptor(proto, 'value').set;
+          setter.call(el, val);
           el.dispatchEvent(new Event('input', { bubbles: true }));
           el.dispatchEvent(new Event('change', { bubbles: true }));
-        }
-      }
-      function setTxt(sel, val) {
-        const el = document.querySelector(sel);
-        if (el) {
-          const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value').set;
-          nativeSetter.call(el, val);
+          return true;
+        } catch(e) {
+          el.value = val;
           el.dispatchEvent(new Event('input', { bubbles: true }));
-          el.dispatchEvent(new Event('change', { bubbles: true }));
+          return true;
         }
       }
-      setVal('input[aria-label="Title"]', ${JSON.stringify(fbTitle)});
-      setVal('input[aria-label="Price"]', ${JSON.stringify(fbPrice)});
-      setTxt('textarea[aria-label="Description"]', ${JSON.stringify(fbDescription)});
-      setVal('input[aria-label="SKU"]', ${JSON.stringify(fbSku)});
-      alert("✨ Stuff4Sale Auto-Fill Complete! All fields filled automatically.");
+
+      function fillField(labels, val) {
+        if (!val) return false;
+        for (let label of labels) {
+          let el = document.querySelector(\`input[aria-label="\${label}"], textarea[aria-label="\${label}"]\`);
+          if (!el) el = document.querySelector(\`[aria-label*="\${label}"] input, [aria-label*="\${label}"] textarea\`);
+          if (!el) {
+            const allElements = Array.from(document.querySelectorAll('label, span, div'));
+            const match = allElements.find(e => e.children.length === 0 && e.textContent.trim().toLowerCase() === label.toLowerCase());
+            if (match) {
+              const parent = match.closest('label') || match.parentElement?.parentElement;
+              if (parent) el = parent.querySelector('input, textarea');
+            }
+          }
+          if (el && setInputValue(el, val)) return true;
+        }
+        return false;
+      }
+
+      const filledTitle = fillField(["Title", "Título"], ${JSON.stringify(fbTitle)});
+      const filledPrice = fillField(["Price", "Precio"], ${JSON.stringify(fbPrice)});
+      const filledDesc = fillField(["Description", "Descripción"], ${JSON.stringify(fbDescription)});
+      const filledSku = fillField(["SKU", "Stock"], ${JSON.stringify(fbSku)});
+      const filledTags = fillField(["Product Tags", "Tags", "Etiquetas"], ${JSON.stringify(fbTags)});
+
+      if (filledTitle || filledPrice || filledDesc) {
+        alert("✨ Stuff4Sale Auto-Fill Complete! All fields filled automatically.");
+      } else {
+        alert("⚠️ Auto-Fill Note: Please click inside the Title or Description box on Facebook Marketplace first, then run the script again!");
+      }
     })();`;
     return code;
   };
@@ -677,8 +699,8 @@ Please fill in all fields line-by-line, upload the item photos, and STOP on the 
                       href={getAutoFillBookmarkletCode()}
                       onClick={(e) => {
                         e.preventDefault();
-                        navigator.clipboard.writeText(getAutoFillBookmarkletCode());
-                        alert("⚡ Auto-Fill Script copied! Open Facebook Marketplace, press F12 or paste into your address bar / browser console to auto-fill all fields instantly.");
+                        copyToClipboard(getAutoFillBookmarkletCode(), "autofill");
+                        alert("⚡ Auto-Fill Script Copied!\n\nIMPORTANT CHROME NOTE:\nWhen pasting into Chrome's top address bar, Chrome automatically strips the word 'javascript:'.\n\nTo run it:\n1. Press F12 on Facebook -> click Console -> paste & press Enter!\nOR\n2. If pasting in the address bar, type 'javascript:' back at the very start before hitting Enter!");
                       }}
                       className="py-1 px-3 bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-black rounded-xl transition shadow-sm cursor-grab active:cursor-grabbing flex items-center gap-1"
                       title="Drag to bookmarks bar or click to copy auto-fill script"
@@ -689,6 +711,17 @@ Please fill in all fields line-by-line, upload the item photos, and STOP on the 
                   <p className="text-xs text-purple-100/90 leading-relaxed">
                     Click <strong>"⚡ 1-Click Auto-Filler"</strong> or drag it to your browser bookmarks bar. When you are on Facebook Marketplace, clicking it automatically populates your Title, Asking Price, Full 5-Section Description, and SKU line-by-line in 1 millisecond!
                   </p>
+
+                  <div className="bg-black/40 border border-amber-400/30 rounded-xl p-3 text-[11px] text-amber-100 space-y-1.5">
+                    <div className="font-extrabold text-amber-300 flex items-center gap-1">
+                      <span>💡 3 Ways to Run on Facebook Marketplace:</span>
+                    </div>
+                    <div className="space-y-1 leading-relaxed text-slate-200">
+                      <div><strong className="text-amber-300">Method 1 (Bookmarklet - Easiest):</strong> Drag the gold button directly to your browser's Bookmarks Bar (<code className="bg-black/60 text-amber-300 px-1 rounded">Ctrl + Shift + B</code>). On Facebook, just click your bookmark!</div>
+                      <div><strong className="text-amber-300">Method 2 (Chrome Console F12):</strong> On Facebook, press <code className="bg-black/60 text-amber-300 px-1 rounded">F12</code> ➔ click <strong>Console</strong> ➔ paste ➔ hit <strong>Enter</strong>!</div>
+                      <div><strong className="text-amber-300">Method 3 (Address Bar Note):</strong> Chrome automatically strips the word <code className="bg-black/60 text-amber-300 px-1 rounded">javascript:</code> when you paste into the address bar. If you paste into the address bar, type <code className="bg-black/60 text-amber-300 px-1 rounded">javascript:</code> back at the very front of the URL bar before hitting Enter!</div>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Dual Action Buttons: Trigger Agent & Agent Complete */}
