@@ -704,32 +704,31 @@ Please fill in all fields line-by-line, upload the item photos, and STOP on the 
                       <Zap size={15} className="text-amber-400" />
                       ⚡ 1-Click Auto-Filler (No Manual Copy-Pasting Needed!)
                     </span>
-                    <a
-                      ref={bookmarkletRef}
-                      onClick={(e) => {
-                        e.preventDefault();
+                    <button
+                      type="button"
+                      onClick={() => {
                         copyToClipboard(getAutoFillBookmarkletCode(), "autofill");
-                        alert("⚡ Auto-Fill Script Copied to Clipboard!\n\n3 WAYS TO RUN ON FACEBOOK MARKETPLACE:\n\n1. BOOKMARKLET (Easiest): Drag this gold button to your Chrome Bookmarks bar (Ctrl+Shift+B) & click it on Facebook!\n\n2. CONSOLE (F12): On Facebook, press F12 -> Console tab -> paste & press Enter!\n\n3. ADDRESS BAR: If pasting in the top URL bar, type 'javascript:' at the very front before hitting Enter!");
+                        alert("⚡ Auto-Fill Script Copied to Clipboard!\n\nFACEBOOK F12 CONSOLE INSTRUCTIONS:\nFacebook blocks pasting into F12 Console by default for security.\n\nTo run it in Facebook Console:\n1. On Facebook, press F12 -> Console tab.\n2. Type 'allow pasting' and press Enter!\n3. Now paste the script and press Enter!");
                       }}
-                      className="py-1.5 px-3.5 bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-black rounded-xl transition shadow-sm cursor-grab active:cursor-grabbing flex items-center gap-1.5"
-                      title="Drag to bookmarks bar or click to copy auto-fill script"
+                      className="py-1.5 px-3.5 bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-black rounded-xl transition shadow-sm cursor-pointer flex items-center gap-1.5 active:scale-95"
+                      id="btn-copy-autofill-script"
                     >
                       <Zap size={14} className="fill-slate-950 text-slate-950" />
-                      <span>⚡ 1-Click Auto-Filler</span>
-                    </a>
+                      <span>{copiedField === "autofill" ? "Copied Script!" : "⚡ Copy Auto-Fill Script"}</span>
+                    </button>
                   </div>
                   <p className="text-xs text-purple-100/90 leading-relaxed">
-                    Click <strong>"⚡ 1-Click Auto-Filler"</strong> or drag it to your browser bookmarks bar. When you are on Facebook Marketplace, clicking it automatically populates your Title, Asking Price, Full 5-Section Description, and SKU line-by-line in 1 millisecond!
+                    Click <strong>"⚡ Copy Auto-Fill Script"</strong>. On Facebook Marketplace, run the script to automatically populate your Title, Asking Price, Full 5-Section Description, SKU, and Tags in 1 millisecond!
                   </p>
 
                   <div className="bg-black/40 border border-amber-400/30 rounded-xl p-3 text-[11px] text-amber-100 space-y-1.5">
                     <div className="font-extrabold text-amber-300 flex items-center gap-1">
-                      <span>💡 3 Ways to Run on Facebook Marketplace:</span>
+                      <span>💡 Facebook Security & Console Instructions:</span>
                     </div>
-                    <div className="space-y-1 leading-relaxed text-slate-200">
-                      <div><strong className="text-amber-300">Method 1 (Bookmarklet - Easiest):</strong> Drag the gold button directly to your browser's Bookmarks Bar (<code className="bg-black/60 text-amber-300 px-1 rounded">Ctrl + Shift + B</code>). On Facebook, just click your bookmark!</div>
-                      <div><strong className="text-amber-300">Method 2 (Chrome Console F12):</strong> On Facebook, press <code className="bg-black/60 text-amber-300 px-1 rounded">F12</code> ➔ click <strong>Console</strong> ➔ paste ➔ hit <strong>Enter</strong>!</div>
-                      <div><strong className="text-amber-300">Method 3 (Address Bar Note):</strong> Chrome automatically strips the word <code className="bg-black/60 text-amber-300 px-1 rounded">javascript:</code> when you paste into the address bar. If you paste into the address bar, type <code className="bg-black/60 text-amber-300 px-1 rounded">javascript:</code> back at the very front of the URL bar before hitting Enter!</div>
+                    <div className="space-y-1.5 leading-relaxed text-slate-200">
+                      <div><strong className="text-amber-300">Why Facebook Shows "Stop! Self-XSS":</strong> Facebook intentionally blocks pasting in F12 Console on facebook.com to protect users. To unblock it, type <code className="bg-black/60 text-amber-300 px-1.5 py-0.5 rounded font-mono">allow pasting</code> into Facebook's F12 console and press Enter!</div>
+                      <div><strong className="text-amber-300">Method 1 (Chrome F12 Console):</strong> Press <code className="bg-black/60 text-amber-300 px-1 rounded">F12</code> on Facebook ➔ type <code className="bg-black/60 text-amber-300 px-1 rounded">allow pasting</code> ➔ hit Enter ➔ paste script ➔ hit Enter!</div>
+                      <div><strong className="text-amber-300">Method 2 (1-Click Line Stepper):</strong> Switch to Tab #1 (<code className="bg-black/60 text-blue-300 px-1 rounded">📱 FB Form Replica</code>) and use the <strong>Copy Line & Next Step ➔</strong> button for 100% zero-setup copying!</div>
                     </div>
                   </div>
                 </div>
