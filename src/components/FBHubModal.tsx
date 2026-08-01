@@ -237,11 +237,45 @@ Please fill in all fields line-by-line, upload the item photos, and STOP on the 
 
   const handleCopyAgentCommand = () => {
     const promptText = getBrowserAgentPrompt();
-    navigator.clipboard.writeText(promptText);
+    copyToClipboard(promptText, "agent");
     setAgentCopied(true);
     // Open FB Marketplace item creation page in new tab
     window.open("https://www.facebook.com/marketplace/create/item", "_blank");
     setTimeout(() => setAgentCopied(false), 4000);
+  };
+
+  // State for Desktop 1-Click Live Chrome Auto-Poster
+  const [autoPosting, setAutoPosting] = useState(false);
+  const [autoPostMsg, setAutoPostMsg] = useState<string | null>(null);
+
+  const handleLaunchDesktopAutoPost = async () => {
+    setAutoPosting(true);
+    setAutoPostMsg("🚀 Launching visible Chrome window on your desktop...");
+    try {
+      const res = await fetch("/api/autopost", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: fbTitle,
+          price: fbPrice,
+          category: fbCategory,
+          condition: fbCondition,
+          description: fbDescription,
+          tags: fbTags,
+          sku: fbSku,
+        }),
+      });
+      const data = await res.json();
+      if (data.status === "success") {
+        setAutoPostMsg("✨ Chrome window opened! Watch it type Title, Price, Description & SKU live on your screen!");
+      } else {
+        setAutoPostMsg(data.error || "Please run locally on http://localhost:3000 to launch visible Chrome.");
+      }
+    } catch (err: any) {
+      setAutoPostMsg("Error: Local server must be active on http://localhost:3000");
+    } finally {
+      setTimeout(() => setAutoPosting(false), 6000);
+    }
   };
 
   // State for Live Listing URL
@@ -611,10 +645,39 @@ Please fill in all fields line-by-line, upload the item photos, and STOP on the 
                         </span>
                       </h4>
                       <p className="text-xs text-purple-200/80">
-                        Instructs Antigravity's <code className="bg-black/40 text-amber-300 px-1.5 py-0.5 rounded">/browser</code> agent to open Facebook Marketplace, auto-fill every field line-by-line, and upload photos!
+                        Launches Playwright desktop agent or compiles prompt to auto-fill every field line-by-line!
                       </p>
                     </div>
                   </div>
+                </div>
+
+                {/* 1-Click Visible Desktop Auto-Post Trigger */}
+                <div className="bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-amber-600/20 border-2 border-amber-400 rounded-2xl p-4 space-y-2 shadow-lg">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                    <div>
+                      <span className="text-xs font-black text-amber-300 uppercase tracking-wider block">
+                        🚀 1-Click Watch-It-Type Auto-Poster
+                      </span>
+                      <p className="text-xs text-amber-100/90 mt-0.5">
+                        Launches a real Chrome browser on your screen to type Title, Price, Description & SKU automatically!
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleLaunchDesktopAutoPost}
+                      disabled={autoPosting}
+                      className="py-3 px-5 bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 text-slate-950 font-black text-xs rounded-xl shadow-md transition active:scale-95 flex items-center justify-center gap-2 shrink-0 cursor-pointer disabled:opacity-50"
+                      id="btn-launch-visible-chrome"
+                    >
+                      <Bot size={18} className="fill-slate-950" />
+                      <span>{autoPosting ? "Launching Chrome..." : "🚀 Watch Chrome Auto-Post"}</span>
+                    </button>
+                  </div>
+                  {autoPostMsg && (
+                    <div className="bg-black/60 text-amber-200 text-xs font-bold p-2.5 rounded-xl border border-amber-400/40 text-center animate-pulse">
+                      {autoPostMsg}
+                    </div>
+                  )}
                 </div>
 
                 {/* FB Policy Compliance Safeguard Banner */}

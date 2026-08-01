@@ -416,6 +416,76 @@ Generate a JSON response matching this schema strictly without markdown or forma
   }
 });
 
+// 1-Click Visible Playwright Desktop Auto-Poster Endpoint
+app.post("/api/autopost", async (req, res) => {
+  const { title, price, category, condition, description, tags, sku } = req.body;
+
+  try {
+    const { chromium } = await import("playwright");
+    console.log("🚀 Launching visible desktop Chrome browser for 1-Click Auto-Post...");
+    
+    // Launch real visible Chrome window on local desktop screen!
+    const browser = await chromium.launch({
+      headless: false,
+      args: ["--start-maximized", "--disable-blink-features=AutomationControlled"]
+    });
+    
+    const context = await browser.newContext({ viewport: null });
+    const page = await context.newPage();
+
+    // Navigate to FB Marketplace item creation page
+    await page.goto("https://www.facebook.com/marketplace/create/item", { waitUntil: "domcontentloaded" });
+    
+    // Respond to frontend immediately that Chrome browser is open on desktop!
+    res.json({
+      status: "success",
+      message: "🚀 Chrome Browser launched on your desktop! Typing listing details live..."
+    });
+
+    // Auto-fill form fields live on screen
+    await page.waitForTimeout(2000);
+
+    // Fill Title
+    try {
+      const titleInput = page.locator('input[aria-label="Title"], [aria-label*="Title"] input').first();
+      if (await titleInput.isVisible({ timeout: 5000 })) {
+        await titleInput.fill(title || "");
+      }
+    } catch(e) {}
+
+    // Fill Price
+    try {
+      const priceInput = page.locator('input[aria-label="Price"], [aria-label*="Price"] input').first();
+      if (await priceInput.isVisible({ timeout: 3000 })) {
+        await priceInput.fill(price ? price.toString() : "");
+      }
+    } catch(e) {}
+
+    // Fill Description
+    try {
+      const descInput = page.locator('textarea[aria-label="Description"], [aria-label*="Description"] textarea').first();
+      if (await descInput.isVisible({ timeout: 3000 })) {
+        await descInput.fill(description || "");
+      }
+    } catch(e) {}
+
+    // Fill SKU
+    try {
+      const skuInput = page.locator('input[aria-label="SKU"], [aria-label*="SKU"] input').first();
+      if (await skuInput.isVisible({ timeout: 3000 })) {
+        await skuInput.fill(sku || "");
+      }
+    } catch(e) {}
+
+    console.log("✅ Auto-fill complete! Chrome window open on user screen waiting for Publish button.");
+  } catch (err: any) {
+    console.error("Auto-post error:", err);
+    if (!res.headersSent) {
+      res.status(500).json({ error: "Failed to launch visible Chrome browser on desktop.", details: err.message });
+    }
+  }
+});
+
 // ==========================================
 // REAL-TIME FACEBOOK WEBHOOK & SSE STREAM ENGINE
 // ==========================================
