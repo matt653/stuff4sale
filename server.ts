@@ -422,57 +422,70 @@ app.post("/api/autopost", async (req, res) => {
 
   try {
     const { chromium } = await import("playwright");
-    console.log("🚀 Launching visible desktop Chrome browser for 1-Click Auto-Post...");
+    console.log("🚀 Launching Chrome browser for 1-Click Auto-Post...");
+
+    const profileDir = path.join(process.cwd(), "scratch", "chrome_user_profile");
     
-    // Launch real visible Chrome window on local desktop screen!
-    const browser = await chromium.launch({
-      headless: false,
-      args: ["--start-maximized", "--disable-blink-features=AutomationControlled"]
+    // Launch Chrome using persistent context so logins & cookies persist
+    let context;
+    try {
+      context = await chromium.launchPersistentContext(profileDir, {
+        channel: "chrome",
+        headless: false,
+        args: ["--start-maximized", "--disable-blink-features=AutomationControlled"]
+      });
+    } catch (e) {
+      context = await chromium.launchPersistentContext(profileDir, {
+        headless: false,
+        args: ["--start-maximized", "--disable-blink-features=AutomationControlled"]
+      });
+    }
+    
+    const page = context.pages().length > 0 ? context.pages()[0] : await context.newPage();
+
+    // Respond to frontend immediately
+    res.json({
+      status: "success",
+      message: "🚀 Chrome Browser launched! Navigating to Facebook Marketplace..."
     });
-    
-    const context = await browser.newContext({ viewport: null });
-    const page = await context.newPage();
 
     // Navigate to FB Marketplace item creation page
     await page.goto("https://www.facebook.com/marketplace/create/item", { waitUntil: "domcontentloaded" });
     
-    // Respond to frontend immediately that Chrome browser is open on desktop!
-    res.json({
-      status: "success",
-      message: "🚀 Chrome Browser launched on your desktop! Typing listing details live..."
-    });
-
-    // Auto-fill form fields live on screen
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(2500);
 
     // Fill Title
     try {
-      const titleInput = page.locator('input[aria-label="Title"], [aria-label*="Title"] input').first();
+      const titleInput = page.locator('input[aria-label="Title"], input[aria-label*="Title"], [aria-label*="Title"] input').first();
       if (await titleInput.isVisible({ timeout: 5000 })) {
+        await titleInput.click();
         await titleInput.fill(title || "");
       }
     } catch(e) {}
 
     // Fill Price
     try {
-      const priceInput = page.locator('input[aria-label="Price"], [aria-label*="Price"] input').first();
+      const priceInput = page.locator('input[aria-label="Price"], input[aria-label*="Price"], [aria-label*="Price"] input').first();
       if (await priceInput.isVisible({ timeout: 3000 })) {
+        await priceInput.click();
         await priceInput.fill(price ? price.toString() : "");
       }
     } catch(e) {}
 
     // Fill Description
     try {
-      const descInput = page.locator('textarea[aria-label="Description"], [aria-label*="Description"] textarea').first();
+      const descInput = page.locator('textarea[aria-label="Description"], textarea[aria-label*="Description"], [aria-label*="Description"] textarea').first();
       if (await descInput.isVisible({ timeout: 3000 })) {
+        await descInput.click();
         await descInput.fill(description || "");
       }
     } catch(e) {}
 
     // Fill SKU
     try {
-      const skuInput = page.locator('input[aria-label="SKU"], [aria-label*="SKU"] input').first();
+      const skuInput = page.locator('input[aria-label="SKU"], input[aria-label*="SKU"], [aria-label*="SKU"] input').first();
       if (await skuInput.isVisible({ timeout: 3000 })) {
+        await skuInput.click();
         await skuInput.fill(sku || "");
       }
     } catch(e) {}
@@ -481,7 +494,7 @@ app.post("/api/autopost", async (req, res) => {
   } catch (err: any) {
     console.error("Auto-post error:", err);
     if (!res.headersSent) {
-      res.status(500).json({ error: "Failed to launch visible Chrome browser on desktop.", details: err.message });
+      res.status(500).json({ error: "Failed to launch Chrome browser.", details: err.message });
     }
   }
 });

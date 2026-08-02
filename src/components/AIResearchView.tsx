@@ -771,6 +771,23 @@ export default function AIResearchView({
                   </div>
                 ))}
               </div>
+
+              {/* Generate Description Button with Seller Notes & Clarifications */}
+              <div className="pt-3 border-t border-amber-200/80 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
+                <div className="text-[11px] text-amber-900 font-medium leading-tight">
+                  <span className="font-bold block text-amber-950">Finished typing seller notes above?</span>
+                  <span>Click to compile your notes & flaws directly into the 5-section description!</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleGenerateDetails}
+                  className="py-2.5 px-4 bg-gradient-to-r from-amber-600 via-amber-500 to-yellow-600 hover:from-amber-700 hover:to-yellow-700 text-white rounded-xl text-xs font-black transition shadow-md flex items-center justify-center gap-2 cursor-pointer active:scale-95 shrink-0"
+                  id="btn-generate-desc-flaws"
+                >
+                  <Sparkles size={15} className="text-yellow-200 animate-pulse" />
+                  <span>✨ Generate Description</span>
+                </button>
+              </div>
             </div>
           )}
 
