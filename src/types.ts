@@ -79,6 +79,7 @@ export interface InventoryItem {
   buyerInquiriesCount?: number; // Tracks FB Messenger buyer inquiries
   lastInquiryAt?: string;
   listingUrl?: string | null; // Live Ad URL (e.g. FB Marketplace / eBay live listing link)
+  messageHistory?: FBNotification[]; // Array of buyer messages & inquiries linked to this item
   bundleId?: string; // ID of the bundle group (e.g. BUNDLE-101)
   bundleTitle?: string; // Name of the bundle (e.g. "Vintage Stereo Setup Bundle")
   bundledItemIds?: string[]; // Array of item IDs linked in this bundle

@@ -572,6 +572,63 @@ app.get("/api/fb/stream", (req, res) => {
   });
 });
 
+// 1b. Sync Past Facebook Messages & Inquiries Endpoint (GET)
+app.get("/api/fb/sync", async (req, res) => {
+  try {
+    const { itemId, listingUrl } = req.query;
+
+    // Filter notificationHistory for matched item or return recent history
+    let matchedMsgs = notificationHistory;
+    if (itemId) {
+      matchedMsgs = notificationHistory.filter(
+        (n) => n.itemId === itemId || (listingUrl && n.listingUrl === listingUrl)
+      );
+    }
+
+    // If Page Access Token is configured in env, attempt Facebook Graph API Conversations lookup
+    if (fbConfig.pageAccessToken) {
+      try {
+        const graphRes = await fetch(`https://graph.facebook.com/v18.0/me/conversations?fields=messages{message,from,created_time}&access_token=${fbConfig.pageAccessToken}`);
+        if (graphRes.ok) {
+          const graphData = await graphRes.json();
+          if (graphData.data && Array.isArray(graphData.data)) {
+            graphData.data.forEach((conv: any) => {
+              if (conv.messages && conv.messages.data) {
+                conv.messages.data.forEach((m: any) => {
+                  const syncMsg = {
+                    id: `fb_sync_${m.id || Date.now()}`,
+                    type: "message",
+                    senderName: m.from?.name || "Facebook Buyer",
+                    messageText: m.message || "",
+                    timestamp: m.created_time || new Date().toISOString(),
+                    read: true,
+                    platform: "Facebook Messenger",
+                    itemId: itemId || undefined
+                  };
+                  if (!matchedMsgs.some((existing) => existing.id === syncMsg.id)) {
+                    matchedMsgs.push(syncMsg);
+                  }
+                });
+              }
+            });
+          }
+        }
+      } catch (graphErr) {
+        console.warn("Facebook Graph API fetch error (using server history fallback):", graphErr);
+      }
+    }
+
+    res.json({
+      status: "success",
+      messages: matchedMsgs,
+      inquiriesCount: matchedMsgs.length
+    });
+  } catch (err: any) {
+    console.error("Error handling /api/fb/sync:", err);
+    res.status(500).json({ error: err.message || "Failed to sync FB messages." });
+  }
+});
+
 // 2. Meta / Facebook Webhook Verification Endpoint (GET)
 // Meta calls this URL when you click "Verify and Save" in Meta App Dashboard
 app.get("/api/fb/webhook", (req, res) => {

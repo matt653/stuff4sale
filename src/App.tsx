@@ -14,6 +14,7 @@ import CameraCapture from "./components/CameraCapture";
 import AIResearchView from "./components/AIResearchView";
 import FBHubModal from "./components/FBHubModal";
 import FBNotificationCenter from "./components/FBNotificationCenter";
+import ItemInquiriesModal from "./components/ItemInquiriesModal";
 import { fbRealtimeService } from "./services/fbRealtimeService";
 import { getNextSequentialStockNumber, matchBestCategory, cleanPlatformName } from "./utils/stockUtils";
 import { compressImageArray, compressImage } from "./utils/imageUtils";
@@ -93,6 +94,7 @@ export default function App() {
   const [fbConnected, setFbConnected] = useState(false);
   const [activeToast, setActiveToast] = useState<FBNotification | null>(null);
   const [showNotificationsModal, setShowNotificationsModal] = useState(false);
+  const [selectedInquiryItem, setSelectedInquiryItem] = useState<InventoryItem | null>(null);
 
   // Real-Time Facebook SSE Connection Hook
   useEffect(() => {
@@ -154,34 +156,49 @@ export default function App() {
       }
 
       if (data && Array.isArray(data)) {
-        const fetchedItems: InventoryItem[] = data.map((row: any) => ({
-          id: String(row.id),
-          name: row.name || "Untitled Item",
-          category: row.category || "General Item",
-          status: row.status || "inventory",
-          purchasePrice: Number(row.purchase_price) || 0,
-          purchaseDate: row.purchase_date || new Date().toISOString().split("T")[0],
-          purchaseLocation: row.purchase_location || "",
-          salePrice: row.sale_price !== null && row.sale_price !== undefined ? Number(row.sale_price) : null,
-          saleDate: row.sale_date || null,
-          salePlatform: row.sale_platform ? cleanPlatformName(row.sale_platform) : null,
-          listedPrice: row.listed_price !== null && row.listed_price !== undefined ? Number(row.listed_price) : null,
-          listedPlatform: cleanPlatformName(row.listed_platform),
-          notes: row.notes || "",
-          photoUrl: row.photo_url || (row.photos && row.photos[0]) || null,
-          photos: row.photos || (row.photo_url ? [row.photo_url] : []),
-          stockNumber: row.stock_number || undefined,
-          listingUrl: row.listing_url || (row.research && row.research.listingUrl) || null,
-          bundleId: row.bundle_id || undefined,
-          bundleTitle: row.bundle_title || undefined,
-          bundledItemIds: row.bundled_item_ids || undefined,
-          videoUrl: row.video_url || null,
-          research: row.research || null,
-          createdAt: row.created_at || new Date().toISOString(),
-          updatedAt: row.updated_at || new Date().toISOString(),
-          buyerInquiriesCount: row.buyer_inquiries_count || 0,
-          lastInquiryAt: row.last_inquiry_at || undefined,
-        }));
+        const fetchedItems: InventoryItem[] = data.map((row: any) => {
+          let parsedResearch = null;
+          if (row.research) {
+            if (typeof row.research === "object") {
+              parsedResearch = row.research;
+            } else if (typeof row.research === "string") {
+              try {
+                parsedResearch = JSON.parse(row.research);
+              } catch (e) {}
+            }
+          }
+
+          const extractedListingUrl = row.listing_url || (parsedResearch && typeof parsedResearch === "object" ? parsedResearch.listingUrl : null) || null;
+
+          return {
+            id: String(row.id),
+            name: row.name || "Untitled Item",
+            category: row.category || "General Item",
+            status: row.status || "inventory",
+            purchasePrice: Number(row.purchase_price) || 0,
+            purchaseDate: row.purchase_date || new Date().toISOString().split("T")[0],
+            purchaseLocation: row.purchase_location || "",
+            salePrice: row.sale_price !== null && row.sale_price !== undefined ? Number(row.sale_price) : null,
+            saleDate: row.sale_date || null,
+            salePlatform: row.sale_platform ? cleanPlatformName(row.sale_platform) : null,
+            listedPrice: row.listed_price !== null && row.listed_price !== undefined ? Number(row.listed_price) : null,
+            listedPlatform: cleanPlatformName(row.listed_platform),
+            notes: row.notes || "",
+            photoUrl: row.photo_url || (row.photos && row.photos[0]) || null,
+            photos: row.photos || (row.photo_url ? [row.photo_url] : []),
+            stockNumber: row.stock_number || undefined,
+            listingUrl: extractedListingUrl,
+            bundleId: row.bundle_id || undefined,
+            bundleTitle: row.bundle_title || undefined,
+            bundledItemIds: row.bundled_item_ids || undefined,
+            videoUrl: row.video_url || null,
+            research: parsedResearch,
+            createdAt: row.created_at || new Date().toISOString(),
+            updatedAt: row.updated_at || new Date().toISOString(),
+            buyerInquiriesCount: row.buyer_inquiries_count || 0,
+            lastInquiryAt: row.last_inquiry_at || undefined,
+          };
+        });
 
         setItems(fetchedItems);
       }
@@ -648,6 +665,9 @@ Available for local cash pickup or fast shipping. Message now to claim the bundl
       if (updates.saleDate !== undefined) payload.sale_date = updates.saleDate;
       if (updates.photoUrl !== undefined) payload.photo_url = updates.photoUrl;
       if (updates.photos !== undefined) payload.photos = updates.photos;
+      if ("bundleId" in updates) payload.bundle_id = updates.bundleId || null;
+      if ("bundleTitle" in updates) payload.bundle_title = updates.bundleTitle || null;
+      if ("bundledItemIds" in updates) payload.bundled_item_ids = updates.bundledItemIds || null;
       payload.research = updatedResearch;
       payload.updated_at = new Date().toISOString();
 
@@ -1878,6 +1898,7 @@ Available for local cash pickup or fast shipping. Message now to claim the bundl
                   setFbHubTab("post");
                   setShowFBHub(true);
                 }}
+                onOpenItemInquiries={(selected) => setSelectedInquiryItem(selected)}
               />
             ))}
           </div>
@@ -2179,6 +2200,19 @@ Available for local cash pickup or fast shipping. Message now to claim the bundl
             onOpenSetupModal={() => {
               setShowNotificationsModal(false);
               setShowFBHub(true);
+            }}
+          />
+        )}
+
+        {/* Individual Item Buyer Messages & Inquiries Modal */}
+        {selectedInquiryItem && (
+          <ItemInquiriesModal
+            item={selectedInquiryItem}
+            notifications={fbNotifications}
+            onClose={() => setSelectedInquiryItem(null)}
+            onUpdateItem={(itemId, updates) => {
+              handleQuickStatusUpdate(itemId, updates);
+              setSelectedInquiryItem(prev => prev ? { ...prev, ...updates } : null);
             }}
           />
         )}

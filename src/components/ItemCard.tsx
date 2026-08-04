@@ -14,9 +14,10 @@ interface ItemCardProps {
   onDelete: (id: string) => void;
   onStatusChange: (id: string, updates: Partial<InventoryItem>) => void;
   onFBPost?: (item: InventoryItem) => void;
+  onOpenItemInquiries?: (item: InventoryItem) => void;
 }
 
-export default function ItemCard({ item, allItems = [], onEdit, onDelete, onStatusChange, onFBPost }: ItemCardProps) {
+export default function ItemCard({ item, allItems = [], onEdit, onDelete, onStatusChange, onFBPost, onOpenItemInquiries }: ItemCardProps) {
   const [showStatusModal, setShowStatusModal] = useState<"list" | "sell" | null>(null);
   const [showPhotoEditor, setShowPhotoEditor] = useState(false);
   const [showCompsModal, setShowCompsModal] = useState(false);
@@ -277,9 +278,14 @@ export default function ItemCard({ item, allItems = [], onEdit, onDelete, onStat
 
         {/* FB Buyer Inquiry Notification Badge */}
         {item.buyerInquiriesCount && item.buyerInquiriesCount > 0 ? (
-          <div className="absolute top-10 left-2.5 bg-blue-600 text-white rounded-full px-2.5 py-0.5 text-[10px] font-extrabold flex items-center gap-1 shadow-lg border border-blue-400/50 animate-bounce">
+          <button
+            type="button"
+            onClick={() => onOpenItemInquiries && onOpenItemInquiries(item)}
+            className="absolute top-10 left-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-full px-2.5 py-0.5 text-[10px] font-extrabold flex items-center gap-1 shadow-lg border border-blue-400/50 animate-bounce cursor-pointer"
+            title="Click to view & sync buyer messages for this item"
+          >
             💬 {item.buyerInquiriesCount} FB {item.buyerInquiriesCount === 1 ? "Inquiry" : "Inquiries"}
-          </div>
+          </button>
         ) : null}
 
         {/* Quick listing banner */}
@@ -329,17 +335,34 @@ export default function ItemCard({ item, allItems = [], onEdit, onDelete, onStat
           </h3>
 
           {/* Bundled Item Indicator & Linked Sibling Items List */}
-          {(item.bundleId || item.bundleTitle || (otherBundleItems && otherBundleItems.length > 0)) && (
+          {((otherBundleItems && otherBundleItems.length > 0) || (item.bundleId && item.bundleId.trim() !== "")) && (
             <div className="mb-3 bg-purple-50/80 border border-purple-200/80 rounded-xl p-2.5 space-y-1.5" id={`bundle-info-${item.id}`}>
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-extrabold uppercase tracking-wider bg-purple-600 text-white px-2 py-0.5 rounded-md shadow-2xs">
-                  📦 BUNDLED ITEM
-                </span>
-                {item.bundleTitle && (
-                  <span className="text-[10px] text-purple-900 font-extrabold truncate max-w-[140px]">
-                    {item.bundleTitle}
+              <div className="flex items-center justify-between gap-1">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider bg-purple-600 text-white px-2 py-0.5 rounded-md shadow-2xs shrink-0">
+                    📦 BUNDLED ITEM
                   </span>
-                )}
+                  {item.bundleTitle && (
+                    <span className="text-[10px] text-purple-900 font-extrabold truncate max-w-[120px]">
+                      {item.bundleTitle}
+                    </span>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => onStatusChange(item.id, {
+                    bundleId: undefined,
+                    bundleTitle: undefined,
+                    bundledItemIds: undefined,
+                    updatedAt: new Date().toISOString()
+                  })}
+                  className="text-[10px] font-extrabold text-purple-700 hover:text-rose-600 hover:bg-rose-50 px-1.5 py-0.5 rounded transition cursor-pointer flex items-center gap-0.5 border border-purple-200 shrink-0"
+                  title="Click to remove this item from bundle"
+                  id={`btn-unlink-bundle-${item.id}`}
+                >
+                  ✕ Unlink
+                </button>
               </div>
 
               {otherBundleItems.length > 0 && (
@@ -439,19 +462,16 @@ export default function ItemCard({ item, allItems = [], onEdit, onDelete, onStat
 
             {item.status === "listed" && (
               <>
-                <button
-                  type="button"
-                  onClick={() => onStatusChange(item.id, { 
-                    buyerInquiriesCount: (item.buyerInquiriesCount || 0) + 1,
-                    lastInquiryAt: new Date().toISOString(),
-                    updatedAt: new Date().toISOString()
-                  })}
-                  className="text-[10px] font-extrabold bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-2 py-1.5 rounded-lg transition flex items-center gap-0.5 cursor-pointer"
-                  id={`btn-log-lead-${item.id}`}
-                  title="Log incoming Facebook Messenger inquiry for this item"
-                >
-                  💬 +1 FB Lead
-                </button>
+            {/* Persistent Buyer Messages & Inquiry History Button */}
+            <button
+              type="button"
+              onClick={() => onOpenItemInquiries && onOpenItemInquiries(item)}
+              className="text-[10px] font-extrabold bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-2 py-1.5 rounded-lg transition flex items-center gap-0.5 cursor-pointer"
+              id={`btn-item-inquiries-${item.id}`}
+              title="View, sync, & log buyer messages for this item"
+            >
+              💬 Messages ({item.buyerInquiriesCount || 0})
+            </button>
 
                 <button
                   type="button"
