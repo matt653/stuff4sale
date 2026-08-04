@@ -56,6 +56,8 @@ Stuff4Sale is a full-stack AI-powered inventory management, item valuation, and 
 
 > **Mandatory Single Supabase Table Rule**: Agents MUST NOT create new database tables or fetch, edit, or store data outside the single Supabase table `Stuff4Sale` (URL: `https://yvekxqeltflessrblfbq.supabase.co/rest/v1/Stuff4Sale`). All app state, inventory items, and asset details must live strictly inside this single table.
 
+> **Mandatory Personal Facebook Page & Simplicity Rule ("Less is More")**: Agents MUST NOT implement or attempt background Meta Webhooks, Graph API syncs, or complex server push listeners that do NOT work natively with personal Facebook Marketplace accounts (e.g. personal profile listings). Personal Facebook accounts do NOT support external Webhook push APIs. Features MUST work natively, reliably, and seamlessly with personal Facebook Marketplace accounts without requiring Meta Business Page verification, developer apps, or complex background listeners. **Core Directive: Less is more, unless it works.**
+
 ---
 
 ## Your Job

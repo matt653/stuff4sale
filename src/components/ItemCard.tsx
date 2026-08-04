@@ -104,14 +104,40 @@ export default function ItemCard({ item, allItems = [], onEdit, onDelete, onStat
   const [salePlatform, setSalePlatform] = useState(item.salePlatform || item.listedPlatform || "Facebook Marketplace");
   const [saleDate, setSaleDate] = useState(item.saleDate || new Date().toISOString().split("T")[0]);
 
-  // Find other items in the same bundle
-  const otherBundleItems = allItems.filter(
-    (other) =>
-      other.id !== item.id &&
-      ((item.bundleId && other.bundleId === item.bundleId) ||
-        (item.bundledItemIds && item.bundledItemIds.includes(other.id)) ||
-        (other.bundledItemIds && other.bundledItemIds.includes(item.id)))
-  );
+  // Find other items in the same bundle (only match if bundleId is a valid non-empty string)
+  const validBundleId =
+    item.bundleId &&
+    item.bundleId.trim() !== "" &&
+    item.bundleId !== "undefined" &&
+    item.bundleId !== "null"
+      ? item.bundleId.trim()
+      : null;
+
+  const otherBundleItems = allItems.filter((other) => {
+    if (other.id === item.id) return false;
+    const otherValidBundleId =
+      other.bundleId &&
+      other.bundleId.trim() !== "" &&
+      other.bundleId !== "undefined" &&
+      other.bundleId !== "null"
+        ? other.bundleId.trim()
+        : null;
+
+    const matchesBundleId =
+      validBundleId !== null &&
+      otherValidBundleId !== null &&
+      validBundleId === otherValidBundleId;
+
+    const matchesMyListings =
+      Array.isArray(item.bundledItemIds) &&
+      item.bundledItemIds.includes(other.id);
+
+    const matchesOtherListings =
+      Array.isArray(other.bundledItemIds) &&
+      other.bundledItemIds.includes(item.id);
+
+    return matchesBundleId || matchesMyListings || matchesOtherListings;
+  });
 
   const formatCurrency = (val: number | null) => {
     if (val === null) return "$0.00";
@@ -335,7 +361,7 @@ export default function ItemCard({ item, allItems = [], onEdit, onDelete, onStat
           </h3>
 
           {/* Bundled Item Indicator & Linked Sibling Items List */}
-          {((otherBundleItems && otherBundleItems.length > 0) || (item.bundleId && item.bundleId.trim() !== "")) && (
+          {otherBundleItems.length > 0 && (
             <div className="mb-3 bg-purple-50/80 border border-purple-200/80 rounded-xl p-2.5 space-y-1.5" id={`bundle-info-${item.id}`}>
               <div className="flex items-center justify-between gap-1">
                 <div className="flex items-center gap-1.5 min-w-0">
@@ -462,16 +488,19 @@ export default function ItemCard({ item, allItems = [], onEdit, onDelete, onStat
 
             {item.status === "listed" && (
               <>
-            {/* Persistent Buyer Messages & Inquiry History Button */}
-            <button
-              type="button"
-              onClick={() => onOpenItemInquiries && onOpenItemInquiries(item)}
-              className="text-[10px] font-extrabold bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-2 py-1.5 rounded-lg transition flex items-center gap-0.5 cursor-pointer"
-              id={`btn-item-inquiries-${item.id}`}
-              title="View, sync, & log buyer messages for this item"
-            >
-              💬 Messages ({item.buyerInquiriesCount || 0})
-            </button>
+                <button
+                  type="button"
+                  onClick={() => onStatusChange(item.id, { 
+                    buyerInquiriesCount: (item.buyerInquiriesCount || 0) + 1,
+                    lastInquiryAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
+                  })}
+                  className="text-[10px] font-extrabold bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-2 py-1.5 rounded-lg transition flex items-center gap-0.5 cursor-pointer"
+                  id={`btn-log-lead-${item.id}`}
+                  title="Log incoming Facebook Messenger inquiry for this item"
+                >
+                  💬 +1 FB Lead ({item.buyerInquiriesCount || 0})
+                </button>
 
                 <button
                   type="button"
