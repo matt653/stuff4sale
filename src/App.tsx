@@ -171,7 +171,7 @@ export default function App() {
           photoUrl: row.photo_url || (row.photos && row.photos[0]) || null,
           photos: row.photos || (row.photo_url ? [row.photo_url] : []),
           stockNumber: row.stock_number || undefined,
-          listingUrl: row.listing_url || null,
+          listingUrl: row.listing_url || (row.research && row.research.listingUrl) || null,
           bundleId: row.bundle_id || undefined,
           bundleTitle: row.bundle_title || undefined,
           bundledItemIds: row.bundled_item_ids || undefined,
@@ -268,7 +268,7 @@ export default function App() {
     setItemStatus(item.status || "inventory");
     setListedPrice(item.listedPrice !== undefined && item.listedPrice !== null ? String(item.listedPrice) : "");
     setListedPlatform(cleanPlatformName(item.listedPlatform));
-    setListingUrl(item.listingUrl || "");
+    setListingUrl(item.listingUrl || (item.research && item.research.listingUrl) || "");
     setSalePrice(item.salePrice !== undefined && item.salePrice !== null ? String(item.salePrice) : "");
     setSalePlatform(item.salePlatform ? cleanPlatformName(item.salePlatform) : "Facebook Marketplace");
     setSaleDate(item.saleDate || "");
@@ -642,6 +642,7 @@ Available for local cash pickup or fast shipping. Message now to claim the bundl
       if (updates.status !== undefined) payload.status = updates.status;
       if (updates.listedPrice !== undefined) payload.listed_price = updates.listedPrice;
       if (updates.listedPlatform !== undefined) payload.listed_platform = updates.listedPlatform;
+      if (updates.listingUrl !== undefined) payload.listing_url = updates.listingUrl;
       if (updates.salePrice !== undefined) payload.sale_price = updates.salePrice;
       if (updates.salePlatform !== undefined) payload.sale_platform = updates.salePlatform;
       if (updates.saleDate !== undefined) payload.sale_date = updates.saleDate;
