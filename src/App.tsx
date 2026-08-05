@@ -270,6 +270,7 @@ export default function App() {
   const handleEditClick = (item: InventoryItem) => {
     if (!item) return;
     setEditingItem(item);
+    setFbSelectedItem(item);
     setItemName(item.name || "");
     setItemCategory(item.category || "Clothing & Apparel");
     setStockNumber(item.stockNumber || "");
@@ -977,7 +978,8 @@ Available for local cash pickup or fast shipping. Message now to claim the bundl
               <button
                 type="button"
                 onClick={() => {
-                  setFbSelectedItem(items[0] || null);
+                  const targetItem = editingItem || fbSelectedItem || (items.length > 0 ? items[0] : null);
+                  setFbSelectedItem(targetItem);
                   setFbHubTab("post");
                   setShowFBHub(true);
                 }}
@@ -1507,6 +1509,22 @@ Available for local cash pickup or fast shipping. Message now to claim the bundl
                     )}
                   </div>
                   <div className="flex items-center gap-2.5">
+                    {editingItem && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFbSelectedItem(editingItem);
+                          setFbHubTab("post");
+                          setShowFBHub(true);
+                        }}
+                        className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl shadow-md transition-all active:scale-95 cursor-pointer flex items-center gap-1.5"
+                        id="btn-post-editing-item-fb"
+                        title="Open FB Marketplace Poster for this active item"
+                      >
+                        <Share2 size={13} />
+                        <span>Post Stock #{editingItem.stockNumber || editingItem.id} to FB</span>
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => {
