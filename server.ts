@@ -588,7 +588,9 @@ app.get("/api/fb/sync", async (req, res) => {
     // If Page Access Token is configured in env, attempt Facebook Graph API Conversations lookup
     if (fbConfig.pageAccessToken) {
       try {
-        const graphRes = await fetch(`https://graph.facebook.com/v18.0/me/conversations?fields=messages{message,from,created_time}&access_token=${fbConfig.pageAccessToken}`);
+        const graphRes = await fetch(`https://graph.facebook.com/v18.0/me/conversations?fields=messages{message,from,created_time}&access_token=${fbConfig.pageAccessToken}`, {
+          signal: AbortSignal.timeout(2500)
+        });
         if (graphRes.ok) {
           const graphData = await graphRes.json();
           if (graphData.data && Array.isArray(graphData.data)) {

@@ -50,7 +50,9 @@ export default function ItemInquiriesModal({
     setIsSyncing(true);
     setSyncStatus(null);
     try {
-      const res = await fetch(`/api/fb/sync?itemId=${encodeURIComponent(item.id)}&listingUrl=${encodeURIComponent(item.listingUrl || "")}`);
+      const res = await fetch(`/api/fb/sync?itemId=${encodeURIComponent(item.id)}&listingUrl=${encodeURIComponent(item.listingUrl || "")}`, {
+        signal: AbortSignal.timeout(3000)
+      });
       if (!res.ok) {
         throw new Error("Failed to sync past messages from server.");
       }
