@@ -88,7 +88,7 @@ export default function App() {
   });
   const [showChangePinModal, setShowChangePinModal] = useState(false);
   const [sellerPhone, setSellerPhone] = useState<string>(() => {
-    return localStorage.getItem("stuff4sale_seller_phone") || (import.meta as any).env?.VITE_SELLER_PHONE || "";
+    return localStorage.getItem("stuff4sale_seller_phone") || (import.meta as any).env?.VITE_SELLER_PHONE || "(309) 337-1049";
   });
 
   const handleUpdateSellerPhone = (newPhone: string) => {
@@ -110,6 +110,8 @@ export default function App() {
     setAppMode(mode);
     try {
       if (mode === "catalog") {
+        sessionStorage.removeItem("stuff4sale_admin_auth");
+        setIsAdminAuthenticated(false);
         const url = targetItemParam ? `/catalog?item=${encodeURIComponent(targetItemParam)}` : "/catalog";
         window.history.pushState({}, "", url);
         if (targetItemParam) setActiveCatalogItemId(targetItemParam);

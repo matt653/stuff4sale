@@ -89,7 +89,7 @@ ${item.notes || "Available for local pickup."}
   };
 
   // Get configured seller phone from localStorage or env
-  const sellerPhone = localStorage.getItem("stuff4sale_seller_phone") || (import.meta as any).env?.VITE_SELLER_PHONE || "";
+  const sellerPhone = localStorage.getItem("stuff4sale_seller_phone") || (import.meta as any).env?.VITE_SELLER_PHONE || "(309) 337-1049";
 
   // Submit Offer / Buyer Inquiry to Supabase
   const handleSubmitOffer = async (e: React.FormEvent) => {

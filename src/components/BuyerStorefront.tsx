@@ -131,7 +131,7 @@ export default function BuyerStorefront({
   };
 
   // Get seller phone from localStorage or env
-  const sellerPhone = localStorage.getItem("stuff4sale_seller_phone") || (import.meta as any).env?.VITE_SELLER_PHONE || "";
+  const sellerPhone = localStorage.getItem("stuff4sale_seller_phone") || (import.meta as any).env?.VITE_SELLER_PHONE || "(309) 337-1049";
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans flex flex-col" id="buyer-storefront-container">
@@ -487,20 +487,6 @@ export default function BuyerStorefront({
         <p className="text-slate-400 max-w-lg mx-auto">
           All items are inspected and described factually. Local cash pickup or safe porch meetup available. Contact the seller by clicking any item to make an offer.
         </p>
-        {onOpenAdminView && (
-          <div className="pt-2">
-            <button
-              type="button"
-              onClick={onOpenAdminView}
-              className="text-slate-300 hover:text-slate-500 transition p-1 text-[10px] flex items-center justify-center gap-1 mx-auto"
-              title="Seller Portal Login (Requires PIN)"
-              id="btn-footer-seller-login"
-            >
-              <Lock size={10} />
-              <span>Seller Login</span>
-            </button>
-          </div>
-        )}
       </footer>
 
       {/* In-Page Interactive Popup Modal */}
