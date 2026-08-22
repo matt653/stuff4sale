@@ -39,37 +39,21 @@ function getXaiApiKey(req: express.Request): string | null {
   return null;
 }
 
-// Call xAI Grok API ONLY for Vision Product Identification & Valuation (What it is & What it's worth)
-async function callXaiGrokVisionAndValuation(
+// Call xAI Grok API for Full Item Research (Default Engine for Valuation, Comps & Descriptions)
+async function callXaiGrokFullResearch(
   apiKey: string,
-  imageList: string[],
-  itemName?: string,
-  notes?: string
-): Promise<{ identifiedItemName: string; estimatedValueMin: number; estimatedValueMax: number; visualFacts: string[] }> {
+  promptText: string,
+  imageList: string[]
+): Promise<any> {
   const endpoint = "https://api.x.ai/v1/chat/completions";
 
   const userContent: any[] = [
     {
       type: "text",
-      text: `Analyze this item carefully. Your task is STRICTLY to evaluate:
-1. WHAT IT IS: Identify exact brand, model, serial #, maker marks, item type, and visible physical attributes.
-2. WHAT IT IS WORTH: Estimate conservative to realistic resale market value in USD (estimatedValueMin and estimatedValueMax).
-
-Item input details:
-- Given Name: ${itemName || "Unidentified"}
-- Notes/Condition: ${notes || "None"}
-
-Do NOT generate listing descriptions, ads, SEO titles, or comps strategies. Return JSON:
-{
-  "identifiedItemName": "<Exact brand, model, and item identification>",
-  "estimatedValueMin": <number min market value in USD>,
-  "estimatedValueMax": <number max market value in USD>,
-  "visualFacts": ["<visible fact 1>", "<visible fact 2>"]
-}`
+      text: promptText
     }
   ];
 
-  // Attach base64 images if present
   imageList.forEach((imgStr: string) => {
     if (imgStr.startsWith("data:image/")) {
       userContent.push({
@@ -79,7 +63,7 @@ Do NOT generate listing descriptions, ads, SEO titles, or comps strategies. Retu
     }
   });
 
-  console.log("Sending vision & valuation request to xAI Grok (grok-2-vision-1212)...");
+  console.log("Sending FULL research request to xAI Grok (grok-2-vision-1212)...");
 
   try {
     const response = await fetch(endpoint, {
@@ -93,23 +77,22 @@ Do NOT generate listing descriptions, ads, SEO titles, or comps strategies. Retu
         messages: [
           {
             role: "system",
-            content: "You are an expert product identification and valuation specialist. Respond STRICTLY with raw JSON."
+            content: "You are an expert reselling product identifier, market comp analyst, and listing copywriter. Respond STRICTLY with valid, raw JSON."
           },
           {
             role: "user",
             content: userContent
           }
         ],
-        temperature: 0.1,
+        temperature: 0.2,
         response_format: { type: "json_object" }
       })
     });
 
     if (!response.ok) {
       const errText = await response.text();
-      console.warn(`xAI Grok vision call note (${response.status}): ${errText}. Trying text fallback...`);
+      console.warn(`xAI Grok vision call note (${response.status}): ${errText}. Trying grok-2-latest text fallback...`);
       
-      // Text fallback if vision model endpoint requires string prompt
       const textFallback = await fetch(endpoint, {
         method: "POST",
         headers: {
@@ -121,14 +104,14 @@ Do NOT generate listing descriptions, ads, SEO titles, or comps strategies. Retu
           messages: [
             {
               role: "system",
-              content: "You are an expert product identification and valuation specialist. Respond STRICTLY with raw JSON."
+              content: "You are an expert reselling product identifier, market comp analyst, and listing copywriter. Respond STRICTLY with valid, raw JSON."
             },
             {
               role: "user",
-              content: `Identify what this item is and estimate its resale value in USD.\nGiven Name: ${itemName || "Unknown"}\nNotes: ${notes || "None"}\n\nReturn JSON:\n{\n  "identifiedItemName": "<exact brand and model>",\n  "estimatedValueMin": <min USD>,\n  "estimatedValueMax": <max USD>,\n  "visualFacts": ["<fact>"]\n}`
+              content: promptText
             }
           ],
-          temperature: 0.1,
+          temperature: 0.2,
           response_format: { type: "json_object" }
         })
       });
@@ -144,13 +127,8 @@ Do NOT generate listing descriptions, ads, SEO titles, or comps strategies. Retu
     const rawContent = resData?.choices?.[0]?.message?.content || "";
     return cleanJsonResponse(rawContent);
   } catch (err: any) {
-    console.warn("xAI Grok evaluation note:", err.message);
-    return {
-      identifiedItemName: itemName || "Unidentified Item",
-      estimatedValueMin: 15,
-      estimatedValueMax: 65,
-      visualFacts: ["Visual inspection completed"]
-    };
+    console.error("xAI Grok full research error:", err.message);
+    throw err;
   }
 }
 
@@ -239,10 +217,11 @@ app.get("/api/items", (_req, res) => {
   });
 });
 
-// Item Research Endpoint (Dual-Engine: Stage 1 xAI Grok Vision & Valuation -> Stage 2 Google Gemini Listing & Strategy)
+// Item Research Endpoint (xAI Grok Default Engine + Google Gemini 2nd Opinion Backup)
 app.post("/api/research", async (req, res) => {
   const activeAi = getAiClient(req);
   const xaiApiKey = getXaiApiKey(req);
+  const requestedProvider = req.body.provider || "grok"; // DEFAULT TO GROK
 
   if (!activeAi && !xaiApiKey) {
     return res.status(503).json({
@@ -259,35 +238,13 @@ app.post("/api/research", async (req, res) => {
 
     const imageList: string[] = images && Array.isArray(images) && images.length > 0 ? images : image ? [image] : [];
 
-    // Stage 1: xAI Grok Vision & Valuation Engine (What it is & What it's worth)
-    let grokEval: { identifiedItemName: string; estimatedValueMin: number; estimatedValueMax: number; visualFacts: string[] } | null = null;
-
-    if (xaiApiKey) {
-      console.log("⚡ Stage 1: Running xAI Grok Vision & Valuation to evaluate What It Is & What It's Worth...");
-      grokEval = await callXaiGrokVisionAndValuation(xaiApiKey, imageList, name, notes);
-      console.log("🟢 Grok Product ID:", grokEval.identifiedItemName, `| Worth: $${grokEval.estimatedValueMin}-$${grokEval.estimatedValueMax}`);
-    }
-
-    // Stage 2: Google Gemini Listing, 5-Part Description, SEO, Comps & 5-Tier Strategy Engine
-    console.log("⚡ Stage 2: Running Google Gemini Engine for 5-Part Description, SEO Titles, Local FB Comps, eBay Comps & Strategy...");
-
-    const itemIdentified = grokEval ? grokEval.identifiedItemName : (name || "Unidentified Item");
-    const grokMinVal = grokEval ? grokEval.estimatedValueMin : null;
-    const grokMaxVal = grokEval ? grokEval.estimatedValueMax : null;
-    const grokFacts = grokEval && grokEval.visualFacts ? grokEval.visualFacts.join("; ") : "";
-
-    let promptText = `Perform REAL, UNBIASED, PROFESSIONAL reselling research, SEO title creation, 5-part customer description generation, local FB & eBay comps valuation, and 5-tier strategy matrix for this item.
-
-PRODUCT IDENTIFICATION & VALUATION (FROM XAI GROK VISION EVALUATION):
-- Identified Item: ${itemIdentified}
-${grokMinVal ? `- Grok Estimated Market Worth: $${grokMinVal} - $${grokMaxVal}` : ""}
-${grokFacts ? `- Visible Physical Facts: ${grokFacts}` : ""}
+    let promptText = `Perform REAL, UNBIASED, PROFESSIONAL reselling research, SEO title creation, 5-part customer description generation, local FB & eBay comps valuation, and pricing strategy for this item.
 
 INPUT DETAILS:
-- Seller Name Input: ${name || "Unknown"}
-- Category: ${category || "Unknown"}
+- Item Name: ${name || "Unidentified (Inspect attached photos carefully for brand, model, serial #, maker marks)"}
+- Initial Category: ${category || "Unknown"}
 - Notes/Condition: ${notes || "No extra notes"}
-- Sourcing Location: ${location || "General US Resale Market"}
+- Seller Sourcing Location: ${location || "General US Resale Market"}
 
 CRITICAL REQUIREMENT 1: 5-PART CUSTOMER-FRIENDLY DESCRIPTION
 Structure 'suggestedDescription' into these 5 explicit section headings:
@@ -379,32 +336,67 @@ The JSON response MUST match this schema:
   ]
 }`;
 
-    const contents: any[] = [promptText];
+    let researchResult: any = null;
 
-    // Attach images to Gemini request
-    imageList.forEach((imgStr: string) => {
-      const match = imgStr.match(/^data:(image\/\w+);base64,(.+)$/);
-      if (match) {
-        contents.push({
-          inlineData: {
-            data: match[2],
-            mimeType: match[1],
-          },
-        });
-      }
-    });
+    if (requestedProvider === "dual") {
+      console.log("⚡ DUAL AI MODE: Running both xAI Grok and Google Gemini in parallel...");
+      const geminiContents: any[] = [promptText];
+      imageList.forEach((imgStr: string) => {
+        const match = imgStr.match(/^data:(image\/\w+);base64,(.+)$/);
+        if (match) {
+          geminiContents.push({ inlineData: { data: match[2], mimeType: match[1] } });
+        }
+      });
 
-    const geminiAi = activeAi || getAiClient(req);
-    if (!geminiAi) {
-      throw new Error("Google Gemini client is required for Stage 2 listing & description generation.");
-    }
+      const [grokRes, geminiRes] = await Promise.all([
+        xaiApiKey ? callXaiGrokFullResearch(xaiApiKey, promptText, imageList).catch((e) => {
+          console.warn("Grok dual execution note:", e.message);
+          return null;
+        }) : Promise.resolve(null),
+        activeAi ? callGeminiWithFallback(activeAi, geminiContents).catch((e) => {
+          console.warn("Gemini dual execution note:", e.message);
+          return null;
+        }) : Promise.resolve(null)
+      ]);
 
-    const researchResult = await callGeminiWithFallback(geminiAi, contents);
+      if (grokRes) grokRes.provider = "grok";
+      if (geminiRes) geminiRes.provider = "gemini";
 
-    // Override value min/max with Grok's valuation if available
-    if (grokEval && grokEval.estimatedValueMin && grokEval.estimatedValueMax) {
-      researchResult.estimatedValueMin = grokEval.estimatedValueMin;
-      researchResult.estimatedValueMax = grokEval.estimatedValueMax;
+      researchResult = {
+        grok: grokRes,
+        gemini: geminiRes,
+        ...(grokRes || geminiRes || {})
+      };
+    } else if (requestedProvider === "gemini" && activeAi) {
+      console.log("⚡ 2nd OPINION: Running Google Gemini for Item Research...");
+      const contents: any[] = [promptText];
+      imageList.forEach((imgStr: string) => {
+        const match = imgStr.match(/^data:(image\/\w+);base64,(.+)$/);
+        if (match) {
+          contents.push({
+            inlineData: { data: match[2], mimeType: match[1] }
+          });
+        }
+      });
+      researchResult = await callGeminiWithFallback(activeAi, contents);
+      if (researchResult) researchResult.provider = "gemini";
+    } else if (xaiApiKey) {
+      console.log("⚡ DEFAULT ENGINE: Running xAI Grok (grok-2-vision-1212) for Item Research & Comps...");
+      researchResult = await callXaiGrokFullResearch(xaiApiKey, promptText, imageList);
+      if (researchResult) researchResult.provider = "grok";
+    } else if (activeAi) {
+      console.log("⚡ FALLBACK ENGINE: Running Google Gemini for Item Research...");
+      const contents: any[] = [promptText];
+      imageList.forEach((imgStr: string) => {
+        const match = imgStr.match(/^data:(image\/\w+);base64,(.+)$/);
+        if (match) {
+          contents.push({
+            inlineData: { data: match[2], mimeType: match[1] }
+          });
+        }
+      });
+      researchResult = await callGeminiWithFallback(activeAi, contents);
+      if (researchResult) researchResult.provider = "gemini";
     }
 
     res.json(researchResult);

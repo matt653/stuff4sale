@@ -444,8 +444,12 @@ export default function App() {
     } catch (e) {}
   };
 
-  // Connect to server-side Gemini research API
-  const handleAiResearch = async (overrideImg?: string | React.MouseEvent, overridePhotos?: string[]) => {
+  // Connect to server-side AI research API (Supports Grok, Gemini, or Dual AI)
+  const handleAiResearch = async (
+    overrideImg?: string | React.MouseEvent,
+    overridePhotos?: string[],
+    targetProvider: "grok" | "gemini" | "dual" = "dual"
+  ) => {
     const activeImage = (typeof overrideImg === "string" ? overrideImg : null) || photos[0] || photoUrl;
     const activePhotosList = (Array.isArray(overridePhotos) ? overridePhotos : photos);
 
@@ -473,6 +477,7 @@ export default function App() {
           location: purchaseLocation || "",
           image: activeImage,
           images: activePhotosList.length > 0 ? activePhotosList : activeImage ? [activeImage] : [],
+          provider: targetProvider,
         }),
       });
 
@@ -1379,17 +1384,41 @@ Available for local cash pickup or fast shipping. Message now to claim the bundl
                   initialVideoUrl={videoUrl}
                 />
 
-                {/* Big "Gemini Find It!" Identification Button */}
-                <button
-                  type="button"
-                  disabled={aiLoading || (photos.length === 0 && !itemName && !photoUrl)}
-                  onClick={handleAiResearch}
-                  className="w-full py-3.5 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 disabled:from-slate-200 disabled:to-slate-300 text-white font-extrabold text-xs rounded-xl flex items-center justify-center gap-2 shadow-md shadow-indigo-200 transition active:scale-95 cursor-pointer"
-                  id="btn-trigger-ai-research"
-                >
-                  {aiLoading ? <RefreshCw size={16} className="animate-spin" /> : <Sparkles size={16} className="animate-bounce" />}
-                  {aiLoading ? "Gemini is Identifying Item & Researching Comps..." : "✨ Gemini Find It! (Auto-Fill Form)"}
-                </button>
+                {/* Dual Engine Research Action Buttons (Grok vs Gemini) */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    disabled={aiLoading}
+                    onClick={() => handleAiResearch(undefined, undefined, "grok")}
+                    className="w-full py-3 px-3 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-amber-300 rounded-2xl text-xs font-black flex items-center justify-center gap-2 shadow-md transition cursor-pointer border border-amber-500/40 active:scale-95"
+                    id="btn-trigger-grok-research"
+                  >
+                    <Zap size={16} className="text-amber-400 fill-amber-400" />
+                    <span>⚡ Grok Find It!</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={aiLoading}
+                    onClick={() => handleAiResearch(undefined, undefined, "gemini")}
+                    className="w-full py-3 px-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-400 text-white rounded-2xl text-xs font-black flex items-center justify-center gap-2 shadow-md transition cursor-pointer border border-indigo-400/40 active:scale-95"
+                    id="btn-trigger-gemini-research"
+                  >
+                    <Sparkles size={16} className="text-indigo-200" />
+                    <span>✨ Gemini Find It!</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={aiLoading}
+                    onClick={() => handleAiResearch(undefined, undefined, "dual")}
+                    className="w-full py-3 px-3 bg-gradient-to-r from-purple-900 to-indigo-950 hover:from-purple-800 hover:to-indigo-900 disabled:bg-slate-400 text-white rounded-2xl text-xs font-black flex items-center justify-center gap-2 shadow-md transition cursor-pointer border border-purple-400/40 active:scale-95"
+                    id="btn-trigger-dual-research"
+                  >
+                    <Layers size={16} className="text-amber-400" />
+                    <span>🚀 Dual Comparison</span>
+                  </button>
+                </div>
 
                 {/* Conversational Valuation Chat & Research Panel View */}
                 <AIResearchView 
@@ -1401,6 +1430,7 @@ Available for local cash pickup or fast shipping. Message now to claim the bundl
                   onApplyField={handleApplyAiField}
                   isLoading={aiLoading} 
                   error={aiError} 
+                  onRunResearch={(provider) => handleAiResearch(undefined, undefined, provider)}
                 />
               </div>
 

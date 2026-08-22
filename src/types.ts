@@ -57,6 +57,13 @@ export interface AIResearchResult {
   localComps?: LocalCompsData;
   ebayComps?: EbayCompsData;
   listingUrl?: string | null;
+  provider?: 'grok' | 'gemini';
+}
+
+export interface DualAIResearchResult {
+  grok: AIResearchResult | null;
+  gemini: AIResearchResult | null;
+  activeProvider?: 'grok' | 'gemini' | 'dual';
 }
 
 export interface AIChatMessage {
