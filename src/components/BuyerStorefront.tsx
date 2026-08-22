@@ -173,6 +173,18 @@ export default function BuyerStorefront({
               {copiedStoreLink ? <Check size={14} className="text-emerald-300" /> : <Share2 size={14} />}
               <span>{copiedStoreLink ? "Catalog Link Copied!" : "Share Catalog"}</span>
             </button>
+
+            {/* Seller Portal Access Button (PIN 8191 Protected) */}
+            <button
+              type="button"
+              onClick={() => onOpenAdminView ? onOpenAdminView() : (window.location.href = "/?mode=admin")}
+              className="px-3 py-2 bg-slate-900 hover:bg-slate-800 text-slate-200 font-bold text-xs rounded-xl flex items-center gap-1.5 transition active:scale-95 cursor-pointer shadow-xs border border-slate-700"
+              title="Seller Portal Access (PIN 8191 Required)"
+              id="btn-seller-portal-access-header"
+            >
+              <Lock size={14} className="text-amber-400" />
+              <span>Seller Access</span>
+            </button>
           </div>
         </div>
       </header>
@@ -487,6 +499,17 @@ export default function BuyerStorefront({
         <p className="text-slate-400 max-w-lg mx-auto">
           All items are inspected and described factually. Local cash pickup or safe porch meetup available. Contact the seller by clicking any item to make an offer.
         </p>
+        <div className="pt-2">
+          <button
+            type="button"
+            onClick={() => onOpenAdminView ? onOpenAdminView() : (window.location.href = "/?mode=admin")}
+            className="text-[11px] font-bold text-slate-400 hover:text-slate-600 transition flex items-center justify-center gap-1 mx-auto"
+            id="btn-seller-portal-access-footer"
+          >
+            <Lock size={12} className="text-slate-400" />
+            <span>Seller Portal Access</span>
+          </button>
+        </div>
       </footer>
 
       {/* In-Page Interactive Popup Modal */}

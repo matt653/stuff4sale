@@ -39,12 +39,22 @@ const COMMON_CATEGORIES = [
 ];
 
 export default function App() {
-  // Helper to determine initial view mode from URL (e.g. /catalog, /shop, ?view=catalog, ?item=27)
+  // Helper to determine initial view mode from URL (e.g. /admin, /catalog, ?mode=admin, ?item=27)
   const getInitialAppMode = (): "admin" | "catalog" => {
     try {
       const path = window.location.pathname.toLowerCase();
       const search = window.location.search.toLowerCase();
       const hash = window.location.hash.toLowerCase();
+
+      if (
+        search.includes("mode=admin") ||
+        search.includes("view=admin") ||
+        path.includes("/admin") ||
+        path.includes("/login") ||
+        hash.includes("/admin")
+      ) {
+        return "admin";
+      }
 
       if (
         path.includes("/catalog") ||
