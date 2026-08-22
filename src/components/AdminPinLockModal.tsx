@@ -14,8 +14,15 @@ export default function AdminPinLockModal({
   isChangePinMode = false,
   onCloseChangePin,
 }: AdminPinLockModalProps) {
-  // Get stored master PIN or default to "8191"
-  const getStoredPin = () => localStorage.getItem("stuff4sale_admin_pin") || "8191";
+  // Get stored master PIN or default to "8191" (clears any legacy "1234")
+  const getStoredPin = () => {
+    const stored = localStorage.getItem("stuff4sale_admin_pin");
+    if (!stored || stored === "1234") {
+      localStorage.setItem("stuff4sale_admin_pin", "8191");
+      return "8191";
+    }
+    return stored;
+  };
 
   const [pin, setPin] = useState("");
   const [newPin, setNewPin] = useState("");
