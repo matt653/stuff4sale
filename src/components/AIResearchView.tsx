@@ -749,52 +749,6 @@ export default function AIResearchView({
                       </button>
                     )}
                   </div>
-
-                  {/* Toggle All 5 Tiers Comparison Grid */}
-                  <div className="pt-1">
-                    <button
-                      type="button"
-                      onClick={() => setShowAllTiers(!showAllTiers)}
-                      className="w-full py-1.5 bg-slate-100 hover:bg-slate-200/80 text-slate-700 font-bold text-[11px] rounded-xl flex items-center justify-center gap-1 transition"
-                    >
-                      <Sliders size={12} className="text-indigo-600" />
-                      {showAllTiers ? "Hide Full 5-Tier Comparison Matrix" : "View Full 5-Tier Comparison Matrix"}
-                      {showAllTiers ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-                    </button>
-
-                    {showAllTiers && (
-                      <div className="mt-3 space-y-2 pt-2 border-t border-slate-200">
-                        <h5 className="text-[11px] font-extrabold text-slate-800 flex items-center gap-1">
-                          <Store size={12} className="text-indigo-600" />
-                          Full 5-Tier Strategy Roadmap:
-                        </h5>
-                        <div className="space-y-2 text-xs">
-                          {resolvedTiers.map((t, idx) => (
-                            <div
-                              key={idx}
-                              onClick={() => setPriceSliderPos(t.sliderVal)}
-                              className={`p-2.5 rounded-xl border cursor-pointer transition ${
-                                idx === activeTierIndex
-                                  ? "bg-white border-indigo-500 shadow-xs ring-1 ring-indigo-500"
-                                  : "bg-white border-slate-200 hover:border-slate-300"
-                              }`}
-                            >
-                              <div className="flex items-center justify-between mb-1">
-                                <span className="font-extrabold text-slate-900 text-[11px]">
-                                  {t.icon} {t.percentageLabel} – {t.tierName}
-                                </span>
-                                <span className="font-black text-indigo-700">${t.price}</span>
-                              </div>
-                              <div className="text-[10px] text-slate-600 space-y-0.5">
-                                <p><b className="text-slate-800">Where:</b> {t.whereToList}</p>
-                                <p><b className="text-slate-800">Strategy:</b> {t.howToList}</p>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
                 </div>
               </div>
             );
