@@ -1,5 +1,7 @@
 import express from "express";
 import path from "path";
+import https from "node:https";
+import { exec } from "node:child_process";
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
 import { createServer as createViteServer } from "vite";
@@ -90,6 +92,26 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "ok", aiEnabled: !!aiClient, provider: "express" });
 });
 
+// Ultra-fast reliable local proxy for Supabase items using native curl with 15KB lightweight payload and 5s timeout
+app.get("/api/items", (_req, res) => {
+  const selectFields = "id,name,category,status,purchase_price,purchase_date,purchase_location,sale_price,sale_date,sale_platform,listed_price,listed_platform,listing_url,stock_number,photo_url,notes,created_at,updated_at,buyer_inquiries_count,last_inquiry_at,bundle_id,bundle_title,bundled_item_ids,research,video_url";
+  const curlCmd = `curl.exe -s -k --max-time 5 "https://yvekxqeltflessrblfbq.supabase.co/rest/v1/Stuff4Sale?select=${selectFields}&order=created_at.desc&limit=100" -H "apikey: sb_publishable_qOutgWZwuKaCPODigqZCkw_t7KxhsLm" -H "Authorization: Bearer sb_publishable_qOutgWZwuKaCPODigqZCkw_t7KxhsLm"`;
+  
+  exec(curlCmd, { maxBuffer: 50 * 1024 * 1024, timeout: 4000 }, (err, stdout, stderr) => {
+    if (err) {
+      console.error("Local /api/items curl error/timeout:", err.message);
+      return res.status(504).json({ error: "Supabase warming up", details: err.message });
+    }
+    try {
+      const data = JSON.parse(stdout);
+      res.json(data);
+    } catch (parseErr: any) {
+      console.error("JSON parse error in /api/items:", parseErr, stdout.substring(0, 200));
+      res.status(500).json({ error: "Failed to parse inventory JSON", raw: stdout.substring(0, 200) });
+    }
+  });
+});
+
 // Gemini-Powered Item Research Endpoint
 app.post("/api/research", async (req, res) => {
   const activeAi = getAiClient(req);
@@ -109,7 +131,7 @@ app.post("/api/research", async (req, res) => {
 
     const contents: any[] = [];
 
-    let promptText = `Perform REAL, UNBIASED, PROFESSIONAL reselling and side-hustle market research on this specific item using multimodal vision analysis and true historical sales comps.
+    let promptText = `Perform REAL, UNBIASED, PROFESSIONAL reselling and side-hustle market research on this specific item using multimodal vision analysis and true sales comps across both Facebook Marketplace (Local Cash Deals) and eBay (National Shipped Sales).
 
 Input Details provided:
 - Item Name: ${name || "Unidentified (Must inspect the attached images carefully for brand, model, serial #, maker marks)"}
@@ -117,67 +139,66 @@ Input Details provided:
 - Notes/Condition: ${notes || "No extra notes"}
 - Seller Sourcing / Target Location: ${location || "General US Resale Market"}
 
-CRITICAL REQUIREMENT 1: REAL, UNBIASED DYNAMIC DEMAND SCORE (1 TO 10 SPECTRUM)
-- DO NOT DEFAULT TO 4/10 OR 7/10! You MUST evaluate each item individually based on its brand, rarity, condition, and market liquidity.
-- Evaluate demand using 4 concrete factors:
-  1. BRAND & RECOGNITION: Name brands (DeWalt, Snap-on, Stihl, Red Crown, Milwaukee, Craftsman, Stanley, John Deere) score 7-10. Unbranded / generic rustic items score 2-5.
-  2. BUYER POOL: Mass-market daily tools / electronics score 8-10. Trendy farmhouse decor & vintage signs score 6-8. Heavy obscure farm implements score 2-5.
-  3. SELL-THROUGH SPEED: Sells within 48h = 9-10. Sells within 1-2 weeks = 6-8. Takes 1-3 months = 3-5. Takes 6+ months = 1-2.
-  4. SHIPPING VS FREIGHT FRICTION: Small shippable collectibles score higher national demand (7-10) than 50lb local-only iron wheels (3-5).
-- STRICT SCORING BENCHMARKS:
-  * Brand Name Power Tools / Current Electronics / Rare Signs / Precious Metals: MUST score 8-10/10.
-  * Popular Vintage Decor / Brand Name Hand Tools / Quality Crosscut Saws / Porcelain Signs: MUST score 6-7/10.
-  * Heavy Unbranded Wagon Wheels / Single-Wheel Cultivators / Heavy Local Iron Scrap: MUST score 3-5/10.
-  * Broken Non-Working Junk / Common Used Books / Damaged Worn Furniture: MUST score 1-2/10.
-- NEVER OUTPUT THE SAME DEMAND SCORE FOR ALL ITEMS! Differentiate every single item accurately!
+CRITICAL REQUIREMENT 1: INTEGRATED LOCAL FB MARKETPLACE & EBAY COMPS
+- Evaluates comps specifically for:
+  1. FACEBOOK MARKETPLACE (LOCAL CASH PICKUP): Target local cash deals ($0 shipping fee, local pickup). Evaluate local demand score (1-10) and sell-through speed (e.g. "Fast (3-7 days)", "1-2 weeks").
+  2. EBAY (NATIONAL SHIPPED SALES): Target nationwide collector sales. Evaluate shipping feasibility (shipping cost vs weight/size) and eBay demand score.
+- Synthesize both into localComps and ebayComps objects in your JSON output.
 
-CRITICAL REQUIREMENT 2: REAL ITEM-TAILORED PLATFORM ANALYSIS (LOCAL VS SHIPPED)
-- Do NOT give generic "list on Facebook Marketplace for low end, eBay for high end" for every single item!
-- Perform a REAL evaluation of the physical item attributes (size, weight, shipping cost vs item value, local buyer density in ${location || "local markets"} vs global collector reach).
-  * SMALL/RARE/COLLECTIBLE (e.g. vintage action figure, rare trading card, camera lens): Local demand on FB Marketplace is often DEAD because local buyers don't exist in a small town. State explicitly if local FB is POOR, and recommend national shipping platforms like eBay, Mercari, Poshmark, TCGPlayer, or Reverb!
-  * HEAVY/BULKY/LOCAL ONLY (e.g. 60lb cast iron anvil, lawnmower, dresser, power tool stand): Shipping on eBay costs $100+ and is ridiculous. State explicitly that eBay shipping is NOT recommended, and recommend local platforms like Facebook Marketplace, OfferUp, or Craigslist for ALL pricing tiers!
-  * MAINSTREAM FAST MOVERS (e.g. iPhone, PS5, Dewalt drill): Highly liquid locally on FB Marketplace for quick cash, OR on eBay for max market price.
+CRITICAL REQUIREMENT 2: DEFAULT TO LOCAL SALE (EXPRESS NATIONAL WARNING FLAG)
+- DEFAULT RULE: We sell items LOCALLY ON FACEBOOK MARKETPLACE unless there is an overwhelming reason to ship nationally.
+- Set 'sellOnNationalLevel': false and 'recommendedSellLevel': "LOCAL_FB" for 95%+ of items.
+- Set 'sellOnNationalLevel': true and 'recommendedSellLevel': "NATIONAL_EBAY" ONLY IF the item is a rare collectible, small lightweight high-value item, or obscure specialty part where local Facebook demand is virtually zero but national eBay collectors will pay 3x+ more.
+- When 'sellOnNationalLevel': true, provide a clear, bold 'nationalSaleReason' (e.g. "🚨 DO NOT SELL LOCALLY: Local FB demand is dead for rare action figures, but nationwide eBay collectors will pay $250+!").
 
-CRITICAL REQUIREMENT 3: DYNAMIC 5-TIER PRICING & STRATEGY MATRIX
+CRITICAL REQUIREMENT 3: REAL, UNBIASED UNIFIED DEMAND SCORE (1 TO 10 SPECTRUM)
+- Evaluate unified demandScore (1-10) with heavy weight on local FB Marketplace turn-around speed for cash flips.
+- DO NOT DEFAULT TO 4/10 OR 7/10!
+
+CRITICAL REQUIREMENT 4: DYNAMIC 5-TIER PRICING & STRATEGY MATRIX
 - Provide 5 realistic pricing tiers (0% Low End to 100% High End) calculated from true comps for THIS specific item.
-- For EACH tier, specify:
-  1. 'price': Exact dollar value for this tier based on comps.
-  2. 'whereToList': Specific platforms recommended for THIS item at this price tier (e.g. FB Marketplace, eBay, OfferUp, Mercari, Poshmark, Reverb, TCGPlayer, specialized collector forums). Explain WHY based on local vs shipped realities!
-  3. 'howToList': Actionable step-by-step instructions on prep, photography, SEO title tags, local pickup vs shipping method, and negotiation strategy required to fetch that exact dollar amount.
 
-CRITICAL REQUIREMENT 4: STRICT FACTUAL CONDITION & 5 CUSTOMER-FRIENDLY SECTION HEADINGS
-1. NO GUESSING OR PREDICTING FLAWS: Only state 100% visible, observable facts directly seen in the photos (e.g. "Visible surface patina", "Paint wear on metal rim"). NEVER guess, assume, or predict unseen internal flaws!
-2. ASK ABOUT UNKNOWNS: For any condition detail that CANNOT be visually verified from photos alone (e.g. liquid tightness, working condition, internal rust, power state, or seal integrity), explicitly frame it as an UNTESTED QUESTION in 'issuesFound' (e.g. "Untested: Does it hold liquid without leaking?", "Untested: Is the mechanical switch operational?").
-3. CUSTOMER-FRIENDLY SECTION HEADINGS: Structure 'suggestedDescription' into these 5 clear, customer-friendly section headings:
-   • 📌 WHAT IT IS & ORIGINAL USE: (Observed item facts, brand markings, and original purpose)
-   • 💡 MODERN USES & STYLING / DECOR: (Factual modern repurposing, decor, or collection uses)
-   • ⚠️ CONDITION & OBSERVED FACTS: (Visible facts seen in photos, plus explicit untested questions about the unknown)
-   • 📏 SPECS, MATERIALS & MEASUREMENTS: (Visible dimensions, stamps, and material composition)
-   • 🚀 WHY THIS IS A GREAT DEAL & SELLER NOTE: (Customer-friendly closing value summary and local pickup/shipping details—NEVER use tacky internal jargon like "Upsell" or "Pitch")
+CRITICAL REQUIREMENT 5: STRICT FACTUAL CONDITION & 5 CUSTOMER-FRIENDLY SECTION HEADINGS
+1. NO GUESSING OR PREDICTING FLAWS: Only state 100% visible, observable facts directly seen in photos.
+2. ASK ABOUT UNKNOWNS: Frame unverified details as UNTESTED QUESTIONS in 'issuesFound'.
+3. CUSTOMER-FRIENDLY SECTION HEADINGS: Structure 'suggestedDescription' into these 5 clear headings:
+   • 📌 WHAT IT IS & ORIGINAL USE
+   • 💡 MODERN USES & STYLING / DECOR
+   • ⚠️ CONDITION & OBSERVED FACTS
+   • 📏 SPECS, MATERIALS & MEASUREMENTS
+   • 🚀 WHY THIS IS A GREAT DEAL & SELLER NOTE
 
-Analyze this item carefully. You MUST return your response in standard, valid JSON format.
-Do not wrap your JSON response in markdown code blocks.
+Analyze this item carefully. You MUST return your response in standard, valid JSON format without markdown code blocks.
 
 The JSON response MUST match this schema:
 {
   "suggestedTitle": "<SEO title max 80 chars highlighting brand, model, condition>",
   "suggestedDescription": "<Full listing description structured into the 5 explicit headings above>",
-  "estimatedValueMin": <number>,
-  "estimatedValueMax": <number>,
-  "demandScore": <INTEGER 1-10 BASED ON TRUE ITEM LIQUIDITY - DO NOT DEFAULT TO 7!>,
+  "estimatedValueMin": <number min price>,
+  "estimatedValueMax": <number max price>,
+  "demandScore": <INTEGER 1-10 BASED ON TRUE ITEM LIQUIDITY>,
   "worthSelling": "<YES | MARGINAL | NO>",
   "triageReason": "<Honest 1-2 sentence verdict explaining why this item is a great flip, marginal, or pass/scrap>",
-  "issuesFound": [
-    "<Specific flaw 1>",
-    "<Specific flaw 2>"
-  ],
-  "targetPlatforms": [
-    "<Item-specific platform recommendation 1 with rationale>",
-    "<Item-specific platform recommendation 2 with rationale>"
-  ],
-  "sellingTips": [
-    "<Tip 1 for cleaning, photography, or listing strategy tailored to this item>"
-  ],
+  "sellOnNationalLevel": <boolean - true ONLY IF national eBay shipping is strictly required>,
+  "recommendedSellLevel": "<LOCAL_FB | NATIONAL_EBAY>",
+  "nationalSaleReason": "<Bold 1-2 sentence warning if sellOnNationalLevel is true>",
+  "localComps": {
+    "estimatedLocalMin": <number min local cash price>,
+    "estimatedLocalMax": <number max local cash price>,
+    "localDemandScore": <INTEGER 1-10 for local cash buyers>,
+    "sellThroughVelocity": "<e.g. Fast (3-7 days), 1-2 weeks, 1-3 months>",
+    "localTips": ["<Local FB Marketplace tip 1>", "<Local FB tip 2>"]
+  },
+  "ebayComps": {
+    "estimatedEbayMin": <number min eBay price>,
+    "estimatedEbayMax": <number max eBay price>,
+    "ebayDemandScore": <INTEGER 1-10 for eBay collectors>,
+    "shippingFeasibility": "<e.g. Easy ($6-$10 USPS), Heavy ($40-$60 freight)>",
+    "ebayTips": ["<eBay shipping or title tip 1>"]
+  },
+  "issuesFound": ["<Specific flaw 1>", "<Specific flaw 2>"],
+  "targetPlatforms": ["<Item-specific platform recommendation 1>", "<Platform recommendation 2>"],
+  "sellingTips": ["<Tip 1 for cleaning, photography, or listing strategy>"],
   "category": "Must strictly be one of: Clothing & Apparel, Shoes & Sneakers, Electronics & Gadgets, Video Games & Consoles, Toys & Collectibles, Books Comics & Media, Home Kitchen & Decor, Tools & Hardware, Sports & Outdoors, Jewelry & Accessories, Vintage & Antiques, Trading Cards, Other / Miscellaneous",
   "groupName": "<Descriptive group or bundle name>",
   "keywords": ["<keyword1>", "<keyword2>"],
@@ -186,36 +207,36 @@ The JSON response MUST match this schema:
       "tierName": "Low End (Sell Immediately)",
       "percentageLabel": "100%",
       "price": <number min price>,
-      "whereToList": "<Specific recommended platforms for immediate low-end sale based on item size/weight/demand>",
-      "howToList": "<Actionable steps to move this item fast at this price>"
+      "whereToList": "<Specific recommended platforms>",
+      "howToList": "<Actionable steps>"
     },
     {
       "tierName": "1/4 Tier (Fast Flip)",
       "percentageLabel": "75%",
       "price": <number 25% comp price>,
-      "whereToList": "<Specific recommended platforms for fast flip>",
-      "howToList": "<Actionable steps for 2-4 day turnaround>"
+      "whereToList": "<Specific recommended platforms>",
+      "howToList": "<Actionable steps>"
     },
     {
       "tierName": "Mid End (Fair Market)",
       "percentageLabel": "50%",
       "price": <number fair market price>,
-      "whereToList": "<Specific recommended platforms for fair market value>",
-      "howToList": "<Actionable steps for standard market turnaround>"
+      "whereToList": "<Specific recommended platforms>",
+      "howToList": "<Actionable steps>"
     },
     {
       "tierName": "3/4 Tier (Patient Sale)",
       "percentageLabel": "25%",
       "price": <number 75% comp price>,
-      "whereToList": "<Specific recommended platforms for patient seller>",
-      "howToList": "<Actionable steps for patient sale>"
+      "whereToList": "<Specific recommended platforms>",
+      "howToList": "<Actionable steps>"
     },
     {
       "tierName": "High End (Top Dollar Collector)",
       "percentageLabel": "1%",
       "price": <number max top dollar price>,
-      "whereToList": "<Specific recommended platforms for top-dollar collector price>",
-      "howToList": "<Actionable steps to command maximum price point>"
+      "whereToList": "<Specific recommended platforms>",
+      "howToList": "<Actionable steps>"
     }
   ]
 }`;

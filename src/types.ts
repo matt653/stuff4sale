@@ -24,18 +24,29 @@ export interface LocalCompsData {
   }>;
 }
 
+export interface EbayCompsData {
+  estimatedEbayMin: number;
+  estimatedEbayMax: number;
+  ebayDemandScore: number;
+  shippingFeasibility: string;
+  ebayTips?: string[];
+}
+
 export interface AIResearchResult {
   estimatedValueMin: number;
   estimatedValueMax: number;
   suggestedTitle: string;
   suggestedDescription: string;
-  demandScore: number; // 1-10
+  demandScore: number; // 1-10 (Unified demand score combining FB Local & eBay)
   targetPlatforms: string[];
   sellingTips: string[];
   category: string;
   keywords: string[];
   worthSelling?: 'YES' | 'MARGINAL' | 'NO';
   triageReason?: string;
+  sellOnNationalLevel?: boolean; // True IF item must be sold nationally (e.g. rare collectible with 0 local demand)
+  recommendedSellLevel?: 'LOCAL_FB' | 'NATIONAL_EBAY';
+  nationalSaleReason?: string; // Big bold reason explaining national shipping requirement
   cleaningInstructions?: string[];
   prepChecklist?: string[];
   issuesFound?: string[];
@@ -44,6 +55,8 @@ export interface AIResearchResult {
   groupName?: string;
   pricingTiers?: PricingTierDetail[];
   localComps?: LocalCompsData;
+  ebayComps?: EbayCompsData;
+  listingUrl?: string | null;
 }
 
 export interface AIChatMessage {

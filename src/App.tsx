@@ -4,7 +4,7 @@ import {
   X, Check, AlertCircle, RefreshCw, Layers, MapPin, Calendar, 
   Tag, Info, DollarSign, Archive, ShoppingBag, Eye, Star, LayoutGrid, LayoutList,
   Edit, Trash2, TrendingUp, Smartphone, Cloud, Share2, Clock, CheckCircle,
-  Bell, MessageSquare, Zap, MessageCircle, Key, ListChecks, ExternalLink
+  Bell, MessageSquare, Zap, MessageCircle, Key, ListChecks, ExternalLink, Copy
 } from "lucide-react";
 import { supabase } from "./supabase";
 import { InventoryItem, ItemStatus, AIResearchResult, FBNotification } from "./types";
@@ -15,6 +15,7 @@ import AIResearchView from "./components/AIResearchView";
 import FBHubModal from "./components/FBHubModal";
 import FBNotificationCenter from "./components/FBNotificationCenter";
 import ItemInquiriesModal from "./components/ItemInquiriesModal";
+import BuyerStorefront from "./components/BuyerStorefront";
 import { fbRealtimeService } from "./services/fbRealtimeService";
 import { getNextSequentialStockNumber, matchBestCategory, cleanPlatformName } from "./utils/stockUtils";
 import { compressImageArray, compressImage } from "./utils/imageUtils";
@@ -37,6 +38,70 @@ const COMMON_CATEGORIES = [
 ];
 
 export default function App() {
+  // Helper to determine initial view mode from URL (e.g. /catalog, /shop, ?view=catalog, ?item=27)
+  const getInitialAppMode = (): "admin" | "catalog" => {
+    try {
+      const path = window.location.pathname.toLowerCase();
+      const search = window.location.search.toLowerCase();
+      const hash = window.location.hash.toLowerCase();
+
+      if (
+        path.includes("/catalog") ||
+        path.includes("/shop") ||
+        path.includes("/store") ||
+        path.includes("/inventory") ||
+        path.includes("/browse") ||
+        path.includes("/deals") ||
+        path.includes("/buyer") ||
+        search.includes("view=catalog") ||
+        search.includes("view=shop") ||
+        search.includes("view=buyer") ||
+        search.includes("item=") ||
+        hash.includes("/catalog") ||
+        hash.includes("/shop")
+      ) {
+        return "catalog";
+      }
+    } catch (e) {}
+    return "admin";
+  };
+
+  const getInitialItemId = (): string | null => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      return params.get("item") || null;
+    } catch (e) {
+      return null;
+    }
+  };
+
+  const [appMode, setAppMode] = useState<"admin" | "catalog">(getInitialAppMode());
+  const [activeCatalogItemId, setActiveCatalogItemId] = useState<string | null>(getInitialItemId());
+  const [copiedPublicStoreLink, setCopiedPublicStoreLink] = useState(false);
+
+  // Synchronize history popstate (e.g. browser back/forward)
+  useEffect(() => {
+    const handlePopState = () => {
+      setAppMode(getInitialAppMode());
+      setActiveCatalogItemId(getInitialItemId());
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
+  const switchAppMode = (mode: "admin" | "catalog", targetItemParam?: string) => {
+    setAppMode(mode);
+    try {
+      if (mode === "catalog") {
+        const url = targetItemParam ? `/catalog?item=${encodeURIComponent(targetItemParam)}` : "/catalog";
+        window.history.pushState({}, "", url);
+        if (targetItemParam) setActiveCatalogItemId(targetItemParam);
+      } else {
+        window.history.pushState({}, "", "/");
+      }
+    } catch (e) {}
+  };
+
   // Inventory state (Single Source of Truth: Supabase table "Stuff4Sale")
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -137,70 +202,131 @@ export default function App() {
 
   const fetchSupabaseItems = async (retryCount = 0) => {
     try {
-      const { data, error } = await supabase
-        .from("Stuff4Sale")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(100);
+      let data: any[] | null = null;
+      let error: any = null;
 
-      if (error) {
-        console.error("Supabase Stuff4Sale fetch error:", error);
-        if (retryCount < 2) {
-          console.log(`Retrying fetchSupabaseItems (Attempt ${retryCount + 1})...`);
-          setTimeout(() => fetchSupabaseItems(retryCount + 1), 1000);
-          return;
+      // Load cached items immediately if available to eliminate initial spin delay
+      const cachedStr = localStorage.getItem("stuff4sale_items_cache");
+      if (cachedStr) {
+        try {
+          const cachedItems = JSON.parse(cachedStr);
+          if (Array.isArray(cachedItems) && cachedItems.length > 0) {
+            setItems(cachedItems);
+            setLoading(false);
+          }
+        } catch (e) {}
+      }
+
+      // 1. Try fast local proxy route /api/items first (uses native Windows SChannel curl for zero CORS/SSL delay)
+      try {
+        const controller = new AbortController();
+        const tid = setTimeout(() => controller.abort(), 3000);
+        const res = await fetch("/api/items", { signal: controller.signal });
+        clearTimeout(tid);
+        if (res.ok) {
+          const proxyData = await res.json();
+          if (Array.isArray(proxyData) && proxyData.length > 0) {
+            data = proxyData;
+            error = null;
+          }
         }
-        setErrorMessage("Failed to load inventory from Supabase: " + error.message);
+      } catch (proxyErr) {}
+
+      // 2. Client-side SDK fallback if proxy returned null
+      if (!data || !Array.isArray(data)) {
+        try {
+          const sdkRes = await supabase
+            .from("Stuff4Sale")
+            .select("*")
+            .order("created_at", { ascending: false })
+            .limit(100);
+          data = sdkRes.data;
+          error = sdkRes.error;
+        } catch (sdkErr) {
+          error = sdkErr;
+        }
+      }
+
+      if (error && (!data || !Array.isArray(data))) {
+        console.error("Supabase Stuff4Sale fetch warning:", error);
         setLoading(false);
         return;
       }
 
       if (data && Array.isArray(data)) {
-        const fetchedItems: InventoryItem[] = data.map((row: any) => {
-          let parsedResearch = null;
-          if (row.research) {
-            if (typeof row.research === "object") {
-              parsedResearch = row.research;
-            } else if (typeof row.research === "string") {
-              try {
-                parsedResearch = JSON.parse(row.research);
-              } catch (e) {}
+        console.log(`🟢 Loaded ${data.length} items from Supabase.`);
+        const fetchedItems: InventoryItem[] = [];
+        
+        for (const row of data) {
+          try {
+            let parsedResearch = null;
+            if (row.research) {
+              if (typeof row.research === "object") {
+                parsedResearch = row.research;
+              } else if (typeof row.research === "string") {
+                try {
+                  parsedResearch = JSON.parse(row.research);
+                } catch (e) {}
+              }
             }
+
+            const extractedListingUrl = row.listing_url || (parsedResearch && typeof parsedResearch === "object" ? parsedResearch.listingUrl : null) || null;
+
+            let safePhotos: string[] = [];
+            if (Array.isArray(row.photos)) {
+              safePhotos = row.photos;
+            } else if (row.photo_url) {
+              safePhotos = [row.photo_url];
+            }
+
+            let safeBundledIds: string[] | undefined = undefined;
+            if (Array.isArray(row.bundled_item_ids)) {
+              safeBundledIds = row.bundled_item_ids.map(String);
+            } else if (typeof row.bundled_item_ids === "string") {
+              try {
+                safeBundledIds = JSON.parse(row.bundled_item_ids);
+              } catch (e) {
+                safeBundledIds = row.bundled_item_ids.replace(/[{}]/g, "").split(",").map((s: string) => s.trim()).filter(Boolean);
+              }
+            }
+
+            fetchedItems.push({
+              id: String(row.id),
+              name: row.name || "Untitled Item",
+              category: row.category || "General Item",
+              status: row.status || "inventory",
+              purchasePrice: Number(row.purchase_price) || 0,
+              purchaseDate: row.purchase_date || new Date().toISOString().split("T")[0],
+              purchaseLocation: row.purchase_location || "",
+              salePrice: row.sale_price !== null && row.sale_price !== undefined ? Number(row.sale_price) : null,
+              saleDate: row.sale_date || null,
+              salePlatform: row.sale_platform ? cleanPlatformName(row.sale_platform) : null,
+              listedPrice: row.listed_price !== null && row.listed_price !== undefined ? Number(row.listed_price) : null,
+              listedPlatform: cleanPlatformName(row.listed_platform),
+              notes: row.notes || "",
+              photoUrl: row.photo_url || safePhotos[0] || null,
+              photos: safePhotos,
+              stockNumber: row.stock_number || undefined,
+              listingUrl: extractedListingUrl,
+              bundleId: row.bundle_id || undefined,
+              bundleTitle: row.bundle_title || undefined,
+              bundledItemIds: safeBundledIds,
+              videoUrl: row.video_url || null,
+              research: parsedResearch,
+              createdAt: row.created_at || new Date().toISOString(),
+              updatedAt: row.updated_at || new Date().toISOString(),
+              buyerInquiriesCount: row.buyer_inquiries_count || 0,
+              lastInquiryAt: row.last_inquiry_at || undefined,
+            });
+          } catch (itemErr) {
+            console.error("Error mapping item row:", itemErr, row);
           }
-
-          const extractedListingUrl = row.listing_url || (parsedResearch && typeof parsedResearch === "object" ? parsedResearch.listingUrl : null) || null;
-
-          return {
-            id: String(row.id),
-            name: row.name || "Untitled Item",
-            category: row.category || "General Item",
-            status: row.status || "inventory",
-            purchasePrice: Number(row.purchase_price) || 0,
-            purchaseDate: row.purchase_date || new Date().toISOString().split("T")[0],
-            purchaseLocation: row.purchase_location || "",
-            salePrice: row.sale_price !== null && row.sale_price !== undefined ? Number(row.sale_price) : null,
-            saleDate: row.sale_date || null,
-            salePlatform: row.sale_platform ? cleanPlatformName(row.sale_platform) : null,
-            listedPrice: row.listed_price !== null && row.listed_price !== undefined ? Number(row.listed_price) : null,
-            listedPlatform: cleanPlatformName(row.listed_platform),
-            notes: row.notes || "",
-            photoUrl: row.photo_url || (row.photos && row.photos[0]) || null,
-            photos: row.photos || (row.photo_url ? [row.photo_url] : []),
-            stockNumber: row.stock_number || undefined,
-            listingUrl: extractedListingUrl,
-            bundleId: row.bundle_id || undefined,
-            bundleTitle: row.bundle_title || undefined,
-            bundledItemIds: row.bundled_item_ids || undefined,
-            videoUrl: row.video_url || null,
-            research: parsedResearch,
-            createdAt: row.created_at || new Date().toISOString(),
-            updatedAt: row.updated_at || new Date().toISOString(),
-            buyerInquiriesCount: row.buyer_inquiries_count || 0,
-            lastInquiryAt: row.last_inquiry_at || undefined,
-          };
-        });
+        }
 
         setItems(fetchedItems);
+        try {
+          localStorage.setItem("stuff4sale_items_cache", JSON.stringify(fetchedItems));
+        } catch (cacheErr) {}
       }
       setLoading(false);
       setErrorMessage(null);
@@ -368,6 +494,19 @@ export default function App() {
       if (descriptionText) {
         setNotes(descriptionText);
       }
+
+      // Auto-set listed price (default to local cash price / 75% fast flip price)
+      const targetPrice = result.localComps?.estimatedLocalMin || result.pricingTiers?.[1]?.price || result.estimatedValueMin || 0;
+      if (targetPrice > 0) {
+        setListedPrice(targetPrice.toString());
+      }
+
+      // Auto-set listing platform (default to Facebook Marketplace unless explicitly flagged for national sale)
+      if (result.sellOnNationalLevel || result.recommendedSellLevel === "NATIONAL_EBAY") {
+        setListedPlatform("eBay");
+      } else {
+        setListedPlatform("Facebook Marketplace");
+      }
     } catch (err: any) {
       console.error("AI Research error:", err);
       setAiError(err.message || "Something went wrong while contacting the AI research center.");
@@ -394,11 +533,16 @@ export default function App() {
     
     const matchedCat = matchBestCategory(research.category, research.suggestedTitle);
     setItemCategory(matchedCat);
+
+    const targetPrice = research.localComps?.estimatedLocalMin || research.pricingTiers?.[1]?.price || research.estimatedValueMin || 0;
+    if (targetPrice > 0) {
+      setListedPrice(targetPrice.toString());
+    }
     
-    // Auto apply first recommended platform
-    if (research.targetPlatforms && research.targetPlatforms.length > 0) {
-      const platformName = cleanPlatformName(research.targetPlatforms[0]);
-      setListedPlatform(platformName);
+    if (research.sellOnNationalLevel || research.recommendedSellLevel === "NATIONAL_EBAY") {
+      setListedPlatform("eBay");
+    } else {
+      setListedPlatform("Facebook Marketplace");
     }
   };
 
@@ -804,6 +948,18 @@ Available for local cash pickup or fast shipping. Message now to claim the bundl
   const costOfSoldItems = soldItems.reduce((sum, item) => sum + (item.purchasePrice || 0), 0);
   const realizedNetProfit = totalSalesRevenue - costOfSoldItems;
 
+  // Render forward-facing public buyer catalog when in catalog mode
+  if (appMode === "catalog") {
+    return (
+      <BuyerStorefront
+        items={items}
+        loading={loading}
+        initialSelectedItemId={activeCatalogItemId}
+        onOpenAdminView={() => switchAppMode("admin")}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans flex flex-col" id="main-app-container">
       {/* Top Navigation Bar */}
@@ -831,6 +987,34 @@ Available for local cash pickup or fast shipping. Message now to claim the bundl
               className="w-64 pl-10 pr-4 py-2 bg-slate-100 border-transparent rounded-full text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 transition-all outline-none"
             />
             <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+          </div>
+
+          {/* Forward-Facing Buyer Catalog Launcher & Link Copier */}
+          <div className="flex items-center bg-emerald-50 p-0.5 rounded-xl border border-emerald-200 shadow-2xs">
+            <button
+              type="button"
+              onClick={() => switchAppMode("catalog")}
+              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-lg transition flex items-center gap-1.5 shadow-2xs active:scale-95 cursor-pointer"
+              title="Open forward-facing public buyer catalog page"
+              id="btn-nav-open-buyer-catalog"
+            >
+              <ShoppingBag size={14} />
+              <span className="hidden sm:inline">Buyer Catalog</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const url = `${window.location.origin}/catalog`;
+                navigator.clipboard.writeText(url);
+                setCopiedPublicStoreLink(true);
+                setTimeout(() => setCopiedPublicStoreLink(false), 2500);
+              }}
+              className="p-1.5 hover:bg-emerald-100 text-emerald-800 rounded-lg text-xs font-bold transition cursor-pointer"
+              title="Copy public catalog link to clipboard"
+              id="btn-copy-public-catalog-link"
+            >
+              {copiedPublicStoreLink ? <Check size={13} className="text-emerald-700" /> : <Copy size={13} />}
+            </button>
           </div>
 
           {/* Facebook Studio & Graph API Hub Button */}
@@ -932,6 +1116,16 @@ Available for local cash pickup or fast shipping. Message now to claim the bundl
               <Sparkles size={18} className="text-indigo-400" />
               <span>New Entry & AI Valuation</span>
             </button>
+
+            <button
+              onClick={() => switchAppMode("catalog")}
+              className="w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-left font-bold transition-colors bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 cursor-pointer mt-2"
+              title="Open the forward-facing catalog that prospective buyers see"
+              id="sidebar-link-buyer-catalog"
+            >
+              <ShoppingBag size={18} className="text-emerald-400" />
+              <span>🌐 Public Buyer Catalog</span>
+            </button>
           </div>
 
           <div className="mt-8 md:mt-auto pt-6 border-t border-slate-800/60 md:border-t-0">
@@ -1009,6 +1203,57 @@ Available for local cash pickup or fast shipping. Message now to claim the bundl
               <span className="font-medium">{errorMessage}</span>
             </div>
           )}
+
+        {/* PROMINENT PUBLIC FOR-SALE SHOWCASE BANNER FOR BUYERS */}
+        <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-3xl p-5 shadow-lg border border-indigo-500/30 flex flex-col md:flex-row items-start md:items-center justify-between gap-4" id="public-for-sale-banner">
+          <div className="space-y-1.5 max-w-xl">
+            <div className="flex items-center gap-2">
+              <span className="bg-emerald-500/20 text-emerald-300 text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full border border-emerald-400/30">
+                ● Public "For Sale" Page Active
+              </span>
+              <span className="text-xs text-indigo-300 font-semibold">Zero Private Cost / Profit Data Exposed</span>
+            </div>
+            <h3 className="text-base sm:text-lg font-black text-white flex items-center gap-2">
+              <ShoppingBag className="text-indigo-400" size={20} />
+              <span>Public Storefront & Catalog for Prospective Buyers</span>
+            </h3>
+            <p className="text-xs text-indigo-200/80 leading-relaxed">
+              Give this link to prospective buyers on Facebook Marketplace, Messenger, text, or Craigslist. Buyers can browse your full collection, view high-res picture galleries, and submit offers!
+            </p>
+            <div className="flex items-center gap-2 pt-1">
+              <span className="text-[11px] text-emerald-300 font-mono bg-black/40 px-3 py-1 rounded-xl border border-white/10 select-all truncate max-w-xs sm:max-w-md font-bold">
+                {window.location.origin}/catalog
+              </span>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0 w-full md:w-auto">
+            <button
+              type="button"
+              onClick={() => switchAppMode("catalog")}
+              className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs rounded-xl transition shadow-md flex items-center justify-center gap-1.5 flex-1 md:flex-initial cursor-pointer active:scale-95"
+              id="btn-banner-open-catalog"
+            >
+              <ExternalLink size={14} />
+              <span>Open Public Page ↗</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                const url = `${window.location.origin}/catalog`;
+                navigator.clipboard.writeText(url);
+                setCopiedPublicStoreLink(true);
+                setTimeout(() => setCopiedPublicStoreLink(false), 2500);
+              }}
+              className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl transition shadow-md flex items-center justify-center gap-1.5 flex-1 md:flex-initial cursor-pointer active:scale-95"
+              id="btn-banner-copy-public-link"
+            >
+              {copiedPublicStoreLink ? <Check size={14} /> : <Copy size={14} />}
+              <span>{copiedPublicStoreLink ? "Link Copied!" : "Copy Link for Buyers"}</span>
+            </button>
+          </div>
+        </div>
 
         {/* Live Finance Stats */}
         <StatsGrid items={items} />

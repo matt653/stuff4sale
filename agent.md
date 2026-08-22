@@ -29,15 +29,26 @@ Stuff4Sale is a full-stack AI-powered inventory management, item valuation, and 
 - **Notification Center & Toast System**: Displays real-time alerts with direct response actions (`FBNotificationCenter.tsx`).
 - **Cross-Posting Assistant**: Interactive tool (`FBMarketplacePostingTool.tsx`) for generating formatted Facebook Marketplace copy, tags, and category mappings.
 
-#### 4. Analytics & Financial Reporting (`StatsGrid.tsx`)
+#### 5. Forward-Facing Public Buyer Catalog & In-Page Popup Showcase (`BuyerStorefront.tsx` & `BuyerItemModal.tsx`)
+- **Forward-Facing Storefront URL Route (`/catalog`, `/shop`, `?view=catalog`)**: Clean, customer-facing public inventory catalog that sellers can directly share with prospective buyers via link (`https://stuff4sale.netlify.app/catalog`). Filters out private admin data (purchase price, profit, ROI, private sourcing notes) and presents all available inventory in a modern, mobile-friendly showcase.
+- **Search, Category Filter & Sorting Toolbar**: Real-time search by keyword/brand/stock #, horizontal category pill scrolling, type filters ("Available", "📦 Bundles", "All Items"), and sorting options (Stock # high-to-low, price low-to-high, price high-to-low, newest).
+- **Interactive In-Page Item Popup Modal (`BuyerItemModal.tsx`)**: Clicking any product card triggers an in-page popup modal displaying:
+  - **Full Media Gallery & Remaining Photos**: High-resolution active photo viewer with photo counter pill (`1 / 8 Photos`), left/right arrow navigation, interactive thumbnail strip of all remaining photos, and video player support.
+  - **Item Details & 5-Section Description**: Cleanly parsed 5-section breakdown (📌 What it is, 💡 Modern uses, ⚠️ Condition & observed facts, 📏 Specs/measurements, 🚀 Great deal / seller note) with Stock # badge and asking price.
+  - **Interactive "Make an Offer / Message Seller" Tool**: 1-click quick preset offer chips (Full Asking, -10%, -20%), custom dollar amount input, buyer contact fields, and direct offer submission to Supabase (`buyer_inquiries_count` + real-time notification alert to seller).
+  - **Direct Instant Contact & Fallback Actions**: 1-click links to message on live Facebook listing, text seller via SMS (`sms:?body=...`), copy formatted item summary to clipboard, and 1-click share direct item link (`/catalog?item=27`).
+- **Deep-Linking Support (`?item=X`)**: Visiting or sharing `https://stuff4sale.netlify.app/catalog?item=27` automatically opens that specific item's popup modal upon page load.
+- **Seamless Seller Admin Integration**: 1-click **"🌐 Buyer Catalog"** button with a **"📋 Copy Public Link"** action in the top navigation bar and sidebar, plus a **"🔗 Buyer Link"** button on every inventory item card for instant copy-pasting to buyers.
+
+#### 6. Analytics & Financial Reporting (`StatsGrid.tsx`)
 - **Real-Time Metrics**: Displays active inventory count, total inventory value, total sales, net profit, average ROI percentage, and active listing count.
-- **Filter, Sort & View Controls**: Filter by category and status, search by keyword/SKU/notes, multi-criteria sorting (newest, oldest, profit, ROI, cost), and toggle between Grid and List views.
+- **Filter, Sort & View Controls**: Filter by category and status, search by keyword/SKU/notes, multi-criteria sorting (defaults to **Stock # Highest to Lowest** e.g. #27 down to #1, plus oldest, profit, ROI, cost), and toggle between Grid and List views.
 - **CSV Data Export**: One-click data export functionality for accounting and tax reporting.
 
-#### 5. Technical Architecture & Tech Stack
+#### 7. Technical Architecture & Tech Stack
 - **Frontend**: React 19, TypeScript, Vite, TailwindCSS v4, Lucide React icons, Motion (Framer Motion).
-- **Backend Server**: Node.js, Express (`server.ts`), `tsx`, `@google/genai` SDK v2, `dotenv`.
-- **Database & Sync**: Firebase Firestore real-time database (`firebase.ts`), with offline fallback capabilities.
+- **Backend Server**: Node.js, Express (`server.ts`), `netlify/functions/api.ts`, `@google/genai` SDK v2, `dotenv`.
+- **Database & Sync**: Supabase singleton client (`supabase.ts`) on single table `Stuff4Sale` with real-time WebSocket subscriptions and local proxy caching.
 
 ---
 

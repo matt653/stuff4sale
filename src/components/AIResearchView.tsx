@@ -371,6 +371,40 @@ export default function AIResearchView({
       {activeReport && (
         <div className="space-y-4 pt-2 border-t border-indigo-100/60 animate-fade-in" id="final-valuation-report">
           
+          {/* NATIONAL VS LOCAL STRATEGY BANNER */}
+          {activeReport.sellOnNationalLevel || activeReport.recommendedSellLevel === "NATIONAL_EBAY" ? (
+            <div className="p-4 bg-gradient-to-r from-red-600 via-rose-700 to-red-800 text-white rounded-2xl shadow-lg border-2 border-rose-300 space-y-2 animate-bounce-subtle" id="banner-national-sale">
+              <div className="flex items-start gap-3">
+                <span className="text-2xl shrink-0">🚨</span>
+                <div>
+                  <h3 className="text-sm font-black uppercase tracking-wider text-amber-200">
+                    NATIONAL SALE RECOMMENDED — DO NOT SELL LOCALLY!
+                  </h3>
+                  <p className="text-xs font-bold text-rose-100 mt-1 leading-relaxed">
+                    {activeReport.nationalSaleReason || "This item has high nationwide collector demand on eBay, but virtually zero local interest. Ship this item nationally on eBay to command top dollar!"}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="p-3.5 bg-gradient-to-r from-emerald-600 via-teal-700 to-emerald-800 text-white rounded-2xl shadow-md border border-emerald-400/40 flex items-center justify-between" id="banner-local-sale">
+              <div className="flex items-center gap-2.5">
+                <span className="text-xl shrink-0">🟢</span>
+                <div>
+                  <h4 className="text-xs font-black uppercase tracking-wide text-emerald-100">
+                    SELL LOCALLY ON FACEBOOK MARKETPLACE
+                  </h4>
+                  <p className="text-[11px] font-semibold text-emerald-200">
+                    Local cash deal recommended. Fast cash turnaround without shipping friction!
+                  </p>
+                </div>
+              </div>
+              <span className="text-[10px] font-black bg-white/20 px-2.5 py-1 rounded-full uppercase tracking-wider shrink-0 ml-2">
+                FB Local Priority
+              </span>
+            </div>
+          )}
+
           {/* Sourcing Verdict Card */}
           <div className={`p-4 rounded-2xl border flex items-center justify-between shadow-sm ${
             verdict === "YES"
@@ -398,8 +432,53 @@ export default function AIResearchView({
             </div>
 
             <div className="text-right shrink-0 ml-2">
-              <span className="text-[10px] font-bold uppercase tracking-wider block opacity-75">Demand</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider block opacity-75">Demand Score</span>
               <span className="text-base font-extrabold">{activeReport.demandScore}/10</span>
+            </div>
+          </div>
+
+          {/* INTEGRATED FB MARKETPLACE LOCAL COMPS & EBAY COMPS GRID */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3" id="comps-breakdown-grid">
+            {/* FB Marketplace Local Comps Card */}
+            <div className="bg-gradient-to-br from-blue-900/90 to-indigo-950 text-white p-3.5 rounded-2xl border border-blue-400/30 space-y-2 shadow-md">
+              <div className="flex items-center justify-between border-b border-blue-400/20 pb-1.5">
+                <span className="text-xs font-black text-blue-200 flex items-center gap-1">
+                  <span>🔵</span> FB Marketplace Local Comps
+                </span>
+                <span className="text-xs font-black text-emerald-400">
+                  ${activeReport.localComps?.estimatedLocalMin || activeReport.estimatedValueMin} – ${activeReport.localComps?.estimatedLocalMax || activeReport.estimatedValueMax}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="text-blue-200 font-bold">Local Cash Demand: <b className="text-white font-black">{activeReport.localComps?.localDemandScore || activeReport.demandScore}/10</b></span>
+                <span className="text-emerald-300 font-bold">{activeReport.localComps?.sellThroughVelocity || "Fast (3-7 days)"}</span>
+              </div>
+              {activeReport.localComps?.localTips && activeReport.localComps.localTips.length > 0 && (
+                <p className="text-[10px] text-blue-100/90 leading-tight pt-1 border-t border-blue-400/20">
+                  💡 {activeReport.localComps.localTips[0]}
+                </p>
+              )}
+            </div>
+
+            {/* eBay National Comps Card */}
+            <div className="bg-gradient-to-br from-purple-900/90 to-slate-950 text-white p-3.5 rounded-2xl border border-purple-400/30 space-y-2 shadow-md">
+              <div className="flex items-center justify-between border-b border-purple-400/20 pb-1.5">
+                <span className="text-xs font-black text-purple-200 flex items-center gap-1">
+                  <span>📦</span> eBay National Comps
+                </span>
+                <span className="text-xs font-black text-amber-300">
+                  ${activeReport.ebayComps?.estimatedEbayMin || activeReport.estimatedValueMin} – ${activeReport.ebayComps?.estimatedEbayMax || activeReport.estimatedValueMax}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="text-purple-200 font-bold">eBay Demand: <b className="text-white font-black">{activeReport.ebayComps?.ebayDemandScore || activeReport.demandScore}/10</b></span>
+                <span className="text-purple-200 font-bold truncate max-w-[130px]">{activeReport.ebayComps?.shippingFeasibility || "Standard Shipping"}</span>
+              </div>
+              {activeReport.ebayComps?.ebayTips && activeReport.ebayComps.ebayTips.length > 0 && (
+                <p className="text-[10px] text-purple-100/90 leading-tight pt-1 border-t border-purple-400/20">
+                  💡 {activeReport.ebayComps.ebayTips[0]}
+                </p>
+              )}
             </div>
           </div>
 

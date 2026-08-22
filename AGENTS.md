@@ -18,7 +18,8 @@ Stuff4Sale is a full-stack AI-powered inventory management, item valuation, and 
 - **Built-in Photo Studio & Image Editor (`PhotoEditorModal.tsx`)**: Full-featured interactive HTML5 Canvas photo editor integrated directly into intake camera capture and inventory item cards. Enables **4-Side Edge Crop Range Sliders** (Top ⬆️, Bottom ⬇️, Left ⬅️, Right ➡️ edge sliders with live visual dark overlay mask and 1-click aspect ratio presets 1:1, 4:3, 16:9), **Text Overlays & Watermark Banners** (e.g. "LOCAL PICKUP ONLY", "$50 FIRM"), **Blur / Anonymize Privacy Boxes** (draw pixelated blur rectangles over license plates, house numbers, or family photos), **90° Rotation**, and **Brightness / Contrast / Saturation Adjustments**.
 
 #### 2. AI Research, Sourcing Intake & Local Comps Engine (`@google/genai` & `server.ts`)
-- **Multimodal Gemini AI Research**: Powered by Google Gemini (`@google/genai`) via Express server endpoint (`/api/research`). Accepts text queries and multi-image uploads with automatic model fallback (`gemini-3.6-flash` → `gemini-3.5-flash` → `gemini-2.5-flash` → `gemini-2.0-flash`). Evaluates true dynamic demand score across the full 1-10 spectrum based on 4 concrete factors: brand recognition, buyer pool density, sell-through velocity, and shipping/freight friction (never defaulting to generic 4/10 or 7/10).
+- **Multimodal Gemini AI Research & Unified Local FB / eBay Comps**: Powered by Google Gemini (`@google/genai`) via Express server endpoint (`/api/research`). Automatically searches and synthesizes comps from both **Facebook Marketplace (Local Cash Deals)** and **eBay (National Shipped Sales)** directly inside the single **"✨ Gemini Find It!"** button click!
+- **Default Local Sale Bias & Big Bold National Sale Alert Banner**: Automatically defaults to selling locally on Facebook Marketplace (`recommendedSellLevel: "LOCAL_FB"`). Evaluates local FB cash comps ($0 shipping friction) and eBay national comps. **If (and ONLY IF) an item strictly requires national shipping** (e.g. rare collectible, high-value small item with zero local demand), Gemini flags `sellOnNationalLevel: true` and renders a **BIG, BOLD NATIONAL SALE ALERT BANNER** (`🚨 NATIONAL SALE RECOMMENDED — DO NOT SELL LOCALLY!`) with explicit reasoning so sellers never accidentally sell rare high-value items locally below market value!
 - **Interactive 5-Tier Reselling Strategy & Platform Estimator Engine**: Interactive slider and 5-tier selector (`⚡ 100% Sell Immediately`, `🚀 75% Fast Flip`, `⚖️ 50% Fair Market`, `⏳ 25% Patient Sale`, `🛑 1% Top Dollar Collector`). For each tier, Gemini AI inspects the physical item attributes (size, weight, shipping costs vs item value, local buyer density vs national collector reach) to provide exact target price, **Where Should You Post / List It** (un-templated platform recommendations explaining local vs shipped realities), and **How to List & What You Need To Do** (step-by-step prep, photos, SEO keywords, local cash vs shipped, return policies). Includes dynamic fallback generation for legacy items.
 - **Individualized Rarity AI Research**: Gemini conducts granular item analysis evaluating maker marks, model numbers, antique patina, salvage value, and collector oddities rather than treating items as generic commodities.
 - **Comprehensive 5-Part Description Generator**: Gemini AI structures every generated item description into 5 explicit section headings: (1) 📌 WHAT IT IS & ORIGINAL USE, (2) 💡 MODERN USES & STYLING / DECOR, (3) ⚠️ CONDITION & OBSERVED FACTS, (4) 📏 SPECS, MATERIALS & MEASUREMENTS, and (5) 🚀 WHY THIS IS A GREAT DEAL & SELLER NOTE.
@@ -39,15 +40,26 @@ Stuff4Sale is a full-stack AI-powered inventory management, item valuation, and 
 - **1-Click Photo Downloader**: One-click download of all item photos with Stock # badges.
 - **1-Click FB Launch**: Copies ad text and opens `https://www.facebook.com/marketplace/create/item` in a new tab.
 
-#### 4. Analytics & Financial Reporting (`StatsGrid.tsx`)
+#### 5. Forward-Facing Public Buyer Catalog & In-Page Popup Showcase (`BuyerStorefront.tsx` & `BuyerItemModal.tsx`)
+- **Forward-Facing Storefront URL Route (`/catalog`, `/shop`, `?view=catalog`)**: Clean, customer-facing public inventory catalog that sellers can directly share with prospective buyers via link (`https://stuff4sale.netlify.app/catalog`). Filters out private admin data (purchase price, profit, ROI, private sourcing notes) and presents all available inventory in a modern, mobile-friendly showcase.
+- **Search, Category Filter & Sorting Toolbar**: Real-time search by keyword/brand/stock #, horizontal category pill scrolling, type filters ("Available", "📦 Bundles", "All Items"), and sorting options (Stock # high-to-low, price low-to-high, price high-to-low, newest).
+- **Interactive In-Page Item Popup Modal (`BuyerItemModal.tsx`)**: Clicking any product card triggers an in-page popup modal displaying:
+  - **Full Media Gallery & Remaining Photos**: High-resolution active photo viewer with photo counter pill (`1 / 8 Photos`), left/right arrow navigation, interactive thumbnail strip of all remaining photos, and video player support.
+  - **Item Details & 5-Section Description**: Cleanly parsed 5-section breakdown (📌 What it is, 💡 Modern uses, ⚠️ Condition & observed facts, 📏 Specs/measurements, 🚀 Great deal / seller note) with Stock # badge and asking price.
+  - **Interactive "Make an Offer / Message Seller" Tool**: 1-click quick preset offer chips (Full Asking, -10%, -20%), custom dollar amount input, buyer contact fields, and direct offer submission to Supabase (`buyer_inquiries_count` + real-time notification alert to seller).
+  - **Direct Instant Contact & Fallback Actions**: 1-click links to message on live Facebook listing, text seller via SMS (`sms:?body=...`), copy formatted item summary to clipboard, and 1-click share direct item link (`/catalog?item=27`).
+- **Deep-Linking Support (`?item=X`)**: Visiting or sharing `https://stuff4sale.netlify.app/catalog?item=27` automatically opens that specific item's popup modal upon page load.
+- **Seamless Seller Admin Integration**: 1-click **"🌐 Buyer Catalog"** button with a **"📋 Copy Public Link"** action in the top navigation bar and sidebar, plus a **"🔗 Buyer Link"** button on every inventory item card for instant copy-pasting to buyers.
+
+#### 6. Analytics & Financial Reporting (`StatsGrid.tsx`)
 - **Real-Time Metrics**: Displays active inventory count, total inventory value, total sales, net profit, average ROI percentage, and active listing count.
 - **Filter, Sort & View Controls**: Filter by category and status, search by keyword/SKU/notes, multi-criteria sorting (defaults to **Stock # Highest to Lowest** e.g. #27 down to #1, plus oldest, profit, ROI, cost), and toggle between Grid and List views.
 - **CSV Data Export**: One-click data export functionality for accounting and tax reporting.
 
-#### 5. Technical Architecture & Tech Stack
+#### 7. Technical Architecture & Tech Stack
 - **Frontend**: React 19, TypeScript, Vite, TailwindCSS v4, Lucide React icons, Motion (Framer Motion).
 - **Backend Server**: Node.js, Express (`server.ts`), `netlify/functions/api.ts`, `@google/genai` SDK v2, `dotenv`.
-- **Database & Sync**: Firebase Firestore real-time database (`firebase.ts`), with offline fallback capabilities.
+- **Database & Sync**: Supabase singleton client (`supabase.ts`) on single table `Stuff4Sale` with real-time WebSocket subscriptions and local proxy caching.
 
 ---
 

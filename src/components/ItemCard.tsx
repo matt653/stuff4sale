@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { 
   Edit, Trash2, Tag, TrendingUp, Clock, MapPin, 
-  ExternalLink, Sparkles, CheckCircle, Archive, DollarSign, Calendar, ShoppingBag, Share2, Crop, Search, X, RefreshCw, AlertCircle
+  ExternalLink, Sparkles, CheckCircle, Archive, DollarSign, Calendar, ShoppingBag, Share2, Crop, Search, X, RefreshCw, AlertCircle, Copy, Check
 } from "lucide-react";
 import { InventoryItem, ItemStatus } from "../types";
 import PhotoEditorModal from "./PhotoEditorModal";
@@ -24,6 +24,16 @@ export default function ItemCard({ item, allItems = [], onEdit, onDelete, onStat
   const [localComps, setLocalComps] = useState<any | null>(item.research?.localComps || null);
   const [isCompsLoading, setIsCompsLoading] = useState(false);
   const [compsError, setCompsError] = useState<string | null>(null);
+  const [copiedBuyerLink, setCopiedBuyerLink] = useState(false);
+
+  const handleCopyBuyerLink = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const stockParam = item.stockNumber || item.id;
+    const url = `${window.location.origin}/catalog?item=${encodeURIComponent(stockParam)}`;
+    navigator.clipboard.writeText(url);
+    setCopiedBuyerLink(true);
+    setTimeout(() => setCopiedBuyerLink(false), 2500);
+  };
 
   const handleFetchLocalComps = async () => {
     setIsCompsLoading(true);
@@ -579,6 +589,21 @@ export default function ItemCard({ item, allItems = [], onEdit, onDelete, onStat
               id={`btn-photo-editor-${item.id}`}
             >
               <Crop size={12} className="text-indigo-600" /> Photo Studio
+            </button>
+
+            <button
+              type="button"
+              onClick={handleCopyBuyerLink}
+              className={`p-1.5 rounded-lg border transition font-bold text-[11px] flex items-center gap-1 cursor-pointer ${
+                copiedBuyerLink
+                  ? "bg-emerald-50 text-emerald-700 border-emerald-300"
+                  : "bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200"
+              }`}
+              title="Copy direct buyer link for this item to clipboard"
+              id={`btn-share-buyer-link-${item.id}`}
+            >
+              {copiedBuyerLink ? <Check size={12} className="text-emerald-600" /> : <Share2 size={12} className="text-indigo-600" />}
+              <span>{copiedBuyerLink ? "Copied!" : "Buyer Link"}</span>
             </button>
 
             <button
