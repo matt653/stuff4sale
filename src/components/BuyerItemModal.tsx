@@ -3,7 +3,7 @@ import {
   X, ChevronLeft, ChevronRight, DollarSign, Tag, CheckCircle2, 
   MapPin, Share2, MessageCircle, Send, Phone, Mail, 
   ExternalLink, Copy, Check, Sparkles, Layers, ShieldCheck, 
-  Eye, ShoppingBag, ArrowRight, AlertCircle, Play
+  Eye, ShoppingBag, ArrowRight, AlertCircle, Play, Smartphone, MessageSquare
 } from "lucide-react";
 import { InventoryItem } from "../types";
 import { supabase } from "../supabase";
@@ -88,6 +88,9 @@ ${item.notes || "Available for local pickup."}
     setTimeout(() => setCopiedDetails(false), 2500);
   };
 
+  // Get configured seller phone or default
+  const sellerPhone = localStorage.getItem("stuff4sale_seller_phone") || "(555) 019-2831";
+
   // Submit Offer / Buyer Inquiry to Supabase
   const handleSubmitOffer = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -96,13 +99,21 @@ ${item.notes || "Available for local pickup."}
 
     try {
       const currentInquiries = item.buyerInquiriesCount || 0;
+      const timeStr = new Date().toLocaleString();
 
-      // Update Supabase Stuff4Sale record with new inquiry details
+      const offerSummary = `\n\n--- 📥 NEW BUYER OFFER RECEIVED (${timeStr}) ---\n👤 Buyer Name: ${buyerName}\n📱 Phone/Contact: ${buyerContact}\n💰 Offer Amount: $${offerAmount} (Asking Price: $${askingPrice})\n📝 Question/Note: ${buyerNote || "None"}\n---`;
+
+      const updatedNotes = (item.notes || "") + offerSummary;
+      const updatedSourcingLoc = `OFFER: $${offerAmount} from ${buyerName} (${buyerContact})`;
+
+      // Update Supabase Stuff4Sale record with full offer details
       const { error } = await supabase
         .from("Stuff4Sale")
         .update({
           buyer_inquiries_count: currentInquiries + 1,
           last_inquiry_at: new Date().toISOString(),
+          notes: updatedNotes,
+          sourcing_location: updatedSourcingLoc,
           updated_at: new Date().toISOString(),
         })
         .eq("id", Number(item.id));
@@ -114,7 +125,7 @@ ${item.notes || "Available for local pickup."}
       setOfferSubmitted(true);
     } catch (err: any) {
       console.error("Error submitting offer:", err);
-      setOfferError(err.message || "Failed to submit offer. Please contact directly via Messenger or Text.");
+      setOfferError(err.message || "Failed to submit offer. Please contact seller directly.");
     } finally {
       setSubmittingOffer(false);
     }
@@ -475,49 +486,34 @@ ${item.notes || "Available for local pickup."}
                   </div>
                 ) : (
                   <form onSubmit={handleSubmitOffer} className="space-y-3">
-                    {/* Quick Offer Preset Chips */}
-                    {askingPrice > 0 && (
-                      <div className="space-y-1.5">
-                        <label className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 block">
-                          ⚡ 1-Click Quick Offer Presets:
-                        </label>
-                        <div className="grid grid-cols-3 gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => setOfferAmount(String(askingPrice))}
-                            className={`py-1.5 px-2 rounded-xl text-xs font-black border transition ${
-                              offerAmount === String(askingPrice)
-                                ? "bg-indigo-600 text-white border-indigo-600 shadow-2xs"
-                                : "bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700"
-                            }`}
-                          >
-                            ${askingPrice} (Full)
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setOfferAmount(String(Math.max(1, Math.round(askingPrice * 0.9))))}
-                            className={`py-1.5 px-2 rounded-xl text-xs font-black border transition ${
-                              offerAmount === String(Math.max(1, Math.round(askingPrice * 0.9)))
-                                ? "bg-indigo-600 text-white border-indigo-600 shadow-2xs"
-                                : "bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700"
-                            }`}
-                          >
-                            ${Math.max(1, Math.round(askingPrice * 0.9))} (-10%)
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setOfferAmount(String(Math.max(1, Math.round(askingPrice * 0.8))))}
-                            className={`py-1.5 px-2 rounded-xl text-xs font-black border transition ${
-                              offerAmount === String(Math.max(1, Math.round(askingPrice * 0.8)))
-                                ? "bg-indigo-600 text-white border-indigo-600 shadow-2xs"
-                                : "bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700"
-                            }`}
-                          >
-                            ${Math.max(1, Math.round(askingPrice * 0.8))} (-20%)
-                          </button>
-                        </div>
+                    {/* Direct Seller Call / Text Line */}
+                    <div className="bg-indigo-50 border border-indigo-200 p-3 rounded-2xl space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-black text-indigo-900 uppercase tracking-wider flex items-center gap-1">
+                          <Smartphone size={13} className="text-indigo-600" />
+                          <span>Direct Seller Line</span>
+                        </span>
+                        <span className="text-xs font-black text-indigo-900 bg-white px-2 py-0.5 rounded-lg border border-indigo-200 shadow-2xs font-mono">
+                          {sellerPhone}
+                        </span>
                       </div>
-                    )}
+                      <div className="grid grid-cols-2 gap-2 pt-0.5">
+                        <a
+                          href={`sms:${sellerPhone.replace(/\D/g, "")}?body=${encodeURIComponent(`Hi! I am interested in Stock #${item.stockNumber || item.id}: ${item.name}`)}`}
+                          className="py-1.5 px-2 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs rounded-xl flex items-center justify-center gap-1 shadow-2xs transition active:scale-95 text-center"
+                        >
+                          <MessageSquare size={13} />
+                          <span>Text Seller</span>
+                        </a>
+                        <a
+                          href={`tel:${sellerPhone.replace(/\D/g, "")}`}
+                          className="py-1.5 px-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl flex items-center justify-center gap-1 shadow-2xs transition active:scale-95 text-center"
+                        >
+                          <Phone size={13} />
+                          <span>Call Seller</span>
+                        </a>
+                      </div>
+                    </div>
 
                     {/* Offer Price Input */}
                     <div>
@@ -533,7 +529,7 @@ ${item.notes || "Available for local pickup."}
                           required
                           value={offerAmount}
                           onChange={(e) => setOfferAmount(e.target.value)}
-                          placeholder="Enter your offer in dollars..."
+                          placeholder="Enter offer amount..."
                           className="w-full text-xs font-black border border-slate-200 rounded-xl pl-8 pr-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900 bg-white"
                           id="input-buyer-offer-amount"
                         />
@@ -544,7 +540,7 @@ ${item.notes || "Available for local pickup."}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       <div>
                         <label className="text-[11px] font-bold text-slate-600 block mb-1">
-                          Your Name / First Name
+                          Your Name
                         </label>
                         <input
                           type="text"
@@ -559,14 +555,14 @@ ${item.notes || "Available for local pickup."}
 
                       <div>
                         <label className="text-[11px] font-bold text-slate-600 block mb-1">
-                          Phone, Email or FB Profile
+                          Phone Number
                         </label>
                         <input
-                          type="text"
+                          type="tel"
                           required
                           value={buyerContact}
                           onChange={(e) => setBuyerContact(e.target.value)}
-                          placeholder="e.g. 555-0192 or email"
+                          placeholder="Your phone number..."
                           className="w-full text-xs font-medium border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-800 bg-white"
                           id="input-buyer-contact"
                         />

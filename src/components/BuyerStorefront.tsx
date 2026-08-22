@@ -3,7 +3,7 @@ import {
   Search, Filter, SlidersHorizontal, Tag, DollarSign, 
   Layers, ShoppingBag, Eye, Share2, Check, Sparkles, 
   ArrowRight, ShieldCheck, MapPin, X, ExternalLink, 
-  Lock, RefreshCw, MessageSquare
+  Lock, RefreshCw, MessageSquare, Phone, Smartphone
 } from "lucide-react";
 import { InventoryItem } from "../types";
 import BuyerItemModal from "./BuyerItemModal";
@@ -130,6 +130,9 @@ export default function BuyerStorefront({
     } catch (e) {}
   };
 
+  // Get seller phone from localStorage or default
+  const sellerPhone = localStorage.getItem("stuff4sale_seller_phone") || "(555) 019-2831";
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans flex flex-col" id="buyer-storefront-container">
       {/* Top Forward-Facing Navigation Bar */}
@@ -143,13 +146,20 @@ export default function BuyerStorefront({
               <span className="text-lg sm:text-xl font-black tracking-tight text-slate-900">
                 Stuff4Sale<span className="text-indigo-600">.deals</span>
               </span>
-              <span className="hidden sm:inline-block ml-2 text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
-                ✨ Local Inventory Showcase
-              </span>
             </div>
           </div>
 
           <div className="flex items-center space-x-2.5">
+            {/* Direct Call/Text Header Pill */}
+            <a
+              href={`sms:${sellerPhone.replace(/\D/g, "")}`}
+              className="hidden md:flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-black hover:bg-emerald-100 transition"
+              title="Text seller directly"
+            >
+              <Smartphone size={14} className="text-emerald-600" />
+              <span>Text Seller: {sellerPhone}</span>
+            </a>
+
             {/* Share Storefront Link Button */}
             <button
               type="button"
@@ -166,40 +176,42 @@ export default function BuyerStorefront({
       </header>
 
       {/* Hero Welcome Banner */}
-      <section className="bg-gradient-to-b from-indigo-900 via-indigo-950 to-slate-900 text-white py-8 px-4 sm:px-6 lg:px-8 border-b border-indigo-900 shadow-md">
-        <div className="max-w-7xl mx-auto space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-2 mb-1.5">
-                <span className="bg-emerald-500/20 text-emerald-300 text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full border border-emerald-400/30">
-                  ● Live Inventory
-                </span>
-                <span className="text-indigo-300 text-xs font-semibold">
-                  Local Cash Deals & Bundle Specials
-                </span>
-              </div>
-              <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-                Curated Finds & Reselling Deals
-              </h1>
-              <p className="text-xs sm:text-sm text-indigo-200/90 max-w-2xl mt-1 leading-relaxed">
-                Browse our complete collection below. Click any item to inspect all photos, detailed condition facts, or submit an offer directly to the seller for fast local pickup!
-              </p>
-            </div>
+      <section className="bg-gradient-to-b from-slate-900 via-indigo-950 to-slate-900 text-white py-6 px-4 sm:px-6 lg:px-8 border-b border-indigo-900 shadow-md">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+              Local Inventory & Items For Sale
+            </h1>
+            <p className="text-xs sm:text-sm text-indigo-200 max-w-xl mt-1">
+              Click any item below to view full picture galleries and submit an offer.
+            </p>
+          </div>
 
-            {/* Trust Highlights Box */}
-            <div className="bg-white/10 backdrop-blur-sm border border-white/15 p-3.5 rounded-2xl flex flex-col gap-1.5 text-xs text-indigo-100 shrink-0">
-              <div className="flex items-center gap-2 font-bold text-white">
-                <ShieldCheck size={16} className="text-emerald-400" />
-                <span>Local Buyer Hand-Off Policy:</span>
-              </div>
-              <div className="flex items-center gap-1.5 text-[11px]">
-                <span className="text-emerald-400 font-bold">✓</span>
-                <span>Porch Pickup / Safe Public Meetup</span>
-              </div>
-              <div className="flex items-center gap-1.5 text-[11px]">
-                <span className="text-emerald-400 font-bold">✓</span>
-                <span>Cash, Venmo & Zelle Accepted</span>
-              </div>
+          {/* Prominent Seller Phone Call / Text Highlight Box */}
+          <div className="bg-white/10 backdrop-blur-md border border-white/20 p-4 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center gap-3 shrink-0 shadow-lg">
+            <div>
+              <span className="text-[10px] font-black text-emerald-300 uppercase tracking-widest block">
+                Have questions or want to buy fast?
+              </span>
+              <span className="text-base font-black text-white font-mono">
+                Call or Text: {sellerPhone}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <a
+                href={`sms:${sellerPhone.replace(/\D/g, "")}`}
+                className="px-3 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs rounded-xl flex items-center gap-1.5 transition shadow-sm active:scale-95"
+              >
+                <MessageSquare size={14} />
+                <span>Text</span>
+              </a>
+              <a
+                href={`tel:${sellerPhone.replace(/\D/g, "")}`}
+                className="px-3 py-2 bg-indigo-500 hover:bg-indigo-400 text-white font-black text-xs rounded-xl flex items-center gap-1.5 transition shadow-sm active:scale-95"
+              >
+                <Phone size={14} />
+                <span>Call</span>
+              </a>
             </div>
           </div>
         </div>

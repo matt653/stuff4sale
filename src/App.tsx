@@ -87,6 +87,14 @@ export default function App() {
     }
   });
   const [showChangePinModal, setShowChangePinModal] = useState(false);
+  const [sellerPhone, setSellerPhone] = useState<string>(() => {
+    return localStorage.getItem("stuff4sale_seller_phone") || "(555) 019-2831";
+  });
+
+  const handleUpdateSellerPhone = (newPhone: string) => {
+    setSellerPhone(newPhone);
+    localStorage.setItem("stuff4sale_seller_phone", newPhone);
+  };
 
   // Synchronize history popstate (e.g. browser back/forward)
   useEffect(() => {
@@ -1266,10 +1274,22 @@ Available for local cash pickup or fast shipping. Message now to claim the bundl
             <p className="text-xs text-indigo-200/80 leading-relaxed">
               Give this link to prospective buyers on Facebook Marketplace, Messenger, text, or Craigslist. Buyers can browse your full collection, view high-res picture galleries, and submit offers!
             </p>
-            <div className="flex items-center gap-2 pt-1">
-              <span className="text-[11px] text-emerald-300 font-mono bg-black/40 px-3 py-1 rounded-xl border border-white/10 select-all truncate max-w-xs sm:max-w-md font-bold">
+            <div className="flex flex-wrap items-center gap-3 pt-1">
+              <span className="text-[11px] text-emerald-300 font-mono bg-black/40 px-3 py-1 rounded-xl border border-white/10 select-all truncate max-w-xs font-bold">
                 {window.location.origin}/catalog
               </span>
+              <div className="flex items-center gap-1.5 bg-black/30 border border-indigo-400/30 px-2.5 py-1 rounded-xl">
+                <Smartphone size={12} className="text-emerald-400" />
+                <span className="text-[10px] font-bold text-slate-300">Your Cell Phone:</span>
+                <input
+                  type="text"
+                  value={sellerPhone}
+                  onChange={(e) => handleUpdateSellerPhone(e.target.value)}
+                  placeholder="Enter your phone..."
+                  className="bg-transparent text-xs font-mono font-bold text-white outline-none w-32 border-b border-indigo-500/50 focus:border-emerald-400"
+                  id="input-seller-phone-setting"
+                />
+              </div>
             </div>
           </div>
 
