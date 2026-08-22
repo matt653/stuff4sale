@@ -52,7 +52,7 @@ function cleanJsonResponse(rawText: string): any {
 
 // Call Gemini with model fallbacks
 async function callGeminiWithFallback(aiClient: GoogleGenAI, contents: any[]) {
-  const models = ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-2.5-flash", "gemini-2.0-flash"];
+  const models = ["gemini-2.0-flash", "gemini-2.0-pro", "gemini-1.5-flash", "gemini-1.5-pro"];
   let lastError: any = null;
 
   for (const model of models) {
@@ -77,19 +77,114 @@ async function callGeminiWithFallback(aiClient: GoogleGenAI, contents: any[]) {
   throw lastError || new Error("All Gemini models failed to generate content.");
 }
 
+// Call xAI Grok API for Full Item Research (Default Engine for Valuation, Comps & Descriptions)
+async function callXaiGrokFullResearch(
+  apiKey: string,
+  promptText: string,
+  imageList: string[]
+): Promise<any> {
+  const endpoint = "https://api.x.ai/v1/chat/completions";
+
+  const userContent: any[] = [
+    {
+      type: "text",
+      text: promptText
+    }
+  ];
+
+  imageList.forEach((imgStr: string) => {
+    if (imgStr.startsWith("data:image/")) {
+      userContent.push({
+        type: "image_url",
+        image_url: { url: imgStr }
+      });
+    }
+  });
+
+  console.log("Sending FULL research request to xAI Grok (grok-2-vision-1212)...");
+
+  try {
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: "grok-2-vision-1212",
+        messages: [
+          {
+            role: "system",
+            content: "You are an expert reselling product identifier, market comp analyst, and listing copywriter. Respond STRICTLY with valid, raw JSON."
+          },
+          {
+            role: "user",
+            content: userContent
+          }
+        ],
+        temperature: 0.2,
+        response_format: { type: "json_object" }
+      })
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      console.warn(`xAI Grok vision call note (${response.status}): ${errText}. Trying grok-2-latest text fallback...`);
+      
+      const textFallback = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          model: "grok-2-latest",
+          messages: [
+            {
+              role: "system",
+              content: "You are an expert reselling product identifier, market comp analyst, and listing copywriter. Respond STRICTLY with valid, raw JSON."
+            },
+            {
+              role: "user",
+              content: promptText
+            }
+          ],
+          temperature: 0.2,
+          response_format: { type: "json_object" }
+        })
+      });
+
+      if (textFallback.ok) {
+        const textRes: any = await textFallback.json();
+        return cleanJsonResponse(textRes?.choices?.[0]?.message?.content || "");
+      }
+      throw new Error(`xAI Grok API Error (${response.status}): ${errText}`);
+    }
+
+    const resData: any = await response.json();
+    const rawContent = resData?.choices?.[0]?.message?.content || "";
+    return cleanJsonResponse(rawContent);
+  } catch (err: any) {
+    console.error("xAI Grok full research error:", err.message);
+    throw err;
+  }
+}
+
 // Health Check Endpoint
 app.get("/api/health", (req, res) => {
   const aiClient = getAiClient(req);
   res.json({ status: "ok", aiEnabled: !!aiClient, provider: "netlify-serverless" });
 });
 
-// Gemini-Powered Item Research Endpoint
+// Dual-Engine Item Research Endpoint (xAI Grok Default + Google Gemini 2nd Opinion Backup)
 app.post("/api/research", async (req, res) => {
   const activeAi = getAiClient(req);
+  const xaiApiKey = req.headers["x-xai-key"] as string || req.headers["x-xai-api-key"] as string || process.env.XAI_KEY || process.env.VITE_XAI_KEY || "";
+  const requestedProvider = req.body.provider || "grok";
 
-  if (!activeAi) {
+  if (!activeAi && !xaiApiKey) {
     return res.status(503).json({
-      error: "AI Research is currently unavailable. Please configure GEMINI_API_KEY or VITE_GEMINI_API_KEY in your Netlify site settings.",
+      error: "AI Research is currently unavailable. Please configure GEMINI_API_KEY or XAI_KEY in your Netlify site settings.",
     });
   }
 
@@ -100,136 +195,112 @@ app.post("/api/research", async (req, res) => {
       return res.status(400).json({ error: "Item name or image is required for research." });
     }
 
-    const contents: any[] = [];
+    const imageList: string[] = images && Array.isArray(images) && images.length > 0 ? images : image ? [image] : [];
 
-    let promptText = `Perform REAL, UNBIASED, PROFESSIONAL reselling and side-hustle market research on this specific item using multimodal vision analysis and true historical sales comps.
+    let promptText = `Perform REAL, UNBIASED, PROFESSIONAL reselling research, SEO title creation, 5-part customer description generation, local FB & eBay comps valuation, and pricing strategy for this item.
 
-Input Details provided:
-- Item Name: ${name || "Unidentified (Must inspect the attached images carefully for brand, model, serial #, maker marks)"}
+INPUT DETAILS:
+- Item Name: ${name || "Unidentified (Inspect attached photos carefully for brand, model, serial #, maker marks)"}
 - Initial Category: ${category || "Unknown"}
 - Notes/Condition: ${notes || "No extra notes"}
-- Seller Sourcing / Target Location: ${location || "General US Resale Market"}
+- Seller Sourcing Location: ${location || "General US Resale Market"}
 
-CRITICAL REQUIREMENT 1: REAL, UNBIASED DYNAMIC DEMAND SCORE (1 TO 10 SPECTRUM)
-- DO NOT DEFAULT TO 4/10 OR 7/10! You MUST evaluate each item individually based on its brand, rarity, condition, and market liquidity.
-- Evaluate demand using 4 concrete factors:
-  1. BRAND & RECOGNITION: Name brands (DeWalt, Snap-on, Stihl, Red Crown, Milwaukee, Craftsman, Stanley, John Deere) score 7-10. Unbranded / generic rustic items score 2-5.
-  2. BUYER POOL: Mass-market daily tools / electronics score 8-10. Trendy farmhouse decor & vintage signs score 6-8. Heavy obscure farm implements score 2-5.
-  3. SELL-THROUGH SPEED: Sells within 48h = 9-10. Sells within 1-2 weeks = 6-8. Takes 1-3 months = 3-5. Takes 6+ months = 1-2.
-  4. SHIPPING VS FREIGHT FRICTION: Small shippable collectibles score higher national demand (7-10) than 50lb local-only iron wheels (3-5).
-- STRICT SCORING BENCHMARKS:
-  * Brand Name Power Tools / Current Electronics / Rare Signs / Precious Metals: MUST score 8-10/10.
-  * Popular Vintage Decor / Brand Name Hand Tools / Quality Crosscut Saws / Porcelain Signs: MUST score 6-7/10.
-  * Heavy Unbranded Wagon Wheels / Single-Wheel Cultivators / Heavy Local Iron Scrap: MUST score 3-5/10.
-  * Broken Non-Working Junk / Common Used Books / Damaged Worn Furniture: MUST score 1-2/10.
-- NEVER OUTPUT THE SAME DEMAND SCORE FOR ALL ITEMS! Differentiate every single item accurately!
+CRITICAL REQUIREMENT 1: 5-PART CUSTOMER-FRIENDLY DESCRIPTION
+Structure 'suggestedDescription' into these 5 explicit section headings:
+   • 📌 WHAT IT IS & ORIGINAL USE
+   • 💡 MODERN USES & STYLING / DECOR
+   • ⚠️ CONDITION & OBSERVED FACTS
+   • 📏 SPECS, MATERIALS & MEASUREMENTS
+   • 🚀 WHY THIS IS A GREAT DEAL & SELLER NOTE
 
-CRITICAL REQUIREMENT 2: REAL ITEM-TAILORED PLATFORM ANALYSIS (LOCAL VS SHIPPED)
-- Do NOT give generic "list on Facebook Marketplace for low end, eBay for high end" for every single item!
-- Perform a REAL evaluation of the physical item attributes (size, weight, shipping cost vs item value, local buyer density in ${location || "local markets"} vs global collector reach).
-  * SMALL/RARE/COLLECTIBLE (e.g. vintage action figure, rare trading card, camera lens): Local demand on FB Marketplace is often DEAD because local buyers don't exist in a small town. State explicitly if local FB is POOR, and recommend national shipping platforms like eBay, Mercari, Poshmark, TCGPlayer, or Reverb!
-  * HEAVY/BULKY/LOCAL ONLY (e.g. 60lb cast iron anvil, lawnmower, dresser, power tool stand): Shipping on eBay costs $100+ and is ridiculous. State explicitly that eBay shipping is NOT recommended, and recommend local platforms like Facebook Marketplace, OfferUp, or Craigslist for ALL pricing tiers!
-  * MAINSTREAM FAST MOVERS (e.g. iPhone, PS5, Dewalt drill): Highly liquid locally on FB Marketplace for quick cash, OR on eBay for max market price.
+CRITICAL REQUIREMENT 2: INTEGRATED LOCAL FB MARKETPLACE & EBAY COMPS
+- Evaluates comps specifically for:
+  1. FACEBOOK MARKETPLACE (LOCAL CASH PICKUP): Target local cash deals ($0 shipping fee, local pickup). Evaluate local demand score (1-10) and sell-through speed (e.g. "Fast (3-7 days)", "1-2 weeks").
+  2. EBAY (NATIONAL SHIPPED SALES): Target nationwide collector sales. Evaluate shipping feasibility (shipping cost vs weight/size) and eBay demand score.
+- Synthesize both into localComps and ebayComps objects in your JSON output.
 
-CRITICAL REQUIREMENT 3: DYNAMIC 5-TIER PRICING & STRATEGY MATRIX
-- Provide 5 realistic pricing tiers (0% Low End to 100% High End) calculated from true comps for THIS specific item.
-- For EACH tier, specify:
-  1. 'price': Exact dollar value for this tier based on comps.
-  2. 'whereToList': Specific platforms recommended for THIS item at this price tier (e.g. FB Marketplace, eBay, OfferUp, Mercari, Poshmark, Reverb, TCGPlayer, specialized collector forums). Explain WHY based on local vs shipped realities!
-  3. 'howToList': Actionable step-by-step instructions on prep, photography, SEO title tags, local pickup vs shipping method, and negotiation strategy required to fetch that exact dollar amount.
-
-CRITICAL REQUIREMENT 4: STRICT FACTUAL CONDITION & 5 CUSTOMER-FRIENDLY SECTION HEADINGS
-1. NO GUESSING OR PREDICTING FLAWS: Only state 100% visible, observable facts directly seen in the photos (e.g. "Visible surface patina", "Paint wear on metal rim"). NEVER guess, assume, or predict unseen internal flaws!
-2. ASK ABOUT UNKNOWNS: For any condition detail that CANNOT be visually verified from photos alone (e.g. liquid tightness, working condition, internal rust, power state, or seal integrity), explicitly frame it as an UNTESTED QUESTION in 'issuesFound' (e.g. "Untested: Does it hold liquid without leaking?", "Untested: Is the mechanical switch operational?").
-3. CUSTOMER-FRIENDLY SECTION HEADINGS: Structure 'suggestedDescription' into these 5 clear, customer-friendly section headings:
-   • 📌 WHAT IT IS & ORIGINAL USE: (Observed item facts, brand markings, and original purpose)
-   • 💡 MODERN USES & STYLING / DECOR: (Factual modern repurposing, decor, or collection uses)
-   • ⚠️ CONDITION & OBSERVED FACTS: (Visible facts seen in photos, plus explicit untested questions about the unknown)
-   • 📏 SPECS, MATERIALS & MEASUREMENTS: (Visible dimensions, stamps, and material composition)
-   • 🚀 WHY THIS IS A GREAT DEAL & SELLER NOTE: (Customer-friendly closing value summary and local pickup/shipping details—NEVER use tacky internal jargon like "Upsell" or "Pitch")
-
-Analyze this item carefully. You MUST return your response in standard, valid JSON format.
-Do not wrap your JSON response in markdown code blocks.
+Return response in standard, valid JSON format without markdown code blocks.
 
 The JSON response MUST match this schema:
 {
   "suggestedTitle": "<SEO title max 80 chars highlighting brand, model, condition>",
   "suggestedDescription": "<Full listing description structured into the 5 explicit headings above>",
-  "estimatedValueMin": <number>,
-  "estimatedValueMax": <number>,
-  "demandScore": <INTEGER 1-10 BASED ON TRUE ITEM LIQUIDITY - DO NOT DEFAULT TO 7!>,
+  "estimatedValueMin": <number min price>,
+  "estimatedValueMax": <number max price>,
+  "demandScore": <INTEGER 1-10 BASED ON TRUE ITEM LIQUIDITY>,
   "worthSelling": "<YES | MARGINAL | NO>",
   "triageReason": "<Honest 1-2 sentence verdict explaining why this item is a great flip, marginal, or pass/scrap>",
-  "issuesFound": [
-    "<Specific flaw 1>",
-    "<Specific flaw 2>"
-  ],
-  "targetPlatforms": [
-    "<Item-specific platform recommendation 1 with rationale>",
-    "<Item-specific platform recommendation 2 with rationale>"
-  ],
-  "sellingTips": [
-    "<Tip 1 for cleaning, photography, or listing strategy tailored to this item>"
-  ],
+  "sellOnNationalLevel": <boolean - true ONLY IF national eBay shipping is strictly required>,
+  "recommendedSellLevel": "<LOCAL_FB | NATIONAL_EBAY>",
+  "nationalSaleReason": "<Bold 1-2 sentence warning if sellOnNationalLevel is true>",
+  "localComps": {
+    "estimatedLocalMin": <number min local cash price>,
+    "estimatedLocalMax": <number max local cash price>,
+    "localDemandScore": <INTEGER 1-10 for local cash buyers>,
+    "sellThroughVelocity": "<e.g. Fast (3-7 days), 1-2 weeks, 1-3 months>",
+    "localTips": ["<Local FB Marketplace tip 1>", "<Local FB tip 2>"]
+  },
+  "ebayComps": {
+    "estimatedEbayMin": <number min eBay price>,
+    "estimatedEbayMax": <number max eBay price>,
+    "ebayDemandScore": <INTEGER 1-10 for eBay collectors>,
+    "shippingFeasibility": "<e.g. Easy ($6-$10 USPS), Heavy ($40-$60 freight)>",
+    "ebayTips": ["<eBay shipping or title tip 1>"]
+  },
+  "issuesFound": ["<Specific flaw 1>", "<Specific flaw 2>"],
+  "targetPlatforms": ["<Item-specific platform recommendation 1>", "<Platform recommendation 2>"],
+  "sellingTips": ["<Tip 1 for cleaning, photography, or listing strategy>"],
   "category": "Must strictly be one of: Clothing & Apparel, Shoes & Sneakers, Electronics & Gadgets, Video Games & Consoles, Toys & Collectibles, Books Comics & Media, Home Kitchen & Decor, Tools & Hardware, Sports & Outdoors, Jewelry & Accessories, Vintage & Antiques, Trading Cards, Other / Miscellaneous",
   "groupName": "<Descriptive group or bundle name>",
-  "keywords": ["<keyword1>", "<keyword2>"],
-  "pricingTiers": [
-    {
-      "tierName": "Low End (Sell Immediately)",
-      "percentageLabel": "100%",
-      "price": <number min price>,
-      "whereToList": "<Specific recommended platforms for immediate low-end sale based on item size/weight/demand>",
-      "howToList": "<Actionable steps to move this item fast at this price>"
-    },
-    {
-      "tierName": "1/4 Tier (Fast Flip)",
-      "percentageLabel": "75%",
-      "price": <number 25% comp price>,
-      "whereToList": "<Specific recommended platforms for fast flip>",
-      "howToList": "<Actionable steps for 2-4 day turnaround>"
-    },
-    {
-      "tierName": "Mid End (Fair Market)",
-      "percentageLabel": "50%",
-      "price": <number fair market price>,
-      "whereToList": "<Specific recommended platforms for fair market value>",
-      "howToList": "<Actionable steps for standard market turnaround>"
-    },
-    {
-      "tierName": "3/4 Tier (Patient Sale)",
-      "percentageLabel": "25%",
-      "price": <number 75% comp price>,
-      "whereToList": "<Specific recommended platforms for patient seller>",
-      "howToList": "<Actionable steps for patient sale>"
-    },
-    {
-      "tierName": "High End (Top Dollar Collector)",
-      "percentageLabel": "1%",
-      "price": <number max top dollar price>,
-      "whereToList": "<Specific recommended platforms for top-dollar collector price>",
-      "howToList": "<Actionable steps to command maximum price point>"
-    }
-  ]
+  "keywords": ["<keyword1>", "<keyword2>"]
 }`;
 
-    contents.push(promptText);
+    let researchResult: any = null;
 
-    const imageList: string[] = images && Array.isArray(images) && images.length > 0 ? images : image ? [image] : [];
-    
-    imageList.forEach((imgStr: string) => {
-      const match = imgStr.match(/^data:(image\/\w+);base64,(.+)$/);
-      if (match) {
-        contents.push({
-          inlineData: {
-            data: match[2],
-            mimeType: match[1],
-          },
-        });
-      }
-    });
+    if (requestedProvider === "dual") {
+      console.log("⚡ Netlify Function DUAL AI MODE: Running xAI Grok and Google Gemini in parallel...");
+      const geminiContents: any[] = [promptText];
+      imageList.forEach((imgStr: string) => {
+        const match = imgStr.match(/^data:(image\/\w+);base64,(.+)$/);
+        if (match) {
+          geminiContents.push({ inlineData: { data: match[2], mimeType: match[1] } });
+        }
+      });
 
-    const researchResult = await callGeminiWithFallback(activeAi, contents);
+      const [grokRes, geminiRes] = await Promise.all([
+        xaiApiKey ? callXaiGrokFullResearch(xaiApiKey, promptText, imageList).catch(() => null) : Promise.resolve(null),
+        activeAi ? callGeminiWithFallback(activeAi, geminiContents).catch(() => null) : Promise.resolve(null)
+      ]);
+
+      if (grokRes) grokRes.provider = "grok";
+      if (geminiRes) geminiRes.provider = "gemini";
+
+      researchResult = {
+        grok: grokRes,
+        gemini: geminiRes,
+        ...(grokRes || geminiRes || {})
+      };
+    } else if (requestedProvider === "gemini" && activeAi) {
+      const contents: any[] = [promptText];
+      imageList.forEach((imgStr: string) => {
+        const match = imgStr.match(/^data:(image\/\w+);base64,(.+)$/);
+        if (match) contents.push({ inlineData: { data: match[2], mimeType: match[1] } });
+      });
+      researchResult = await callGeminiWithFallback(activeAi, contents);
+      if (researchResult) researchResult.provider = "gemini";
+    } else if (xaiApiKey) {
+      researchResult = await callXaiGrokFullResearch(xaiApiKey, promptText, imageList);
+      if (researchResult) researchResult.provider = "grok";
+    } else if (activeAi) {
+      const contents: any[] = [promptText];
+      imageList.forEach((imgStr: string) => {
+        const match = imgStr.match(/^data:(image\/\w+);base64,(.+)$/);
+        if (match) contents.push({ inlineData: { data: match[2], mimeType: match[1] } });
+      });
+      researchResult = await callGeminiWithFallback(activeAi, contents);
+      if (researchResult) researchResult.provider = "gemini";
+    }
+
     res.json(researchResult);
   } catch (error: any) {
     console.error("Netlify Function AI Research error:", error);

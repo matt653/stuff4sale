@@ -166,7 +166,7 @@ function cleanJsonResponse(rawText: string): any {
 
 // Call Gemini with model fallbacks
 async function callGeminiWithFallback(aiClient: GoogleGenAI, contents: any[]) {
-  const models = ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-2.5-flash", "gemini-2.0-flash"];
+  const models = ["gemini-2.0-flash", "gemini-2.0-pro", "gemini-1.5-flash", "gemini-1.5-pro"];
   let lastError: any = null;
 
   for (const model of models) {
