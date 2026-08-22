@@ -138,6 +138,36 @@ export default function App() {
     return null;
   };
 
+  const [dismissedOfferItemIds, setDismissedOfferItemIds] = useState<string[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem("stuff4sale_dismissed_offers") || "[]");
+    } catch (e) {
+      return [];
+    }
+  });
+
+  const handleClearOfferNotification = (itemId: string) => {
+    setDismissedOfferItemIds((prev) => {
+      const updated = [...prev, itemId];
+      localStorage.setItem("stuff4sale_dismissed_offers", JSON.stringify(updated));
+      return updated;
+    });
+
+    // Update state to remove inquiry count
+    setItems((prev) =>
+      prev.map((i) => (i.id === itemId ? { ...i, buyerInquiriesCount: 0 } : i))
+    );
+
+    // Update Supabase to clear inquiry count
+    supabase
+      .from("Stuff4Sale")
+      .update({ buyer_inquiries_count: 0, updated_at: new Date().toISOString() })
+      .eq("id", Number(itemId))
+      .then(({ error }) => {
+        if (error) console.error("Error clearing inquiry count in Supabase:", error);
+      });
+  };
+
   // Synchronize history popstate (e.g. browser back/forward)
   useEffect(() => {
     const handlePopState = () => {
@@ -1255,6 +1285,7 @@ Available for local cash pickup or fast shipping. Message now to claim the bundl
           {/* BIG HIGH-VISIBILITY BUYER OFFER NOTIFICATION ALERT BANNER */}
           {(() => {
             const offerItems = items.filter((i) => {
+              if (dismissedOfferItemIds.includes(i.id)) return false;
               const notes = i.notes || "";
               return (i.buyerInquiriesCount && i.buyerInquiriesCount > 0) || notes.includes("NEW BUYER OFFER RECEIVED") || notes.includes("OFFER:");
             });
@@ -1315,12 +1346,13 @@ Available for local cash pickup or fast shipping. Message now to claim the bundl
                     )}
                     <button
                       type="button"
-                      onClick={() => setSelectedInquiryItem(latestItem)}
-                      className="px-5 py-3 bg-slate-950 hover:bg-slate-900 text-amber-300 font-black text-xs rounded-2xl transition shadow-xl flex items-center justify-center gap-2 cursor-pointer active:scale-95 border border-amber-400/60"
-                      id="btn-view-offer-modal-banner"
+                      onClick={() => handleClearOfferNotification(latestItem.id)}
+                      className="px-5 py-3 bg-slate-950 hover:bg-slate-900 text-rose-400 font-black text-xs rounded-2xl transition shadow-xl flex items-center justify-center gap-2 cursor-pointer active:scale-95 border border-rose-400/60"
+                      id="btn-clear-offer-notification"
+                      title="Clear this offer notification"
                     >
-                      <MessageSquare size={16} className="text-amber-400" />
-                      <span>💬 View Offer Details & Reply</span>
+                      <X size={16} className="text-rose-400" />
+                      <span>Clear Notification</span>
                     </button>
                   </div>
                 </div>

@@ -101,44 +101,20 @@ async function callXaiGrokFullResearch(
     }
   });
 
-  console.log("Sending FULL research request to xAI Grok (grok-2-vision-1212)...");
+  const grokModels = ["grok-2-vision-latest", "grok-2-latest", "grok-vision-beta"];
+  let lastErrText = "";
 
-  try {
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        model: "grok-2-vision-1212",
-        messages: [
-          {
-            role: "system",
-            content: "You are an expert reselling product identifier, market comp analyst, and listing copywriter. Respond STRICTLY with valid, raw JSON."
-          },
-          {
-            role: "user",
-            content: userContent
-          }
-        ],
-        temperature: 0.2,
-        response_format: { type: "json_object" }
-      })
-    });
-
-    if (!response.ok) {
-      const errText = await response.text();
-      console.warn(`xAI Grok vision call note (${response.status}): ${errText}. Trying grok-2-latest text fallback...`);
-      
-      const textFallback = await fetch(endpoint, {
+  for (const model of grokModels) {
+    try {
+      console.log(`Sending FULL research request to xAI Grok (model: ${model})...`);
+      const response = await fetch(endpoint, {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${apiKey}`,
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          model: "grok-2-latest",
+          model,
           messages: [
             {
               role: "system",
@@ -146,7 +122,7 @@ async function callXaiGrokFullResearch(
             },
             {
               role: "user",
-              content: promptText
+              content: userContent
             }
           ],
           temperature: 0.2,
@@ -154,20 +130,21 @@ async function callXaiGrokFullResearch(
         })
       });
 
-      if (textFallback.ok) {
-        const textRes: any = await textFallback.json();
-        return cleanJsonResponse(textRes?.choices?.[0]?.message?.content || "");
+      if (response.ok) {
+        const resData: any = await response.json();
+        const rawContent = resData?.choices?.[0]?.message?.content || "";
+        return cleanJsonResponse(rawContent);
+      } else {
+        lastErrText = await response.text();
+        console.warn(`xAI Grok model ${model} failed (${response.status}): ${lastErrText}. Trying next Grok model...`);
       }
-      throw new Error(`xAI Grok API Error (${response.status}): ${errText}`);
+    } catch (err: any) {
+      lastErrText = err.message;
+      console.warn(`xAI Grok model ${model} error: ${err.message}. Trying next Grok model...`);
     }
-
-    const resData: any = await response.json();
-    const rawContent = resData?.choices?.[0]?.message?.content || "";
-    return cleanJsonResponse(rawContent);
-  } catch (err: any) {
-    console.error("xAI Grok full research error:", err.message);
-    throw err;
   }
+
+  throw new Error(`xAI Grok API Error: ${lastErrText}`);
 }
 
 // Health Check Endpoint
