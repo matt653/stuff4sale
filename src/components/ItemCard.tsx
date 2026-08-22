@@ -312,15 +312,19 @@ export default function ItemCard({ item, allItems = [], onEdit, onDelete, onStat
           </div>
         )}
 
-        {/* FB Buyer Inquiry Notification Badge */}
-        {item.buyerInquiriesCount && item.buyerInquiriesCount > 0 ? (
+        {/* FB Buyer Inquiry / Offer Notification Badge */}
+        {(item.buyerInquiriesCount && item.buyerInquiriesCount > 0) || (item.notes && (item.notes.includes("NEW BUYER OFFER RECEIVED") || item.notes.includes("OFFER:"))) ? (
           <button
             type="button"
-            onClick={() => onOpenItemInquiries && onOpenItemInquiries(item)}
-            className="absolute top-10 left-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-full px-2.5 py-0.5 text-[10px] font-extrabold flex items-center gap-1 shadow-lg border border-blue-400/50 animate-bounce cursor-pointer"
-            title="Click to view & sync buyer messages for this item"
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenItemInquiries && onOpenItemInquiries(item);
+            }}
+            className="absolute top-10 left-2.5 bg-amber-400 hover:bg-amber-300 text-slate-950 rounded-full px-3 py-1 text-[10px] font-black flex items-center gap-1 shadow-xl border-2 border-amber-300 animate-bounce cursor-pointer z-20"
+            title="Click to view buyer offer details"
+            id={`badge-offer-received-${item.id}`}
           >
-            💬 {item.buyerInquiriesCount} FB {item.buyerInquiriesCount === 1 ? "Inquiry" : "Inquiries"}
+            🔥 BUYER OFFER RECEIVED ({item.buyerInquiriesCount || 1})
           </button>
         ) : null}
 

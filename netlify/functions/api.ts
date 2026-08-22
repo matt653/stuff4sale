@@ -52,7 +52,7 @@ function cleanJsonResponse(rawText: string): any {
 
 // Call Gemini with model fallbacks
 async function callGeminiWithFallback(aiClient: GoogleGenAI, contents: any[]) {
-  const models = ["gemini-2.0-flash", "gemini-2.0-pro", "gemini-1.5-flash", "gemini-1.5-pro"];
+  const models = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.0-flash-lite"];
   let lastError: any = null;
 
   for (const model of models) {
@@ -257,7 +257,26 @@ The JSON response MUST match this schema:
 
     let researchResult: any = null;
 
-    if (requestedProvider === "dual") {
+    if (requestedProvider === "grok") {
+      console.log("⚡ Netlify Function GROK ENGINE ONLY: Executing xAI Grok (grok-2-vision-1212)...");
+      if (!xaiApiKey) {
+        return res.status(400).json({ error: "xAI Grok API key is missing. Please configure XAI_KEY or VITE_XAI_KEY." });
+      }
+      researchResult = await callXaiGrokFullResearch(xaiApiKey, promptText, imageList);
+      if (researchResult) researchResult.provider = "grok";
+    } else if (requestedProvider === "gemini") {
+      console.log("⚡ Netlify Function GEMINI ENGINE ONLY: Executing Google Gemini...");
+      if (!activeAi) {
+        return res.status(400).json({ error: "Google Gemini API key is missing. Please configure GEMINI_API_KEY." });
+      }
+      const contents: any[] = [promptText];
+      imageList.forEach((imgStr: string) => {
+        const match = imgStr.match(/^data:(image\/\w+);base64,(.+)$/);
+        if (match) contents.push({ inlineData: { data: match[2], mimeType: match[1] } });
+      });
+      researchResult = await callGeminiWithFallback(activeAi, contents);
+      if (researchResult) researchResult.provider = "gemini";
+    } else {
       console.log("⚡ Netlify Function DUAL AI MODE: Running xAI Grok and Google Gemini in parallel...");
       const geminiContents: any[] = [promptText];
       imageList.forEach((imgStr: string) => {
@@ -280,25 +299,6 @@ The JSON response MUST match this schema:
         gemini: geminiRes,
         ...(grokRes || geminiRes || {})
       };
-    } else if (requestedProvider === "gemini" && activeAi) {
-      const contents: any[] = [promptText];
-      imageList.forEach((imgStr: string) => {
-        const match = imgStr.match(/^data:(image\/\w+);base64,(.+)$/);
-        if (match) contents.push({ inlineData: { data: match[2], mimeType: match[1] } });
-      });
-      researchResult = await callGeminiWithFallback(activeAi, contents);
-      if (researchResult) researchResult.provider = "gemini";
-    } else if (xaiApiKey) {
-      researchResult = await callXaiGrokFullResearch(xaiApiKey, promptText, imageList);
-      if (researchResult) researchResult.provider = "grok";
-    } else if (activeAi) {
-      const contents: any[] = [promptText];
-      imageList.forEach((imgStr: string) => {
-        const match = imgStr.match(/^data:(image\/\w+);base64,(.+)$/);
-        if (match) contents.push({ inlineData: { data: match[2], mimeType: match[1] } });
-      });
-      researchResult = await callGeminiWithFallback(activeAi, contents);
-      if (researchResult) researchResult.provider = "gemini";
     }
 
     res.json(researchResult);

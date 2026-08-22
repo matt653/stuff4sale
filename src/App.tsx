@@ -106,6 +106,38 @@ export default function App() {
     localStorage.setItem("stuff4sale_seller_phone", newPhone);
   };
 
+  const extractOfferDetails = (item: InventoryItem) => {
+    const notes = item.notes || "";
+
+    // Check for structured offer marker
+    const offerMatch = notes.match(/--- 📥 NEW BUYER OFFER RECEIVED \(([^)]+)\) ---\n👤 Buyer Name: ([^\n]+)\n📱 Phone\/Contact: ([^\n]+)\n💰 Offer Amount: \$([^\n\s]+)[^\n]*\n📝 Question\/Note: ([^\n]+)/);
+
+    if (offerMatch) {
+      return {
+        timeStr: offerMatch[1],
+        buyerName: offerMatch[2],
+        buyerContact: offerMatch[3],
+        offerAmount: offerMatch[4],
+        buyerNote: offerMatch[5],
+        hasStructuredOffer: true
+      };
+    }
+
+    if (notes.includes("OFFER:") || notes.includes("Offer Amount:") || (item.buyerInquiriesCount && item.buyerInquiriesCount > 0)) {
+      const simpleMatch = notes.match(/OFFER:\s*\$?(\d+)\s*from\s*([^(\n]+)(?:\(([^)]+)\))?/i);
+      return {
+        timeStr: item.lastInquiryAt ? new Date(item.lastInquiryAt).toLocaleString() : "Recently",
+        buyerName: simpleMatch ? simpleMatch[2].trim() : "Marketplace Buyer",
+        buyerContact: simpleMatch && simpleMatch[3] ? simpleMatch[3].trim() : sellerPhone,
+        offerAmount: simpleMatch ? simpleMatch[1] : (item.listedPrice ? String(item.listedPrice) : "Offer"),
+        buyerNote: notes.split("---")[1] || "Inquiry or offer received via buyer catalog",
+        hasStructuredOffer: true
+      };
+    }
+
+    return null;
+  };
+
   // Synchronize history popstate (e.g. browser back/forward)
   useEffect(() => {
     const handlePopState = () => {
@@ -1219,6 +1251,83 @@ Available for local cash pickup or fast shipping. Message now to claim the bundl
 
         {/* Main Content */}
         <main className="flex-1 p-4 md:p-8 flex flex-col space-y-6 overflow-y-auto bg-slate-50" id="main-dashboard-body">
+
+          {/* BIG HIGH-VISIBILITY BUYER OFFER NOTIFICATION ALERT BANNER */}
+          {(() => {
+            const offerItems = items.filter((i) => {
+              const notes = i.notes || "";
+              return (i.buyerInquiriesCount && i.buyerInquiriesCount > 0) || notes.includes("NEW BUYER OFFER RECEIVED") || notes.includes("OFFER:");
+            });
+
+            if (offerItems.length === 0) return null;
+
+            // Pick the latest offer item
+            const latestItem = offerItems.sort((a, b) => {
+              const tA = a.lastInquiryAt ? new Date(a.lastInquiryAt).getTime() : new Date(a.updatedAt).getTime();
+              const tB = b.lastInquiryAt ? new Date(b.lastInquiryAt).getTime() : new Date(b.updatedAt).getTime();
+              return tB - tA;
+            })[0];
+
+            const details = extractOfferDetails(latestItem);
+
+            return (
+              <div className="bg-gradient-to-r from-amber-600 via-amber-500 to-yellow-500 text-slate-950 rounded-3xl p-5 shadow-2xl border-4 border-amber-300 animate-pulse-subtle" id="big-offer-notification-banner">
+                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                  <div className="flex items-start gap-4">
+                    <div className="w-14 h-14 bg-slate-950 rounded-2xl flex items-center justify-center text-amber-400 shrink-0 border-2 border-amber-300 shadow-lg">
+                      <Bell size={32} className="animate-bounce" />
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="bg-slate-950 text-amber-300 text-[11px] font-black uppercase tracking-wider px-3 py-0.5 rounded-full border border-amber-400/50 shadow-xs">
+                          🔥 HEY! YOU RECEIVED AN OFFER ({offerItems.length} Offer{offerItems.length > 1 ? "s" : ""})
+                        </span>
+                        {details?.timeStr && (
+                          <span className="text-xs text-amber-950 font-black bg-amber-200/90 px-2 py-0.5 rounded-md">
+                            {details.timeStr}
+                          </span>
+                        )}
+                      </div>
+                      <h2 className="text-xl sm:text-2xl font-black text-slate-950 tracking-tight leading-tight">
+                        Hey, you have received an offer on <span className="underline decoration-slate-950 font-black">{latestItem.name}</span> (Stock #{latestItem.stockNumber || latestItem.id})!
+                      </h2>
+                      {details && (
+                        <div className="bg-slate-950 text-amber-100 rounded-2xl p-3 text-xs sm:text-sm font-medium border border-amber-400/50 flex flex-wrap items-center gap-x-4 gap-y-1 shadow-md">
+                          <span>👤 <strong>Buyer:</strong> {details.buyerName}</span>
+                          <span>📱 <strong>Contact:</strong> {details.buyerContact}</span>
+                          <span>💰 <strong>Offer:</strong> <span className="text-emerald-400 font-extrabold text-base">${details.offerAmount}</span> (Asking: ${latestItem.listedPrice || latestItem.purchasePrice || 0})</span>
+                          {details.buyerNote && <span className="w-full text-amber-200/90 italic">📝 "{details.buyerNote}"</span>}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2.5 shrink-0 w-full md:w-auto">
+                    {details?.buyerContact && details.buyerContact !== "(309) 337-1049" && (
+                      <a
+                        href={`sms:${details.buyerContact.replace(/\D/g, "")}`}
+                        className="px-4 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-2xl transition shadow-md flex items-center justify-center gap-2 cursor-pointer active:scale-95 border border-emerald-300"
+                        title="Text buyer directly"
+                      >
+                        <Smartphone size={16} />
+                        <span>Text Buyer</span>
+                      </a>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedInquiryItem(latestItem)}
+                      className="px-5 py-3 bg-slate-950 hover:bg-slate-900 text-amber-300 font-black text-xs rounded-2xl transition shadow-xl flex items-center justify-center gap-2 cursor-pointer active:scale-95 border border-amber-400/60"
+                      id="btn-view-offer-modal-banner"
+                    >
+                      <MessageSquare size={16} className="text-amber-400" />
+                      <span>💬 View Offer Details & Reply</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
           <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <h1 className="text-2xl font-bold text-slate-900">Active Inventory</h1>

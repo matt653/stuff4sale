@@ -306,6 +306,63 @@ export default function ItemInquiriesModal({
           </form>
         )}
 
+        {/* Buyer Offer Section parsed from item.notes */}
+        {(() => {
+          const notes = item.notes || "";
+          if (!notes.includes("NEW BUYER OFFER RECEIVED") && !notes.includes("OFFER:")) return null;
+
+          const offerMatch = notes.match(/--- 📥 NEW BUYER OFFER RECEIVED \(([^)]+)\) ---\n👤 Buyer Name: ([^\n]+)\n📱 Phone\/Contact: ([^\n]+)\n💰 Offer Amount: \$([^\n\s]+)[^\n]*\n📝 Question\/Note: ([^\n]+)/);
+
+          const timeStr = offerMatch ? offerMatch[1] : (item.lastInquiryAt ? new Date(item.lastInquiryAt).toLocaleString() : "Recently");
+          const name = offerMatch ? offerMatch[2] : "Buyer";
+          const contact = offerMatch ? offerMatch[3] : "";
+          const amount = offerMatch ? offerMatch[4] : (item.listedPrice ? String(item.listedPrice) : "Offer");
+          const noteText = offerMatch ? offerMatch[5] : notes.slice(-150);
+
+          return (
+            <div className="mx-5 mt-4 bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 rounded-2xl p-4 shadow-lg border-2 border-amber-300 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="bg-slate-950 text-amber-300 text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full">
+                  📥 BUYER OFFER DETAILS
+                </span>
+                <span className="text-[11px] font-bold text-slate-950">{timeStr}</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-semibold">
+                <div className="bg-slate-950 text-amber-100 p-2.5 rounded-xl">
+                  <span className="text-[10px] text-amber-400 block font-bold uppercase">Buyer Name</span>
+                  <span className="text-sm font-black text-white">{name}</span>
+                </div>
+                <div className="bg-slate-950 text-amber-100 p-2.5 rounded-xl">
+                  <span className="text-[10px] text-amber-400 block font-bold uppercase">Offer Amount</span>
+                  <span className="text-base font-black text-emerald-400">${amount}</span>
+                  <span className="text-[10px] text-slate-300 ml-1">(Asking: ${item.listedPrice || item.purchasePrice || 0})</span>
+                </div>
+              </div>
+
+              {contact && (
+                <div className="flex items-center justify-between bg-slate-950/90 text-amber-100 p-2.5 rounded-xl text-xs">
+                  <div>
+                    <span className="text-[10px] text-amber-400 block font-bold uppercase">Buyer Contact Phone</span>
+                    <span className="font-mono font-bold text-white text-xs">{contact}</span>
+                  </div>
+                  <a
+                    href={`sms:${contact.replace(/\D/g, "")}`}
+                    className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs rounded-lg transition shadow-sm"
+                  >
+                    📲 Text Buyer
+                  </a>
+                </div>
+              )}
+
+              {noteText && noteText !== "None" && (
+                <div className="bg-slate-950/80 text-amber-100 p-2.5 rounded-xl text-xs italic">
+                  📝 "{noteText}"
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
         {/* Message History List Body */}
         <div className="p-5 overflow-y-auto flex-1 space-y-3">
           {itemMessages.length === 0 ? (

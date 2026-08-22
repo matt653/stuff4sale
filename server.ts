@@ -30,7 +30,7 @@ function getAiClient(req: express.Request): GoogleGenAI | null {
 // Helper to resolve xAI Grok API Key from request headers or environment variables
 function getXaiApiKey(req: express.Request): string | null {
   const headerKey = (req.headers["x-xai-api-key"] || req.headers["x-grok-api-key"] || req.headers["x-xai-key"]) as string;
-  const envKey = process.env.XAI_KEY || process.env.VITE_XAI_KEY || process.env.XAI_API_KEY || process.env.VITE_XAI_API_KEY || process.env.XSI_API_KEY;
+  const envKey = process.env.xai_key || process.env.XAI_KEY || process.env.VITE_XAI_KEY || process.env.XAI_API_KEY || process.env.VITE_XAI_API_KEY || process.env.XSI_API_KEY;
   const finalKey = (headerKey && headerKey.trim()) ? headerKey.trim() : envKey;
 
   if (finalKey && finalKey.trim()) {
@@ -166,7 +166,7 @@ function cleanJsonResponse(rawText: string): any {
 
 // Call Gemini with model fallbacks
 async function callGeminiWithFallback(aiClient: GoogleGenAI, contents: any[]) {
-  const models = ["gemini-2.0-flash", "gemini-2.0-pro", "gemini-1.5-flash", "gemini-1.5-pro"];
+  const models = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.0-flash-lite"];
   let lastError: any = null;
 
   for (const model of models) {
@@ -338,7 +338,30 @@ The JSON response MUST match this schema:
 
     let researchResult: any = null;
 
-    if (requestedProvider === "dual") {
+    if (requestedProvider === "grok") {
+      console.log("⚡ GROK ENGINE ONLY: Executing xAI Grok (grok-2-vision-1212)...");
+      if (!xaiApiKey) {
+        return res.status(400).json({ error: "xAI Grok API key is missing. Please configure XAI_KEY or VITE_XAI_KEY." });
+      }
+      researchResult = await callXaiGrokFullResearch(xaiApiKey, promptText, imageList);
+      if (researchResult) researchResult.provider = "grok";
+    } else if (requestedProvider === "gemini") {
+      console.log("⚡ GEMINI ENGINE ONLY: Executing Google Gemini...");
+      if (!activeAi) {
+        return res.status(400).json({ error: "Google Gemini API key is missing. Please configure GEMINI_API_KEY." });
+      }
+      const contents: any[] = [promptText];
+      imageList.forEach((imgStr: string) => {
+        const match = imgStr.match(/^data:(image\/\w+);base64,(.+)$/);
+        if (match) {
+          contents.push({
+            inlineData: { data: match[2], mimeType: match[1] }
+          });
+        }
+      });
+      researchResult = await callGeminiWithFallback(activeAi, contents);
+      if (researchResult) researchResult.provider = "gemini";
+    } else {
       console.log("⚡ DUAL AI MODE: Running both xAI Grok and Google Gemini in parallel...");
       const geminiContents: any[] = [promptText];
       imageList.forEach((imgStr: string) => {
@@ -367,36 +390,6 @@ The JSON response MUST match this schema:
         gemini: geminiRes,
         ...(grokRes || geminiRes || {})
       };
-    } else if (requestedProvider === "gemini" && activeAi) {
-      console.log("⚡ 2nd OPINION: Running Google Gemini for Item Research...");
-      const contents: any[] = [promptText];
-      imageList.forEach((imgStr: string) => {
-        const match = imgStr.match(/^data:(image\/\w+);base64,(.+)$/);
-        if (match) {
-          contents.push({
-            inlineData: { data: match[2], mimeType: match[1] }
-          });
-        }
-      });
-      researchResult = await callGeminiWithFallback(activeAi, contents);
-      if (researchResult) researchResult.provider = "gemini";
-    } else if (xaiApiKey) {
-      console.log("⚡ DEFAULT ENGINE: Running xAI Grok (grok-2-vision-1212) for Item Research & Comps...");
-      researchResult = await callXaiGrokFullResearch(xaiApiKey, promptText, imageList);
-      if (researchResult) researchResult.provider = "grok";
-    } else if (activeAi) {
-      console.log("⚡ FALLBACK ENGINE: Running Google Gemini for Item Research...");
-      const contents: any[] = [promptText];
-      imageList.forEach((imgStr: string) => {
-        const match = imgStr.match(/^data:(image\/\w+);base64,(.+)$/);
-        if (match) {
-          contents.push({
-            inlineData: { data: match[2], mimeType: match[1] }
-          });
-        }
-      });
-      researchResult = await callGeminiWithFallback(activeAi, contents);
-      if (researchResult) researchResult.provider = "gemini";
     }
 
     res.json(researchResult);
@@ -409,31 +402,32 @@ The JSON response MUST match this schema:
   }
 });
 
-// Interactive Conversational AI Valuation Chat Endpoint
+// Interactive Conversational AI Valuation Chat Endpoint (Dual Grok + Gemini Engine)
 app.post("/api/valuation-chat", async (req, res) => {
   const activeAi = getAiClient(req);
-  if (!activeAi) {
+  const xaiApiKey = getXaiApiKey(req);
+  const requestedProvider = req.body.provider || "grok";
+
+  if (!activeAi && !xaiApiKey) {
     return res.status(503).json({
-      error: "Gemini AI is currently unavailable. Please configure GEMINI_API_KEY in your environment.",
+      error: "AI Valuation Chat is currently unavailable. Please configure GEMINI_API_KEY or XAI_KEY in your environment.",
     });
   }
 
   try {
     const { name, notes, image, images, history, generateFinalReport } = req.body;
-    const contents: any[] = [];
+    const imageList: string[] = images && Array.isArray(images) && images.length > 0 ? images : image ? [image] : [];
 
     const conversationContext = history && Array.isArray(history) && history.length > 0
-      ? history.map((m: any) => `${m.sender === 'user' ? 'User' : 'Gemini'}: ${m.text}`).join('\n')
+      ? history.map((m: any) => `${m.sender === 'user' ? 'User' : 'AI'}: ${m.text}`).join('\n')
       : '';
 
-    const geminiQuestionCount = (history || []).filter((m: any) => m.sender === 'gemini' || m.sender === 'assistant').length;
-    const forceFinalReport = Boolean(generateFinalReport || geminiQuestionCount >= 2);
-
-    let promptText = "";
+    const questionCount = (history || []).filter((m: any) => m.sender === 'assistant' || m.sender === 'gemini' || m.sender === 'grok').length;
+    const forceFinalReport = Boolean(generateFinalReport || questionCount >= 2);
 
     if (forceFinalReport) {
-      promptText = `You are Gemini AI Sourcing & Valuation Expert. 
-Synthesize all item details, photos, and conversation history below to generate the FINAL SOURCING & VALUATION REPORT.
+      // Execute Full Research Report for the requested provider (or dual)
+      const promptText = `Synthesize all item details, photos, and conversation history below to generate the FINAL SOURCING & VALUATION REPORT.
 
 Conversation History:
 ${conversationContext}
@@ -442,34 +436,101 @@ Item Hint/Title: ${name || "Unknown"}
 
 Return a strictly valid JSON object matching this schema:
 {
-  "responseType": "REPORT",
-  "aiMessage": "Here is your complete sourcing & valuation report!",
-  "report": {
-    "suggestedTitle": "SEO Listing Title (max 80 chars)",
-    "suggestedDescription": "Detailed listing description ready for copy-paste",
-    "estimatedValueMin": 20,
-    "estimatedValueMax": 60,
-    "demandScore": 8,
-    "worthSelling": "YES",
-    "triageReason": "1-sentence sourcing verdict advising why it is worth selling or scrap",
-    "cleaningInstructions": ["Step 1...", "Step 2..."],
-    "prepChecklist": ["Prep tip 1...", "Prep tip 2..."],
-    "targetPlatforms": ["eBay - Great reach", "Facebook Marketplace - Local pickup"],
-    "sellingTips": ["Tip 1...", "Tip 2..."],
-    "category": "Product Category",
-    "keywords": ["tag1", "tag2", "tag3"]
-  }
+  "suggestedTitle": "SEO Listing Title (max 80 chars)",
+  "suggestedDescription": "Detailed listing description structured into 5 sections",
+  "estimatedValueMin": 20,
+  "estimatedValueMax": 60,
+  "demandScore": 8,
+  "worthSelling": "YES",
+  "triageReason": "1-sentence sourcing verdict",
+  "localComps": {
+    "estimatedLocalMin": 20,
+    "estimatedLocalMax": 60,
+    "localDemandScore": 8,
+    "sellThroughVelocity": "Fast (3-7 days)",
+    "localTips": ["Tip 1"]
+  },
+  "ebayComps": {
+    "estimatedEbayMin": 25,
+    "estimatedEbayMax": 65,
+    "ebayDemandScore": 7,
+    "shippingFeasibility": "Easy ($8-$12 USPS)",
+    "ebayTips": ["Shipping tip 1"]
+  },
+  "issuesFound": ["Issue 1"],
+  "targetPlatforms": ["Facebook Marketplace", "eBay"],
+  "sellingTips": ["Tip 1"],
+  "category": "Tools & Hardware",
+  "keywords": ["tag1", "tag2"]
 }`;
-    } else {
-      promptText = `You are Gemini AI Sourcing & Valuation Expert. 
-Analyze the uploaded item photo(s), name/notes, and conversation history below. 
-You are strictly allowed to ask AT MOST 1 or 2 high-stakes valuation questions to determine exact item pricing.
 
-CRITICAL RULES FOR QUESTIONS:
-1. NO IDLE SMALL TALK OR FLUFF: NEVER ask generic conversation starters like "Where did you find this?" or "How long have you owned it?".
-2. MANDATORY DOLLAR VALUE IMPACT: Every question MUST explicitly state how the user's answer directly increases or decreases the item's estimated dollar value!
-   Example format: "Does the motor power on cleanly? (If Working: Est. $150-$200 | If Non-working/Seized: Est. $30-$50)."
-3. STRICT 2-QUESTION CAP: This is question #${geminiQuestionCount + 1} of 2 max. After this question, the final report will be generated.
+      if (requestedProvider === "dual") {
+        const geminiContents: any[] = [promptText];
+        imageList.forEach((imgStr: string) => {
+          const match = imgStr.match(/^data:(image\/\w+);base64,(.+)$/);
+          if (match) geminiContents.push({ inlineData: { data: match[2], mimeType: match[1] } });
+        });
+
+        const [grokRes, geminiRes] = await Promise.all([
+          xaiApiKey ? callXaiGrokFullResearch(xaiApiKey, promptText, imageList).catch(() => null) : Promise.resolve(null),
+          activeAi ? callGeminiWithFallback(activeAi, geminiContents).catch(() => null) : Promise.resolve(null)
+        ]);
+
+        if (grokRes) grokRes.provider = "grok";
+        if (geminiRes) geminiRes.provider = "gemini";
+
+        return res.json({
+          responseType: "REPORT",
+          aiMessage: "Here is your complete Dual AI sourcing & valuation report!",
+          report: grokRes || geminiRes,
+          grok: grokRes,
+          gemini: geminiRes
+        });
+      } else if (requestedProvider === "gemini" && activeAi) {
+        const contents: any[] = [promptText];
+        imageList.forEach((imgStr: string) => {
+          const match = imgStr.match(/^data:(image\/\w+);base64,(.+)$/);
+          if (match) contents.push({ inlineData: { data: match[2], mimeType: match[1] } });
+        });
+        const geminiRes = await callGeminiWithFallback(activeAi, contents);
+        if (geminiRes) geminiRes.provider = "gemini";
+        return res.json({
+          responseType: "REPORT",
+          aiMessage: "Here is your complete Gemini valuation report!",
+          report: geminiRes
+        });
+      } else if (xaiApiKey) {
+        const grokRes = await callXaiGrokFullResearch(xaiApiKey, promptText, imageList);
+        if (grokRes) grokRes.provider = "grok";
+        return res.json({
+          responseType: "REPORT",
+          aiMessage: "Here is your complete Grok valuation report!",
+          report: grokRes
+        });
+      } else if (activeAi) {
+        const contents: any[] = [promptText];
+        imageList.forEach((imgStr: string) => {
+          const match = imgStr.match(/^data:(image\/\w+);base64,(.+)$/);
+          if (match) contents.push({ inlineData: { data: match[2], mimeType: match[1] } });
+        });
+        const geminiRes = await callGeminiWithFallback(activeAi, contents);
+        if (geminiRes) geminiRes.provider = "gemini";
+        return res.json({
+          responseType: "REPORT",
+          aiMessage: "Here is your complete Gemini valuation report!",
+          report: geminiRes
+        });
+      }
+    }
+
+    // Ask Question logic
+    const questionPrompt = `You are ${requestedProvider === "grok" ? "xAI Grok" : "Gemini"} AI Sourcing & Valuation Expert. 
+Analyze the uploaded item photo(s), name/notes, and conversation history below. 
+Ask AT MOST 1 high-stakes valuation question to determine exact item pricing.
+
+CRITICAL RULES:
+1. NO FLUFF: Never ask generic small talk like "Where did you find this?".
+2. MANDATORY DOLLAR IMPACT: Every question MUST state how the answer increases/decreases dollar value! (e.g. "Does the motor power on cleanly? (If Working: Est. $150-$200 | If Non-working: Est. $30-$50).")
 
 Conversation History:
 ${conversationContext}
@@ -479,33 +540,36 @@ Item Name/Hint: ${name || "Image uploaded"}
 Return a strictly valid JSON object matching this schema:
 {
   "responseType": "QUESTION",
-  "aiMessage": "Concise response identifying the item, asking 1 high-stakes question, and explicitly stating the estimated dollar value impact for each answer option.",
+  "aiMessage": "Concise identification and 1 high-stakes question stating dollar value impact.",
   "suggestedQuickReplies": [
-    "Choice 1: e.g. Works 100% (Est. $150-$200)",
-    "Choice 2: e.g. Untested / Needs Cord (Est. $75-$100)",
-    "Choice 3: e.g. Non-working / For Parts (Est. $30-$50)"
+    "Choice 1: Works 100% (Est. $150-$200)",
+    "Choice 2: Untested (Est. $75-$100)",
+    "Choice 3: Non-working (Est. $30-$50)"
   ]
 }`;
+
+    if (requestedProvider === "gemini" && activeAi) {
+      const contents: any[] = [questionPrompt];
+      imageList.forEach((imgStr: string) => {
+        const match = imgStr.match(/^data:(image\/\w+);base64,(.+)$/);
+        if (match) contents.push({ inlineData: { data: match[2], mimeType: match[1] } });
+      });
+      const result = await callGeminiWithFallback(activeAi, contents);
+      return res.json(result);
+    } else if (xaiApiKey) {
+      const result = await callXaiGrokFullResearch(xaiApiKey, questionPrompt, imageList);
+      return res.json(result);
+    } else if (activeAi) {
+      const contents: any[] = [questionPrompt];
+      imageList.forEach((imgStr: string) => {
+        const match = imgStr.match(/^data:(image\/\w+);base64,(.+)$/);
+        if (match) contents.push({ inlineData: { data: match[2], mimeType: match[1] } });
+      });
+      const result = await callGeminiWithFallback(activeAi, contents);
+      return res.json(result);
     }
 
-    contents.push(promptText);
-
-    // Attach images as inline data
-    const imageList: string[] = images && Array.isArray(images) && images.length > 0 ? images : image ? [image] : [];
-    imageList.forEach((imgStr: string) => {
-      const match = imgStr.match(/^data:(image\/\w+);base64,(.+)$/);
-      if (match) {
-        contents.push({
-          inlineData: {
-            data: match[2],
-            mimeType: match[1],
-          },
-        });
-      }
-    });
-
-    const result = await callGeminiWithFallback(activeAi, contents);
-    res.json(result);
+    throw new Error("No AI API keys configured for valuation chat.");
   } catch (error: any) {
     console.error("Error in AI valuation chat endpoint:", error);
     res.status(500).json({
