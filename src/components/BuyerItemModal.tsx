@@ -88,8 +88,8 @@ ${item.notes || "Available for local pickup."}
     setTimeout(() => setCopiedDetails(false), 2500);
   };
 
-  // Get configured seller phone or default
-  const sellerPhone = localStorage.getItem("stuff4sale_seller_phone") || "(555) 019-2831";
+  // Get configured seller phone from localStorage or env
+  const sellerPhone = localStorage.getItem("stuff4sale_seller_phone") || (import.meta as any).env?.VITE_SELLER_PHONE || "";
 
   // Submit Offer / Buyer Inquiry to Supabase
   const handleSubmitOffer = async (e: React.FormEvent) => {
@@ -487,33 +487,35 @@ ${item.notes || "Available for local pickup."}
                 ) : (
                   <form onSubmit={handleSubmitOffer} className="space-y-3">
                     {/* Direct Seller Call / Text Line */}
-                    <div className="bg-indigo-50 border border-indigo-200 p-3 rounded-2xl space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-black text-indigo-900 uppercase tracking-wider flex items-center gap-1">
-                          <Smartphone size={13} className="text-indigo-600" />
-                          <span>Direct Seller Line</span>
-                        </span>
-                        <span className="text-xs font-black text-indigo-900 bg-white px-2 py-0.5 rounded-lg border border-indigo-200 shadow-2xs font-mono">
-                          {sellerPhone}
-                        </span>
+                    {sellerPhone && (
+                      <div className="bg-indigo-50 border border-indigo-200 p-3 rounded-2xl space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-black text-indigo-900 uppercase tracking-wider flex items-center gap-1">
+                            <Smartphone size={13} className="text-indigo-600" />
+                            <span>Direct Seller Line</span>
+                          </span>
+                          <span className="text-xs font-black text-indigo-900 bg-white px-2 py-0.5 rounded-lg border border-indigo-200 shadow-2xs font-mono">
+                            {sellerPhone}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 pt-0.5">
+                          <a
+                            href={`sms:${sellerPhone.replace(/\D/g, "")}?body=${encodeURIComponent(`Hi! I am interested in Stock #${item.stockNumber || item.id}: ${item.name}`)}`}
+                            className="py-1.5 px-2 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs rounded-xl flex items-center justify-center gap-1 shadow-2xs transition active:scale-95 text-center"
+                          >
+                            <MessageSquare size={13} />
+                            <span>Text Seller</span>
+                          </a>
+                          <a
+                            href={`tel:${sellerPhone.replace(/\D/g, "")}`}
+                            className="py-1.5 px-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl flex items-center justify-center gap-1 shadow-2xs transition active:scale-95 text-center"
+                          >
+                            <Phone size={13} />
+                            <span>Call Seller</span>
+                          </a>
+                        </div>
                       </div>
-                      <div className="grid grid-cols-2 gap-2 pt-0.5">
-                        <a
-                          href={`sms:${sellerPhone.replace(/\D/g, "")}?body=${encodeURIComponent(`Hi! I am interested in Stock #${item.stockNumber || item.id}: ${item.name}`)}`}
-                          className="py-1.5 px-2 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs rounded-xl flex items-center justify-center gap-1 shadow-2xs transition active:scale-95 text-center"
-                        >
-                          <MessageSquare size={13} />
-                          <span>Text Seller</span>
-                        </a>
-                        <a
-                          href={`tel:${sellerPhone.replace(/\D/g, "")}`}
-                          className="py-1.5 px-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl flex items-center justify-center gap-1 shadow-2xs transition active:scale-95 text-center"
-                        >
-                          <Phone size={13} />
-                          <span>Call Seller</span>
-                        </a>
-                      </div>
-                    </div>
+                    )}
 
                     {/* Offer Price Input */}
                     <div>

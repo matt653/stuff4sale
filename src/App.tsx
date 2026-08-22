@@ -88,7 +88,7 @@ export default function App() {
   });
   const [showChangePinModal, setShowChangePinModal] = useState(false);
   const [sellerPhone, setSellerPhone] = useState<string>(() => {
-    return localStorage.getItem("stuff4sale_seller_phone") || "(555) 019-2831";
+    return localStorage.getItem("stuff4sale_seller_phone") || (import.meta as any).env?.VITE_SELLER_PHONE || "";
   });
 
   const handleUpdateSellerPhone = (newPhone: string) => {

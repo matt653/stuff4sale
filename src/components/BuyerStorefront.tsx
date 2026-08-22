@@ -130,8 +130,8 @@ export default function BuyerStorefront({
     } catch (e) {}
   };
 
-  // Get seller phone from localStorage or default
-  const sellerPhone = localStorage.getItem("stuff4sale_seller_phone") || "(555) 019-2831";
+  // Get seller phone from localStorage or env
+  const sellerPhone = localStorage.getItem("stuff4sale_seller_phone") || (import.meta as any).env?.VITE_SELLER_PHONE || "";
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans flex flex-col" id="buyer-storefront-container">
@@ -151,14 +151,16 @@ export default function BuyerStorefront({
 
           <div className="flex items-center space-x-2.5">
             {/* Direct Call/Text Header Pill */}
-            <a
-              href={`sms:${sellerPhone.replace(/\D/g, "")}`}
-              className="hidden md:flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-black hover:bg-emerald-100 transition"
-              title="Text seller directly"
-            >
-              <Smartphone size={14} className="text-emerald-600" />
-              <span>Text Seller: {sellerPhone}</span>
-            </a>
+            {sellerPhone && (
+              <a
+                href={`sms:${sellerPhone.replace(/\D/g, "")}`}
+                className="hidden md:flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-black hover:bg-emerald-100 transition"
+                title="Text seller directly"
+              >
+                <Smartphone size={14} className="text-emerald-600" />
+                <span>Text Seller: {sellerPhone}</span>
+              </a>
+            )}
 
             {/* Share Storefront Link Button */}
             <button
@@ -194,25 +196,31 @@ export default function BuyerStorefront({
                 Have questions or want to buy fast?
               </span>
               <span className="text-base font-black text-white font-mono">
-                Call or Text: {sellerPhone}
+                {sellerPhone ? `Call or Text: ${sellerPhone}` : "Direct Seller Line Active"}
               </span>
             </div>
-            <div className="flex items-center gap-2">
-              <a
-                href={`sms:${sellerPhone.replace(/\D/g, "")}`}
-                className="px-3 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs rounded-xl flex items-center gap-1.5 transition shadow-sm active:scale-95"
-              >
-                <MessageSquare size={14} />
-                <span>Text</span>
-              </a>
-              <a
-                href={`tel:${sellerPhone.replace(/\D/g, "")}`}
-                className="px-3 py-2 bg-indigo-500 hover:bg-indigo-400 text-white font-black text-xs rounded-xl flex items-center gap-1.5 transition shadow-sm active:scale-95"
-              >
-                <Phone size={14} />
-                <span>Call</span>
-              </a>
-            </div>
+            {sellerPhone ? (
+              <div className="flex items-center gap-2">
+                <a
+                  href={`sms:${sellerPhone.replace(/\D/g, "")}`}
+                  className="px-3 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs rounded-xl flex items-center gap-1.5 transition shadow-sm active:scale-95"
+                >
+                  <MessageSquare size={14} />
+                  <span>Text</span>
+                </a>
+                <a
+                  href={`tel:${sellerPhone.replace(/\D/g, "")}`}
+                  className="px-3 py-2 bg-indigo-500 hover:bg-indigo-400 text-white font-black text-xs rounded-xl flex items-center gap-1.5 transition shadow-sm active:scale-95"
+                >
+                  <Phone size={14} />
+                  <span>Call</span>
+                </a>
+              </div>
+            ) : (
+              <span className="text-xs text-indigo-200 font-semibold italic">
+                (Submit offer below to contact seller)
+              </span>
+            )}
           </div>
         </div>
       </section>
