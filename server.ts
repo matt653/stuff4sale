@@ -27,6 +27,61 @@ function getAiClient(req: express.Request): GoogleGenAI | null {
   return null;
 }
 
+// Helper to resolve xAI Grok API Key from request headers or environment variables
+function getXaiApiKey(req: express.Request): string | null {
+  const headerKey = (req.headers["x-xai-api-key"] || req.headers["x-grok-api-key"] || req.headers["x-xai-key"]) as string;
+  const envKey = process.env.XAI_KEY || process.env.VITE_XAI_KEY || process.env.XAI_API_KEY || process.env.VITE_XAI_API_KEY || process.env.XSI_API_KEY;
+  const finalKey = (headerKey && headerKey.trim()) ? headerKey.trim() : envKey;
+
+  if (finalKey && finalKey.trim()) {
+    return finalKey.trim();
+  }
+  return null;
+}
+
+// Call xAI Grok API for Product Identification, 5-part Description, Comps & Pricing Tiers
+async function callXaiGrok(apiKey: string, promptText: string, visualContext?: string): Promise<any> {
+  const endpoint = "https://api.x.ai/v1/chat/completions";
+
+  const fullPrompt = visualContext
+    ? `VISUAL INSPECTION FROM GEMINI VISION ENGINE:\n${visualContext}\n\nRESEARCH & LISTING TASK:\n${promptText}`
+    : promptText;
+
+  console.log("Sending research request to xAI Grok (grok-2-latest)...");
+
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      model: "grok-2-latest",
+      messages: [
+        {
+          role: "system",
+          content: "You are an expert reselling product identifier, market comp analyst, and listing copywriter. Respond STRICTLY with valid, raw JSON."
+        },
+        {
+          role: "user",
+          content: fullPrompt
+        }
+      ],
+      temperature: 0.2,
+      response_format: { type: "json_object" }
+    })
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`xAI Grok API Error (${response.status}): ${errText}`);
+  }
+
+  const resData: any = await response.json();
+  const rawContent = resData?.choices?.[0]?.message?.content || "";
+  return cleanJsonResponse(rawContent);
+}
+
 function sanitizeDescriptionText(desc: string): string {
   if (!desc) return "";
   return desc
@@ -112,13 +167,14 @@ app.get("/api/items", (_req, res) => {
   });
 });
 
-// Gemini-Powered Item Research Endpoint
+// Item Research Endpoint (Dual-Engine: Gemini Vision + xAI Grok / Gemini Listing Engine)
 app.post("/api/research", async (req, res) => {
   const activeAi = getAiClient(req);
+  const xaiApiKey = getXaiApiKey(req);
 
-  if (!activeAi) {
+  if (!activeAi && !xaiApiKey) {
     return res.status(503).json({
-      error: "AI Research is currently unavailable. Please configure GEMINI_API_KEY or VITE_GEMINI_API_KEY in your environment.",
+      error: "AI Research is currently unavailable. Please configure GEMINI_API_KEY or XAI_API_KEY in your environment.",
     });
   }
 
@@ -129,7 +185,36 @@ app.post("/api/research", async (req, res) => {
       return res.status(400).json({ error: "Item name or image is required for research." });
     }
 
-    const contents: any[] = [];
+    const imageList: string[] = images && Array.isArray(images) && images.length > 0 ? images : image ? [image] : [];
+
+    // Stage 1: If photos are provided and Gemini Vision is available, run Gemini Vision Engine for visual inspection
+    let visualContext = "";
+    if (activeAi && imageList.length > 0) {
+      try {
+        console.log("Running Gemini Vision Engine for visual inspection & heavy lifting...");
+        const visionContents: any[] = [
+          "Inspect these product images in high detail. State 100% visible facts only: exact brand names, model numbers, serial numbers, maker marks, materials, color, visible condition facts, rust, patina, paint wear. Be extremely detailed and factual."
+        ];
+        imageList.forEach((imgStr: string) => {
+          const match = imgStr.match(/^data:(image\/\w+);base64,(.+)$/);
+          if (match) {
+            visionContents.push({
+              inlineData: {
+                data: match[2],
+                mimeType: match[1],
+              },
+            });
+          }
+        });
+        const visionResult = await activeAi.models.generateContent({
+          model: "gemini-2.5-flash",
+          contents: visionContents,
+        });
+        visualContext = visionResult?.text || "";
+      } catch (vErr: any) {
+        console.warn("Gemini Vision inspection note:", vErr.message);
+      }
+    }
 
     let promptText = `Perform REAL, UNBIASED, PROFESSIONAL reselling and side-hustle market research on this specific item using multimodal vision analysis and true sales comps across both Facebook Marketplace (Local Cash Deals) and eBay (National Shipped Sales).
 
@@ -241,24 +326,32 @@ The JSON response MUST match this schema:
   ]
 }`;
 
-    contents.push(promptText);
+    let researchResult: any = null;
 
-    // Attach provided images as inline data
-    const imageList: string[] = images && Array.isArray(images) && images.length > 0 ? images : image ? [image] : [];
-    
-    imageList.forEach((imgStr: string, idx: number) => {
-      const match = imgStr.match(/^data:(image\/\w+);base64,(.+)$/);
-      if (match) {
-        contents.push({
-          inlineData: {
-            data: match[2],
-            mimeType: match[1],
-          },
-        });
+    // Stage 2: Product ID, Description & Pricing Tiers Generation
+    if (xaiApiKey) {
+      console.log("⚡ Using xAI Grok Engine (grok-2-latest) for Product ID, Description & Pricing Tiers!");
+      researchResult = await callXaiGrok(xaiApiKey, promptText, visualContext);
+    } else if (activeAi) {
+      console.log("⚡ Using Gemini Engine for Product ID, Description & Pricing Tiers!");
+      const contents: any[] = [promptText];
+      if (visualContext) {
+        contents.unshift(`Visual Inspection Notes:\n${visualContext}`);
       }
-    });
+      imageList.forEach((imgStr: string) => {
+        const match = imgStr.match(/^data:(image\/\w+);base64,(.+)$/);
+        if (match) {
+          contents.push({
+            inlineData: {
+              data: match[2],
+              mimeType: match[1],
+            },
+          });
+        }
+      });
+      researchResult = await callGeminiWithFallback(activeAi, contents);
+    }
 
-    const researchResult = await callGeminiWithFallback(activeAi, contents);
     res.json(researchResult);
   } catch (error: any) {
     console.error("Error in AI research endpoint:", error);
