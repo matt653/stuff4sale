@@ -101,7 +101,7 @@ async function callXaiGrokFullResearch(
     }
   });
 
-  const grokModels = ["grok-2-vision-latest", "grok-2-latest", "grok-vision-beta"];
+  const grokModels = ["grok-4.6", "grok-build-0.1", "grok-2-vision-latest", "grok-2-latest", "grok-vision-beta"];
   let lastErrText = "";
 
   for (const model of grokModels) {
