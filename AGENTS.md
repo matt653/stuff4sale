@@ -49,6 +49,11 @@ Stuff4Sale is a full-stack AI-powered inventory management, item valuation, and 
   - **Interactive "Make an Offer / Message Seller" Tool**: 1-click quick preset offer chips (Full Asking, -10%, -20%), custom dollar amount input, buyer contact fields, and direct offer submission to Supabase (`buyer_inquiries_count` + real-time notification alert to seller).
   - **Direct Instant Contact & Fallback Actions**: 1-click links to message on live Facebook listing, text seller via SMS (`sms:?body=...`), copy formatted item summary to clipboard, and 1-click share direct item link (`/catalog?item=27`).
 - **Deep-Linking Support (`?item=X`)**: Visiting or sharing `https://stuff4sale.netlify.app/catalog?item=27` automatically opens that specific item's popup modal upon page load.
+- **Air-Tight Seller Privacy & PIN Passcode Gate (`AdminPinLockModal.tsx`)**:
+  - Completely removed visible seller/admin links from the public buyer catalog header.
+  - Access to the seller backend / admin dashboard (`/` or `/admin`) is strictly gated behind a secure 4-digit PIN Passcode screen.
+  - Wrong PIN entries are immediately rejected with visual shake animations and access denial.
+  - Includes a 1-click **"🔒 Lock Portal"** button in the admin navbar to immediately lock the session and switch back to public mode, plus a **"🔑 Change PIN"** modal to customize the seller passcode anytime.
 - **Seamless Seller Admin Integration**: 1-click **"🌐 Buyer Catalog"** button with a **"📋 Copy Public Link"** action in the top navigation bar and sidebar, plus a **"🔗 Buyer Link"** button on every inventory item card for instant copy-pasting to buyers.
 
 #### 6. Analytics & Financial Reporting (`StatsGrid.tsx`)

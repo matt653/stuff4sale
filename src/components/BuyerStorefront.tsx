@@ -154,27 +154,13 @@ export default function BuyerStorefront({
             <button
               type="button"
               onClick={handleCopyStorefrontLink}
-              className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs rounded-xl border border-indigo-200 flex items-center gap-1.5 transition active:scale-95 cursor-pointer shadow-2xs"
+              className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs rounded-xl flex items-center gap-1.5 transition active:scale-95 cursor-pointer shadow-sm"
               title="Copy link to share this catalog with buyers"
               id="btn-copy-storefront-link"
             >
-              {copiedStoreLink ? <Check size={14} className="text-emerald-600" /> : <Share2 size={14} />}
-              <span className="hidden sm:inline">{copiedStoreLink ? "Catalog Link Copied!" : "Share Catalog"}</span>
+              {copiedStoreLink ? <Check size={14} className="text-emerald-300" /> : <Share2 size={14} />}
+              <span>{copiedStoreLink ? "Catalog Link Copied!" : "Share Catalog"}</span>
             </button>
-
-            {/* Discreet Seller Admin Switcher Button */}
-            {onOpenAdminView && (
-              <button
-                type="button"
-                onClick={onOpenAdminView}
-                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold text-xs rounded-xl border border-slate-200/80 flex items-center gap-1.5 transition cursor-pointer"
-                title="Switch back to seller management dashboard"
-                id="btn-switch-seller-admin"
-              >
-                <Lock size={12} className="text-slate-400" />
-                <span className="hidden sm:inline">Seller Portal</span>
-              </button>
-            )}
           </div>
         </div>
       </header>
@@ -481,6 +467,20 @@ export default function BuyerStorefront({
         <p className="text-slate-400 max-w-lg mx-auto">
           All items are inspected and described factually. Local cash pickup or safe porch meetup available. Contact the seller by clicking any item to make an offer.
         </p>
+        {onOpenAdminView && (
+          <div className="pt-2">
+            <button
+              type="button"
+              onClick={onOpenAdminView}
+              className="text-slate-300 hover:text-slate-500 transition p-1 text-[10px] flex items-center justify-center gap-1 mx-auto"
+              title="Seller Portal Login (Requires PIN)"
+              id="btn-footer-seller-login"
+            >
+              <Lock size={10} />
+              <span>Seller Login</span>
+            </button>
+          </div>
+        )}
       </footer>
 
       {/* In-Page Interactive Popup Modal */}

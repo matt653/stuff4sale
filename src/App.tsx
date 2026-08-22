@@ -4,7 +4,7 @@ import {
   X, Check, AlertCircle, RefreshCw, Layers, MapPin, Calendar, 
   Tag, Info, DollarSign, Archive, ShoppingBag, Eye, Star, LayoutGrid, LayoutList,
   Edit, Trash2, TrendingUp, Smartphone, Cloud, Share2, Clock, CheckCircle,
-  Bell, MessageSquare, Zap, MessageCircle, Key, ListChecks, ExternalLink, Copy
+  Bell, MessageSquare, Zap, MessageCircle, Key, ListChecks, ExternalLink, Copy, Lock
 } from "lucide-react";
 import { supabase } from "./supabase";
 import { InventoryItem, ItemStatus, AIResearchResult, FBNotification } from "./types";
@@ -16,6 +16,7 @@ import FBHubModal from "./components/FBHubModal";
 import FBNotificationCenter from "./components/FBNotificationCenter";
 import ItemInquiriesModal from "./components/ItemInquiriesModal";
 import BuyerStorefront from "./components/BuyerStorefront";
+import AdminPinLockModal from "./components/AdminPinLockModal";
 import { fbRealtimeService } from "./services/fbRealtimeService";
 import { getNextSequentialStockNumber, matchBestCategory, cleanPlatformName } from "./utils/stockUtils";
 import { compressImageArray, compressImage } from "./utils/imageUtils";
@@ -78,6 +79,14 @@ export default function App() {
   const [appMode, setAppMode] = useState<"admin" | "catalog">(getInitialAppMode());
   const [activeCatalogItemId, setActiveCatalogItemId] = useState<string | null>(getInitialItemId());
   const [copiedPublicStoreLink, setCopiedPublicStoreLink] = useState(false);
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(() => {
+    try {
+      return sessionStorage.getItem("stuff4sale_admin_auth") === "true";
+    } catch (e) {
+      return false;
+    }
+  });
+  const [showChangePinModal, setShowChangePinModal] = useState(false);
 
   // Synchronize history popstate (e.g. browser back/forward)
   useEffect(() => {
@@ -960,6 +969,16 @@ Available for local cash pickup or fast shipping. Message now to claim the bundl
     );
   }
 
+  // If in admin mode but unauthenticated, show the PIN lock screen!
+  if (appMode === "admin" && !isAdminAuthenticated) {
+    return (
+      <AdminPinLockModal
+        onSuccess={() => setIsAdminAuthenticated(true)}
+        onGoToCatalog={() => switchAppMode("catalog")}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans flex flex-col" id="main-app-container">
       {/* Top Navigation Bar */}
@@ -1064,6 +1083,33 @@ Available for local cash pickup or fast shipping. Message now to claim the bundl
             {showAddForm ? <X size={14} /> : <Plus size={14} />}
             <span>{showAddForm ? "Close Form" : "New Entry"}</span>
           </button>
+
+          {/* Admin Security & Lock Portal Controls */}
+          <div className="flex items-center gap-1.5 pl-1 border-l border-slate-200">
+            <button
+              type="button"
+              onClick={() => setShowChangePinModal(true)}
+              className="p-2 hover:bg-slate-100 text-slate-500 hover:text-slate-700 rounded-lg text-xs transition cursor-pointer"
+              title="Change Seller Admin PIN Passcode"
+              id="btn-change-admin-pin"
+            >
+              <Key size={15} />
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                sessionStorage.removeItem("stuff4sale_admin_auth");
+                setIsAdminAuthenticated(false);
+                switchAppMode("catalog");
+              }}
+              className="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs rounded-xl transition flex items-center gap-1.5 shadow-xs active:scale-95 cursor-pointer"
+              title="Lock Admin Dashboard and switch to Public Buyer View"
+              id="btn-lock-admin-portal"
+            >
+              <Lock size={13} className="text-slate-300" />
+              <span className="hidden lg:inline">Lock Portal</span>
+            </button>
+          </div>
         </div>
       </nav>
 
@@ -2521,6 +2567,19 @@ Available for local cash pickup or fast shipping. Message now to claim the bundl
               <X size={16} />
             </button>
           </div>
+        )}
+
+        {/* Change Admin PIN Modal */}
+        {showChangePinModal && (
+          <AdminPinLockModal
+            isChangePinMode={true}
+            onCloseChangePin={() => setShowChangePinModal(false)}
+            onSuccess={() => setShowChangePinModal(false)}
+            onGoToCatalog={() => {
+              setShowChangePinModal(false);
+              switchAppMode("catalog");
+            }}
+          />
         )}
         </main>
       </div>

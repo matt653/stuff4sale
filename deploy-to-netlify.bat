@@ -1,11 +1,19 @@
 @echo off
-echo ========================================================
-echo Building and Deploying Stuff4Sale to Netlify...
-echo ========================================================
+title Deploy Stuff4Sale to Netlify
+cls
+echo ===================================================================
+echo             PUBLISHING STUFF4SALE TO NETLIFY
+echo ===================================================================
+echo.
+echo [1/2] Building latest production assets into dist folder...
 call npm run build
 echo.
-echo Deploying dist folder to Netlify Production...
+echo [2/2] Uploading and publishing dist folder to Netlify...
+echo If this is your first time, Netlify will open a browser window to log in.
+echo.
 call npx netlify deploy --prod --dir=dist
 echo.
-echo If prompted to login, follow the browser login window.
+echo ===================================================================
+echo Done! Your live site at https://stuff4sale.netlify.app is updated!
+echo ===================================================================
 pause
