@@ -462,6 +462,7 @@ export default function App() {
         headers: {
           "Content-Type": "application/json",
           "x-gemini-api-key": (import.meta as any).env?.VITE_GEMINI_API_KEY || (import.meta as any).env?.GEMINI_API_KEY || "",
+          "x-xai-key": (import.meta as any).env?.VITE_XAI_KEY || (import.meta as any).env?.XAI_KEY || localStorage.getItem("stuff4sale_xai_key") || "",
         },
         body: JSON.stringify({
           name: itemName,
