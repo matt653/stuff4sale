@@ -51,7 +51,7 @@ const { chromium } = require("playwright");
   console.log("=======================================================");
   await page.goto("http://localhost:3000/", { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(500);
-  await page.locator("#admin-pin-input-field").fill("1234");
+  await page.locator("#admin-pin-input-field").fill("8191");
   await page.waitForTimeout(2000);
 
   await page.screenshot({ path: "scratch/admin_offer_logged.png" });

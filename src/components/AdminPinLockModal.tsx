@@ -14,8 +14,8 @@ export default function AdminPinLockModal({
   isChangePinMode = false,
   onCloseChangePin,
 }: AdminPinLockModalProps) {
-  // Get stored master PIN or default to "1234"
-  const getStoredPin = () => localStorage.getItem("stuff4sale_admin_pin") || "1234";
+  // Get stored master PIN or default to "8191"
+  const getStoredPin = () => localStorage.getItem("stuff4sale_admin_pin") || "8191";
 
   const [pin, setPin] = useState("");
   const [newPin, setNewPin] = useState("");
@@ -238,14 +238,6 @@ export default function AdminPinLockModal({
             </button>
           </div>
         </form>
-
-        <div className="pt-2 border-t border-slate-800/80 text-[11px] text-slate-500">
-          <span>Default PIN: </span>
-          <span className="font-mono text-indigo-400 font-bold">1234</span>
-          <span className="block text-[10px] text-slate-600 mt-0.5">
-            (You can change this PIN in Settings anytime)
-          </span>
-        </div>
       </div>
     </div>
   );
