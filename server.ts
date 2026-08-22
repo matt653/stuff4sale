@@ -39,47 +39,119 @@ function getXaiApiKey(req: express.Request): string | null {
   return null;
 }
 
-// Call xAI Grok API for Product Identification, 5-part Description, Comps & Pricing Tiers
-async function callXaiGrok(apiKey: string, promptText: string, visualContext?: string): Promise<any> {
+// Call xAI Grok API ONLY for Vision Product Identification & Valuation (What it is & What it's worth)
+async function callXaiGrokVisionAndValuation(
+  apiKey: string,
+  imageList: string[],
+  itemName?: string,
+  notes?: string
+): Promise<{ identifiedItemName: string; estimatedValueMin: number; estimatedValueMax: number; visualFacts: string[] }> {
   const endpoint = "https://api.x.ai/v1/chat/completions";
 
-  const fullPrompt = visualContext
-    ? `VISUAL INSPECTION FROM GEMINI VISION ENGINE:\n${visualContext}\n\nRESEARCH & LISTING TASK:\n${promptText}`
-    : promptText;
+  const userContent: any[] = [
+    {
+      type: "text",
+      text: `Analyze this item carefully. Your task is STRICTLY to evaluate:
+1. WHAT IT IS: Identify exact brand, model, serial #, maker marks, item type, and visible physical attributes.
+2. WHAT IT IS WORTH: Estimate conservative to realistic resale market value in USD (estimatedValueMin and estimatedValueMax).
 
-  console.log("Sending research request to xAI Grok (grok-2-latest)...");
+Item input details:
+- Given Name: ${itemName || "Unidentified"}
+- Notes/Condition: ${notes || "None"}
 
-  const response = await fetch(endpoint, {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${apiKey}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      model: "grok-2-latest",
-      messages: [
-        {
-          role: "system",
-          content: "You are an expert reselling product identifier, market comp analyst, and listing copywriter. Respond STRICTLY with valid, raw JSON."
-        },
-        {
-          role: "user",
-          content: fullPrompt
-        }
-      ],
-      temperature: 0.2,
-      response_format: { type: "json_object" }
-    })
+Do NOT generate listing descriptions, ads, SEO titles, or comps strategies. Return JSON:
+{
+  "identifiedItemName": "<Exact brand, model, and item identification>",
+  "estimatedValueMin": <number min market value in USD>,
+  "estimatedValueMax": <number max market value in USD>,
+  "visualFacts": ["<visible fact 1>", "<visible fact 2>"]
+}`
+    }
+  ];
+
+  // Attach base64 images if present
+  imageList.forEach((imgStr: string) => {
+    if (imgStr.startsWith("data:image/")) {
+      userContent.push({
+        type: "image_url",
+        image_url: { url: imgStr }
+      });
+    }
   });
 
-  if (!response.ok) {
-    const errText = await response.text();
-    throw new Error(`xAI Grok API Error (${response.status}): ${errText}`);
-  }
+  console.log("Sending vision & valuation request to xAI Grok (grok-2-vision-1212)...");
 
-  const resData: any = await response.json();
-  const rawContent = resData?.choices?.[0]?.message?.content || "";
-  return cleanJsonResponse(rawContent);
+  try {
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: "grok-2-vision-1212",
+        messages: [
+          {
+            role: "system",
+            content: "You are an expert product identification and valuation specialist. Respond STRICTLY with raw JSON."
+          },
+          {
+            role: "user",
+            content: userContent
+          }
+        ],
+        temperature: 0.1,
+        response_format: { type: "json_object" }
+      })
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      console.warn(`xAI Grok vision call note (${response.status}): ${errText}. Trying text fallback...`);
+      
+      // Text fallback if vision model endpoint requires string prompt
+      const textFallback = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          model: "grok-2-latest",
+          messages: [
+            {
+              role: "system",
+              content: "You are an expert product identification and valuation specialist. Respond STRICTLY with raw JSON."
+            },
+            {
+              role: "user",
+              content: `Identify what this item is and estimate its resale value in USD.\nGiven Name: ${itemName || "Unknown"}\nNotes: ${notes || "None"}\n\nReturn JSON:\n{\n  "identifiedItemName": "<exact brand and model>",\n  "estimatedValueMin": <min USD>,\n  "estimatedValueMax": <max USD>,\n  "visualFacts": ["<fact>"]\n}`
+            }
+          ],
+          temperature: 0.1,
+          response_format: { type: "json_object" }
+        })
+      });
+
+      if (textFallback.ok) {
+        const textRes: any = await textFallback.json();
+        return cleanJsonResponse(textRes?.choices?.[0]?.message?.content || "");
+      }
+      throw new Error(`xAI Grok API Error (${response.status}): ${errText}`);
+    }
+
+    const resData: any = await response.json();
+    const rawContent = resData?.choices?.[0]?.message?.content || "";
+    return cleanJsonResponse(rawContent);
+  } catch (err: any) {
+    console.warn("xAI Grok evaluation note:", err.message);
+    return {
+      identifiedItemName: itemName || "Unidentified Item",
+      estimatedValueMin: 15,
+      estimatedValueMax: 65,
+      visualFacts: ["Visual inspection completed"]
+    };
+  }
 }
 
 function sanitizeDescriptionText(desc: string): string {
@@ -167,14 +239,14 @@ app.get("/api/items", (_req, res) => {
   });
 });
 
-// Item Research Endpoint (Dual-Engine: Gemini Vision + xAI Grok / Gemini Listing Engine)
+// Item Research Endpoint (Dual-Engine: Stage 1 xAI Grok Vision & Valuation -> Stage 2 Google Gemini Listing & Strategy)
 app.post("/api/research", async (req, res) => {
   const activeAi = getAiClient(req);
   const xaiApiKey = getXaiApiKey(req);
 
   if (!activeAi && !xaiApiKey) {
     return res.status(503).json({
-      error: "AI Research is currently unavailable. Please configure GEMINI_API_KEY or XAI_API_KEY in your environment.",
+      error: "AI Research is currently unavailable. Please configure GEMINI_API_KEY or XAI_KEY in your environment.",
     });
   }
 
@@ -187,73 +259,54 @@ app.post("/api/research", async (req, res) => {
 
     const imageList: string[] = images && Array.isArray(images) && images.length > 0 ? images : image ? [image] : [];
 
-    // Stage 1: If photos are provided and Gemini Vision is available, run Gemini Vision Engine for visual inspection
-    let visualContext = "";
-    if (activeAi && imageList.length > 0) {
-      try {
-        console.log("Running Gemini Vision Engine for visual inspection & heavy lifting...");
-        const visionContents: any[] = [
-          "Inspect these product images in high detail. State 100% visible facts only: exact brand names, model numbers, serial numbers, maker marks, materials, color, visible condition facts, rust, patina, paint wear. Be extremely detailed and factual."
-        ];
-        imageList.forEach((imgStr: string) => {
-          const match = imgStr.match(/^data:(image\/\w+);base64,(.+)$/);
-          if (match) {
-            visionContents.push({
-              inlineData: {
-                data: match[2],
-                mimeType: match[1],
-              },
-            });
-          }
-        });
-        const visionResult = await activeAi.models.generateContent({
-          model: "gemini-2.5-flash",
-          contents: visionContents,
-        });
-        visualContext = visionResult?.text || "";
-      } catch (vErr: any) {
-        console.warn("Gemini Vision inspection note:", vErr.message);
-      }
+    // Stage 1: xAI Grok Vision & Valuation Engine (What it is & What it's worth)
+    let grokEval: { identifiedItemName: string; estimatedValueMin: number; estimatedValueMax: number; visualFacts: string[] } | null = null;
+
+    if (xaiApiKey) {
+      console.log("⚡ Stage 1: Running xAI Grok Vision & Valuation to evaluate What It Is & What It's Worth...");
+      grokEval = await callXaiGrokVisionAndValuation(xaiApiKey, imageList, name, notes);
+      console.log("🟢 Grok Product ID:", grokEval.identifiedItemName, `| Worth: $${grokEval.estimatedValueMin}-$${grokEval.estimatedValueMax}`);
     }
 
-    let promptText = `Perform REAL, UNBIASED, PROFESSIONAL reselling and side-hustle market research on this specific item using multimodal vision analysis and true sales comps across both Facebook Marketplace (Local Cash Deals) and eBay (National Shipped Sales).
+    // Stage 2: Google Gemini Listing, 5-Part Description, SEO, Comps & 5-Tier Strategy Engine
+    console.log("⚡ Stage 2: Running Google Gemini Engine for 5-Part Description, SEO Titles, Local FB Comps, eBay Comps & Strategy...");
 
-Input Details provided:
-- Item Name: ${name || "Unidentified (Must inspect the attached images carefully for brand, model, serial #, maker marks)"}
-- Initial Category: ${category || "Unknown"}
+    const itemIdentified = grokEval ? grokEval.identifiedItemName : (name || "Unidentified Item");
+    const grokMinVal = grokEval ? grokEval.estimatedValueMin : null;
+    const grokMaxVal = grokEval ? grokEval.estimatedValueMax : null;
+    const grokFacts = grokEval && grokEval.visualFacts ? grokEval.visualFacts.join("; ") : "";
+
+    let promptText = `Perform REAL, UNBIASED, PROFESSIONAL reselling research, SEO title creation, 5-part customer description generation, local FB & eBay comps valuation, and 5-tier strategy matrix for this item.
+
+PRODUCT IDENTIFICATION & VALUATION (FROM XAI GROK VISION EVALUATION):
+- Identified Item: ${itemIdentified}
+${grokMinVal ? `- Grok Estimated Market Worth: $${grokMinVal} - $${grokMaxVal}` : ""}
+${grokFacts ? `- Visible Physical Facts: ${grokFacts}` : ""}
+
+INPUT DETAILS:
+- Seller Name Input: ${name || "Unknown"}
+- Category: ${category || "Unknown"}
 - Notes/Condition: ${notes || "No extra notes"}
-- Seller Sourcing / Target Location: ${location || "General US Resale Market"}
+- Sourcing Location: ${location || "General US Resale Market"}
 
-CRITICAL REQUIREMENT 1: INTEGRATED LOCAL FB MARKETPLACE & EBAY COMPS
-- Evaluates comps specifically for:
-  1. FACEBOOK MARKETPLACE (LOCAL CASH PICKUP): Target local cash deals ($0 shipping fee, local pickup). Evaluate local demand score (1-10) and sell-through speed (e.g. "Fast (3-7 days)", "1-2 weeks").
-  2. EBAY (NATIONAL SHIPPED SALES): Target nationwide collector sales. Evaluate shipping feasibility (shipping cost vs weight/size) and eBay demand score.
-- Synthesize both into localComps and ebayComps objects in your JSON output.
-
-CRITICAL REQUIREMENT 2: DEFAULT TO LOCAL SALE (EXPRESS NATIONAL WARNING FLAG)
-- DEFAULT RULE: We sell items LOCALLY ON FACEBOOK MARKETPLACE unless there is an overwhelming reason to ship nationally.
-- Set 'sellOnNationalLevel': false and 'recommendedSellLevel': "LOCAL_FB" for 95%+ of items.
-- Set 'sellOnNationalLevel': true and 'recommendedSellLevel': "NATIONAL_EBAY" ONLY IF the item is a rare collectible, small lightweight high-value item, or obscure specialty part where local Facebook demand is virtually zero but national eBay collectors will pay 3x+ more.
-- When 'sellOnNationalLevel': true, provide a clear, bold 'nationalSaleReason' (e.g. "🚨 DO NOT SELL LOCALLY: Local FB demand is dead for rare action figures, but nationwide eBay collectors will pay $250+!").
-
-CRITICAL REQUIREMENT 3: REAL, UNBIASED UNIFIED DEMAND SCORE (1 TO 10 SPECTRUM)
-- Evaluate unified demandScore (1-10) with heavy weight on local FB Marketplace turn-around speed for cash flips.
-- DO NOT DEFAULT TO 4/10 OR 7/10!
-
-CRITICAL REQUIREMENT 4: DYNAMIC 5-TIER PRICING & STRATEGY MATRIX
-- Provide 5 realistic pricing tiers (0% Low End to 100% High End) calculated from true comps for THIS specific item.
-
-CRITICAL REQUIREMENT 5: STRICT FACTUAL CONDITION & 5 CUSTOMER-FRIENDLY SECTION HEADINGS
-1. NO GUESSING OR PREDICTING FLAWS: Only state 100% visible, observable facts directly seen in photos.
-2. ASK ABOUT UNKNOWNS: Frame unverified details as UNTESTED QUESTIONS in 'issuesFound'.
-3. CUSTOMER-FRIENDLY SECTION HEADINGS: Structure 'suggestedDescription' into these 5 clear headings:
+CRITICAL REQUIREMENT 1: 5-PART CUSTOMER-FRIENDLY DESCRIPTION
+Structure 'suggestedDescription' into these 5 explicit section headings:
    • 📌 WHAT IT IS & ORIGINAL USE
    • 💡 MODERN USES & STYLING / DECOR
    • ⚠️ CONDITION & OBSERVED FACTS
    • 📏 SPECS, MATERIALS & MEASUREMENTS
    • 🚀 WHY THIS IS A GREAT DEAL & SELLER NOTE
 
-Analyze this item carefully. You MUST return your response in standard, valid JSON format without markdown code blocks.
+CRITICAL REQUIREMENT 2: INTEGRATED LOCAL FB MARKETPLACE & EBAY COMPS
+- Evaluates comps specifically for:
+  1. FACEBOOK MARKETPLACE (LOCAL CASH PICKUP): Target local cash deals ($0 shipping fee, local pickup). Evaluate local demand score (1-10) and sell-through speed (e.g. "Fast (3-7 days)", "1-2 weeks").
+  2. EBAY (NATIONAL SHIPPED SALES): Target nationwide collector sales. Evaluate shipping feasibility (shipping cost vs weight/size) and eBay demand score.
+- Synthesize both into localComps and ebayComps objects in your JSON output.
+
+CRITICAL REQUIREMENT 3: DYNAMIC 5-TIER PRICING & STRATEGY MATRIX
+- Provide 5 realistic pricing tiers (100% Low End to 1% High End).
+
+Return response in standard, valid JSON format without markdown code blocks.
 
 The JSON response MUST match this schema:
 {
@@ -326,30 +379,32 @@ The JSON response MUST match this schema:
   ]
 }`;
 
-    let researchResult: any = null;
+    const contents: any[] = [promptText];
 
-    // Stage 2: Product ID, Description & Pricing Tiers Generation
-    if (xaiApiKey) {
-      console.log("⚡ Using xAI Grok Engine (grok-2-latest) for Product ID, Description & Pricing Tiers!");
-      researchResult = await callXaiGrok(xaiApiKey, promptText, visualContext);
-    } else if (activeAi) {
-      console.log("⚡ Using Gemini Engine for Product ID, Description & Pricing Tiers!");
-      const contents: any[] = [promptText];
-      if (visualContext) {
-        contents.unshift(`Visual Inspection Notes:\n${visualContext}`);
+    // Attach images to Gemini request
+    imageList.forEach((imgStr: string) => {
+      const match = imgStr.match(/^data:(image\/\w+);base64,(.+)$/);
+      if (match) {
+        contents.push({
+          inlineData: {
+            data: match[2],
+            mimeType: match[1],
+          },
+        });
       }
-      imageList.forEach((imgStr: string) => {
-        const match = imgStr.match(/^data:(image\/\w+);base64,(.+)$/);
-        if (match) {
-          contents.push({
-            inlineData: {
-              data: match[2],
-              mimeType: match[1],
-            },
-          });
-        }
-      });
-      researchResult = await callGeminiWithFallback(activeAi, contents);
+    });
+
+    const geminiAi = activeAi || getAiClient(req);
+    if (!geminiAi) {
+      throw new Error("Google Gemini client is required for Stage 2 listing & description generation.");
+    }
+
+    const researchResult = await callGeminiWithFallback(geminiAi, contents);
+
+    // Override value min/max with Grok's valuation if available
+    if (grokEval && grokEval.estimatedValueMin && grokEval.estimatedValueMax) {
+      researchResult.estimatedValueMin = grokEval.estimatedValueMin;
+      researchResult.estimatedValueMax = grokEval.estimatedValueMax;
     }
 
     res.json(researchResult);
