@@ -12,6 +12,7 @@ interface AIResearchViewProps {
   isLoading: boolean;
   error: string | null;
   onRunResearch?: (provider: "grok" | "gemini" | "dual") => void;
+  engineFilter?: "grok" | "gemini";
 }
 
 function SingleValuationColumn({
@@ -20,7 +21,9 @@ function SingleValuationColumn({
   report,
   priceSliderPos,
   setPriceSliderPos,
-  onApplyField
+  onApplyField,
+  photos = [],
+  itemName = ""
 }: {
   title: string;
   engine: "grok" | "gemini";
@@ -28,22 +31,22 @@ function SingleValuationColumn({
   priceSliderPos: number;
   setPriceSliderPos: (val: number) => void;
   onApplyField?: (fieldName: "name" | "notes" | "listedPrice" | "category", value: any) => void;
+  photos?: string[];
+  itemName?: string;
 }) {
   const minVal = Number(report.estimatedValueMin) || 0;
   const maxVal = Number(report.estimatedValueMax) || 0;
   const verdict = report.worthSelling || (minVal >= 20 && report.demandScore >= 5 ? "YES" : minVal >= 10 ? "MARGINAL" : "NO");
 
   return (
-    <div className={`p-4 rounded-2xl border space-y-4 shadow-sm ${
-      engine === "grok" ? "bg-slate-900 text-slate-100 border-slate-700" : "bg-white text-slate-800 border-indigo-200"
-    }`}>
+    <div className="h-full flex flex-col p-4 rounded-2xl border space-y-4 shadow-sm bg-white text-slate-800 border-indigo-200">
       {/* Engine Header */}
-      <div className="flex items-center justify-between border-b border-slate-700/40 pb-2">
-        <span className="text-xs font-black uppercase tracking-wider flex items-center gap-1.5">
+      <div className="flex items-center justify-between border-b border-indigo-100/50 pb-2">
+        <span className="text-xs font-black uppercase tracking-wider flex items-center gap-1.5 text-slate-800">
           {engine === "grok" ? "⚡ xAI Grok Evaluation (Primary)" : "✨ Google Gemini Evaluation (2nd Opinion)"}
         </span>
         <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
-          engine === "grok" ? "bg-amber-500/20 text-amber-300 border border-amber-500/40" : "bg-indigo-100 text-indigo-700"
+          engine === "grok" ? "bg-amber-100 text-amber-700 border border-amber-200" : "bg-indigo-100 text-indigo-700 border border-indigo-200"
         }`}>
           {engine === "grok" ? "xAI Grok" : "Google Gemini"}
         </span>
@@ -51,64 +54,71 @@ function SingleValuationColumn({
 
       {/* Priority Banner */}
       {report.sellOnNationalLevel || report.recommendedSellLevel === "NATIONAL_EBAY" ? (
-        <div className="p-3 bg-red-600 text-white rounded-xl text-xs font-extrabold">
-          🚨 NATIONAL SALE RECOMMENDED — DO NOT SELL LOCALLY!
-          <p className="text-[10px] font-normal mt-0.5">{report.nationalSaleReason || "High national collector demand."}</p>
+        <div className="bg-rose-600 text-white rounded-xl p-3 flex gap-3 shadow-md">
+          <AlertCircle className="shrink-0 mt-0.5" size={16} />
+          <div className="space-y-1">
+            <h4 className="font-black text-xs uppercase tracking-widest">🚨 NATIONAL SALE RECOMMENDED — DO NOT SELL LOCALLY!</h4>
+            <p className="text-[10px] font-medium leading-relaxed opacity-90">{report.nationalSaleReason || "Selling nationally expands the buyer pool to include serious collectors and specific decor enthusiasts willing to pay for shipping, maximizing potential profit."}</p>
+          </div>
         </div>
       ) : (
-        <div className="p-2.5 bg-emerald-600 text-white rounded-xl text-xs font-black flex items-center justify-between">
-          <span>🟢 SELL LOCALLY ON FB MARKETPLACE</span>
-          <span className="text-[9px] bg-white/20 px-2 py-0.5 rounded-full">FB Local Priority</span>
+        <div className="bg-emerald-500 text-white rounded-xl p-3 flex gap-3 shadow-md items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-5 h-5 bg-white/20 rounded-full flex items-center justify-center">
+              <span className="w-2.5 h-2.5 bg-white rounded-full animate-pulse" />
+            </div>
+            <h4 className="font-black text-xs uppercase tracking-widest">SELL LOCALLY ON FB MARKETPLACE</h4>
+          </div>
+          <span className="text-[9px] font-black bg-emerald-700/50 px-2 py-1 rounded-lg">FB Local Priority</span>
         </div>
       )}
 
       {/* Sourcing Verdict & Demand Score */}
-      <div className={`p-3 rounded-xl border flex items-center justify-between text-xs ${
-        engine === "grok" ? "bg-slate-800 border-slate-700 text-white" : "bg-slate-50 border-slate-200 text-slate-900"
-      }`}>
+      <div className="p-3 rounded-xl flex items-center justify-between border bg-slate-50 border-slate-200 text-slate-900">
         <div>
           <span className="text-[9px] font-extrabold uppercase opacity-75 block">Sourcing Verdict</span>
           <span className="font-extrabold block">
-            {verdict === "YES" ? "🚀 WORTH SELLING!" : verdict === "MARGINAL" ? "⚠️ MARGINAL FIND" : "🛑 SCRAP / PASS IT"}
+            {verdict === "YES" ? "🚀 WORTH SELLING!" : verdict === "MARGINAL" ? "⚖️ MARGINAL FIND" : "🛑 SCRAP / PASS IT"}
           </span>
         </div>
         <div className="text-right">
           <span className="text-[9px] font-bold uppercase opacity-75 block">Demand Score</span>
-          <span className="text-base font-black text-amber-400">{report.demandScore}/10</span>
+          <span className="text-base font-black text-amber-500">{report.demandScore}/10</span>
         </div>
       </div>
 
       {/* Local & eBay Comps */}
       <div className="grid grid-cols-2 gap-2 text-xs">
-        <div className="bg-blue-950 text-blue-100 p-2.5 rounded-xl border border-blue-800 space-y-1">
-          <span className="font-black text-[10px] block text-blue-300">🔵 Local FB Comps</span>
+        <div className="bg-blue-950 text-blue-100 p-2.5 rounded-xl border border-blue-800 space-y-1 flex flex-col justify-center">
+          <span className="font-black text-[10px] block text-blue-300">📍 Local FB Comps</span>
           <span className="font-black text-emerald-400 block">${report.localComps?.estimatedLocalMin || minVal} – ${report.localComps?.estimatedLocalMax || maxVal}</span>
-          <span className="text-[9px] block text-blue-200">{report.localComps?.sellThroughVelocity || "Fast (3-7 days)"}</span>
+          <span className="text-[9px] block text-blue-200 leading-tight">{report.localComps?.sellThroughVelocity || "Fast (3-7 days)"}</span>
         </div>
-        <div className="bg-purple-950 text-purple-100 p-2.5 rounded-xl border border-purple-800 space-y-1">
+        <div className="bg-purple-950 text-purple-100 p-2.5 rounded-xl border border-purple-800 space-y-1 flex flex-col justify-center">
           <span className="font-black text-[10px] block text-purple-300">📦 eBay Comps</span>
           <span className="font-black text-amber-300 block">${report.ebayComps?.estimatedEbayMin || minVal} – ${report.ebayComps?.estimatedEbayMax || maxVal}</span>
-          <span className="text-[9px] block text-purple-200">{report.ebayComps?.shippingFeasibility || "Standard Shipping"}</span>
+          <span className="text-[9px] block text-purple-200 leading-tight">{report.ebayComps?.shippingFeasibility || "Standard Shipping"}</span>
         </div>
       </div>
 
       {/* Resell Price Valuation Range */}
-      <div className={`p-3 rounded-xl border text-center ${
-        engine === "grok" ? "bg-slate-950 border-slate-800" : "bg-indigo-50/50 border-indigo-100"
-      }`}>
-        <span className="text-[10px] font-bold uppercase opacity-70 block">Resell Price Valuation Range</span>
-        <div className="text-xl font-black text-indigo-400">
+      <div className="p-3 rounded-xl border text-center bg-indigo-50/50 border-indigo-100">
+        <span className="text-[10px] font-bold uppercase opacity-70 block text-slate-600">Resell Price Valuation Range</span>
+        <div className="text-xl font-black text-indigo-500">
           ${minVal} <span className="text-xs font-normal text-slate-400">TO</span> ${maxVal}
         </div>
       </div>
+
+      {/* Spacer to push button to bottom if the cards have different content heights */}
+      <div className="flex-1"></div>
 
       {/* Pricing Button */}
       {onApplyField && (
         <button
           type="button"
           onClick={() => onApplyField("listedPrice", minVal > 0 ? Math.round((minVal + maxVal) / 2) : 35)}
-          className={`w-full py-2 font-black text-xs rounded-xl transition ${
-            engine === "grok" ? "bg-amber-500 hover:bg-amber-400 text-slate-950" : "bg-indigo-600 hover:bg-indigo-700 text-white"
+          className={`w-full py-2.5 font-black text-xs rounded-xl transition shadow-md mt-auto ${
+            engine === "grok" ? "bg-indigo-600 hover:bg-indigo-700 text-white" : "bg-indigo-600 hover:bg-indigo-700 text-white"
           }`}
         >
           Use ${minVal > 0 ? Math.round((minVal + maxVal) / 2) : 35} ({engine === "grok" ? "Grok" : "Gemini"} Target Price)
@@ -127,7 +137,8 @@ export default function AIResearchView({
   onApplyField,
   isLoading: externalLoading,
   error: externalError,
-  onRunResearch
+  onRunResearch,
+  engineFilter
 }: AIResearchViewProps) {
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [activeEngineTab, setActiveEngineTab] = useState<"dual" | "grok" | "gemini">("dual");
@@ -136,9 +147,19 @@ export default function AIResearchView({
   const [finalReport, setFinalReport] = useState<any>(research);
   const [flawResponses, setFlawResponses] = useState<Record<number, string>>({});
 
-  // Resolve dual vs single research reports
-  const grokReport: AIResearchResult | null = finalReport?.grok || (finalReport?.provider === "grok" ? finalReport : null) || research?.grok || research;
-  const geminiReport: AIResearchResult | null = finalReport?.gemini || (finalReport?.provider === "gemini" ? finalReport : null) || research?.gemini || research;
+  // Safely resolve the correct report for each engine
+    const resolveReport = (engine: "grok" | "gemini") => {
+      if (finalReport?.[engine]) return finalReport[engine];
+      if (finalReport?.provider === engine) return finalReport;
+      if (research?.[engine]) return research[engine];
+      if (research?.provider === engine) return research;
+      // If no explicit provider is set anywhere, assume it's for this engine if the filter matches, otherwise it's ambiguous
+      if (research && !research.provider && (!engineFilter || engineFilter === engine)) return research;
+      return null;
+    };
+  
+    const grokReport = resolveReport("grok");
+    const geminiReport = resolveReport("gemini");
 
   const handleGenerateDetails = () => {
     const report = grokReport || geminiReport || research;
@@ -278,226 +299,51 @@ export default function AIResearchView({
   const verdict = activeReport?.worthSelling || (activeReport && activeReport.estimatedValueMin >= 20 && activeReport.demandScore >= 5 ? "YES" : activeReport && activeReport.estimatedValueMin >= 10 ? "MARGINAL" : "NO");
 
   return (
-    <div className="bg-gradient-to-br from-indigo-50/40 via-purple-50/10 to-white border border-indigo-100 rounded-2xl p-4 sm:p-5 shadow-xs space-y-4" id="ai-research-view">
-      
-      {/* Header */}
-      <div className="flex items-center justify-between pb-3 border-b border-indigo-100/50">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center shadow">
-            <Sparkles size={16} />
-          </div>
-          <div>
-            <h4 className="text-sm font-bold text-slate-800">Gemini Valuation Chat & Inspector</h4>
-            <span className="text-[10px] text-indigo-600 font-semibold tracking-wider uppercase">Interactive Condition Check</span>
-          </div>
-        </div>
-
-        {activeReport && onApplyAll && (
-          <button
-            type="button"
-            onClick={() => onApplyAll(activeReport)}
-            className="text-xs bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1.5 px-3 rounded-lg flex items-center gap-1 transition-all shadow-sm active:scale-95 cursor-pointer"
-            id="btn-apply-all-research"
-          >
-            Apply All to Form
-          </button>
-        )}
-      </div>
-
-      {/* Top Action Buttons: Grok Find It vs Gemini Find It */}
-      <div className="grid grid-cols-2 gap-2 pb-2">
-        <button
-          type="button"
-          disabled={isChatLoading || externalLoading}
-          onClick={() => onRunResearch ? onRunResearch("grok") : handleSendChatMessage("Run Grok AI Valuation", true, "grok")}
-          className="py-2.5 px-3 bg-slate-900 hover:bg-slate-800 text-amber-300 font-extrabold text-xs rounded-xl shadow-md transition active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer border border-amber-500/30"
-          id="btn-grok-find-it"
-        >
-          <Zap size={15} className="text-amber-400 fill-amber-400" />
-          <span>✨ Grok Find It! (Auto-Fill Form)</span>
-        </button>
-
-        <button
-          type="button"
-          disabled={isChatLoading || externalLoading}
-          onClick={() => onRunResearch ? onRunResearch("gemini") : handleSendChatMessage("Run Gemini AI Valuation", true, "gemini")}
-          className="py-2.5 px-3 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs rounded-xl shadow-md transition active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer border border-indigo-400/40"
-          id="btn-gemini-find-it"
-        >
-          <Sparkles size={15} className="text-indigo-200" />
-          <span>✨ Gemini Find It! (Auto-Fill Form)</span>
-        </button>
-      </div>
-
-      {/* CHAT MESSAGES STREAM */}
-      <div className="space-y-3 max-h-72 overflow-y-auto pr-1 scrollbar-thin" id="valuation-chat-stream">
-        {messages.length === 0 ? (
-          <div className="bg-white/80 border border-indigo-100 rounded-2xl p-4 text-center space-y-3">
-            <MessageSquare size={24} className="mx-auto text-indigo-500 animate-pulse" />
-            <h5 className="text-xs font-bold text-slate-800">Start AI Valuation Chat & Condition Inspector</h5>
-            <p className="text-[11px] text-slate-500 leading-relaxed max-w-xs mx-auto">
-              Choose your valuation inspector below. The AI will examine your photos and ask condition questions before building your report!
-            </p>
-            <div className="flex items-center justify-center gap-2 pt-1">
-              <button
-                type="button"
-                disabled={isChatLoading || externalLoading}
-                onClick={() => handleSendChatMessage("Analyze this item and ask any condition questions needed before valuation.", false, "grok")}
-                className="py-2 px-3.5 bg-slate-900 hover:bg-slate-800 text-amber-300 font-extrabold text-xs rounded-xl transition shadow-sm active:scale-95 cursor-pointer flex items-center gap-1.5"
-                id="btn-start-grok-chat"
-              >
-                <Zap size={14} className="text-amber-400 fill-amber-400" />
-                <span>💬 Start Grok Valuation Chat</span>
-              </button>
-
-              <button
-                type="button"
-                disabled={isChatLoading || externalLoading}
-                onClick={() => handleSendChatMessage("Analyze this item and ask any condition questions needed before valuation.", false, "gemini")}
-                className="py-2 px-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs rounded-xl transition shadow-sm active:scale-95 cursor-pointer flex items-center gap-1.5"
-                id="btn-start-gemini-chat"
-              >
-                <Sparkles size={14} />
-                <span>💬 Start Gemini Valuation Chat</span>
-              </button>
-            </div>
-          </div>
-        ) : (
-          messages.map((msg) => (
-            <div
-              key={msg.id}
-              className={`flex flex-col ${msg.sender === "user" ? "items-end" : "items-start"} space-y-1.5`}
-            >
-              <div
-                className={`max-w-[88%] p-3 rounded-2xl text-xs font-medium leading-relaxed ${
-                  msg.sender === "user"
-                    ? "bg-indigo-600 text-white rounded-br-none shadow-xs"
-                    : "bg-white border border-indigo-100 text-slate-800 rounded-bl-none shadow-xs"
-                }`}
-              >
-                <div className="flex items-center justify-between text-[9px] opacity-75 mb-1 font-bold">
-                  <span>{msg.sender === "user" ? "You" : "Gemini AI Inspector"}</span>
-                  <span>{msg.timestamp}</span>
-                </div>
-                <p className="whitespace-pre-wrap">{msg.text}</p>
-              </div>
-
-              {/* Quick Reply Chips */}
-              {msg.quickReplies && msg.quickReplies.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 pl-2 pt-0.5">
-                  {msg.quickReplies.map((reply, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      disabled={isChatLoading}
-                      onClick={() => handleSendChatMessage(reply)}
-                      className="bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-900 text-[11px] font-bold px-2.5 py-1 rounded-full transition active:scale-95 shadow-2xs cursor-pointer"
-                    >
-                      💬 {reply}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))
-        )}
-
-        {isChatLoading && (
-          <div className="flex items-center gap-2 p-3 bg-white border border-indigo-100 rounded-2xl text-xs text-indigo-700 animate-pulse">
-            <RefreshCw size={14} className="animate-spin" />
-            <span>Gemini is inspecting item & thinking...</span>
-          </div>
-        )}
-
-        {(chatError || externalError) && (
-          <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl flex items-center gap-2">
-            <AlertCircle size={15} className="shrink-0" />
-            <span>{chatError || externalError}</span>
-          </div>
-        )}
-      </div>
-
-      {/* CHAT INPUT BAR & FINAL REPORT TRIGGER */}
-      {messages.length > 0 && !activeReport && (
-        <div className="space-y-2 pt-2 border-t border-indigo-100/60">
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              handleSendChatMessage();
-            }}
-            className="flex items-center gap-2"
-          >
-            <input
-              type="text"
-              placeholder="Answer condition question (e.g. Works great, no battery corrosion)..."
-              value={chatInput}
-              onChange={(e) => setChatInput(e.target.value)}
-              className="flex-1 px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 outline-none focus:ring-1 focus:ring-indigo-500 font-medium"
-            />
-            <button
-              type="submit"
-              disabled={isChatLoading || !chatInput}
-              className="p-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition shadow-xs disabled:opacity-50"
-            >
-              <Send size={14} />
-            </button>
-          </form>
-
-          <button
-            type="button"
-            disabled={isChatLoading}
-            onClick={() => handleSendChatMessage(undefined, true)}
-            className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl flex items-center justify-center gap-1.5 transition shadow-sm cursor-pointer"
-          >
-            <Sparkles size={14} />
-            Generate Final Valuation Report
-          </button>
-        </div>
-      )}
-
-      {/* FINAL VALUATION REPORT CARD (Side-by-Side Dual AI Comparison: Grok vs Gemini) */}
+    <div className="flex flex-col h-full space-y-4" id="ai-research-view">
+      {/* FINAL VALUATION REPORT CARD */}
       {(grokReport || geminiReport) && (
-        <div className="space-y-4 pt-2 border-t border-indigo-100/60 animate-fade-in" id="final-valuation-report">
-          
-          <div className="flex items-center justify-between bg-slate-900 text-white p-3 rounded-2xl border border-slate-800">
-            <div className="flex items-center gap-2">
-              <Sparkles size={16} className="text-amber-400" />
-              <h4 className="text-xs font-black uppercase tracking-wide">Dual AI Valuation Comparison (Side-by-Side)</h4>
+        <div className="flex flex-col h-full space-y-4 animate-fade-in" id="final-valuation-report">
+          {!engineFilter && (
+            <div className="flex items-center justify-between bg-slate-900 text-white p-3 rounded-2xl border border-slate-800">
+              <div className="flex items-center gap-2">
+                <Sparkles size={16} className="text-amber-400" />
+                <h4 className="text-xs font-black uppercase tracking-wide">Dual AI Valuation Comparison (Side-by-Side)</h4>
+              </div>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setActiveEngineTab("dual")}
+                  className={`px-2.5 py-1 text-[10px] font-black rounded-lg transition ${
+                    activeEngineTab === "dual" ? "bg-amber-500 text-slate-950" : "bg-slate-800 text-slate-300"
+                  }`}
+                >
+                  Split Both (Side-by-Side)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveEngineTab("grok")}
+                  className={`px-2.5 py-1 text-[10px] font-black rounded-lg transition ${
+                    activeEngineTab === "grok" ? "bg-amber-500 text-slate-950" : "bg-slate-800 text-slate-300"
+                  }`}
+                >
+                  Grok Only
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveEngineTab("gemini")}
+                  className={`px-2.5 py-1 text-[10px] font-black rounded-lg transition ${
+                    activeEngineTab === "gemini" ? "bg-indigo-600 text-white" : "bg-slate-800 text-slate-300"
+                  }`}
+                >
+                  Gemini Only
+                </button>
+              </div>
             </div>
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => setActiveEngineTab("dual")}
-                className={`px-2.5 py-1 text-[10px] font-black rounded-lg transition ${
-                  activeEngineTab === "dual" ? "bg-amber-500 text-slate-950" : "bg-slate-800 text-slate-300"
-                }`}
-              >
-                Split Both (Side-by-Side)
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveEngineTab("grok")}
-                className={`px-2.5 py-1 text-[10px] font-black rounded-lg transition ${
-                  activeEngineTab === "grok" ? "bg-amber-500 text-slate-950" : "bg-slate-800 text-slate-300"
-                }`}
-              >
-                Grok Only
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveEngineTab("gemini")}
-                className={`px-2.5 py-1 text-[10px] font-black rounded-lg transition ${
-                  activeEngineTab === "gemini" ? "bg-indigo-600 text-white" : "bg-slate-800 text-slate-300"
-                }`}
-              >
-                Gemini Only
-              </button>
-            </div>
-          </div>
+          )}
 
-          <div className={`grid gap-4 ${activeEngineTab === "dual" ? "grid-cols-1 lg:grid-cols-2" : "grid-cols-1"}`}>
+          <div className={`flex-1 grid gap-4 ${(!engineFilter && activeEngineTab === "dual") ? "grid-cols-1 lg:grid-cols-2" : "grid-cols-1"}`}>
             {/* COLUMN 1: xAI Grok Evaluation (Left Column / Primary) */}
-            {(activeEngineTab === "dual" || activeEngineTab === "grok") && grokReport && (
+            {(engineFilter === "grok" || (!engineFilter && (activeEngineTab === "dual" || activeEngineTab === "grok"))) && grokReport && (
               <SingleValuationColumn
                 title="xAI Grok Valuation Engine"
                 engine="grok"
@@ -509,7 +355,7 @@ export default function AIResearchView({
             )}
 
             {/* COLUMN 2: Google Gemini Evaluation (Right Column / 2nd Opinion) */}
-            {(activeEngineTab === "dual" || activeEngineTab === "gemini") && geminiReport && (
+            {(engineFilter === "gemini" || (!engineFilter && (activeEngineTab === "dual" || activeEngineTab === "gemini"))) && geminiReport && (
               <SingleValuationColumn
                 title="Google Gemini Valuation Engine"
                 engine="gemini"
@@ -525,7 +371,7 @@ export default function AIResearchView({
 
           {/* Identified SEO Title & Flaw Clarifications */}
           {(() => {
-            const activeReport = grokReport || geminiReport || research;
+            const activeReport = engineFilter === "grok" ? grokReport : engineFilter === "gemini" ? geminiReport : (grokReport || geminiReport || research);
             if (!activeReport) return null;
 
             return (

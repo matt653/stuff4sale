@@ -18,6 +18,12 @@ function getAiClient(req: express.Request): GoogleGenAI | null {
   return null;
 }
 
+function getXaiApiKey(req: express.Request): string | null {
+  const headerKey = req.headers["x-xai-key"] as string;
+  const envKey = process.env.XAI_KEY || process.env.VITE_XAI_KEY;
+  return (headerKey && headerKey.trim()) ? headerKey.trim() : envKey || null;
+}
+
 function sanitizeDescriptionText(desc: string): string {
   if (!desc) return "";
   return desc
@@ -101,7 +107,7 @@ async function callXaiGrokFullResearch(
     }
   });
 
-  const grokModels = ["grok-4.6", "grok-build-0.1", "grok-2-vision-latest", "grok-2-latest", "grok-vision-beta"];
+  const grokModels = ["grok-4.6", "grok-build-0.1"];
   let lastErrText = "";
 
   for (const model of grokModels) {
@@ -130,17 +136,29 @@ async function callXaiGrokFullResearch(
         })
       });
 
+      const rawText = await response.text();
+
       if (response.ok) {
-        const resData: any = await response.json();
-        const rawContent = resData?.choices?.[0]?.message?.content || "";
+        let resData: any = {};
+        try {
+          resData = JSON.parse(rawText);
+        } catch (e) {
+          resData = { choices: [{ message: { content: rawText } }] };
+        }
+        const rawContent = resData?.choices?.[0]?.message?.content || rawText;
         return cleanJsonResponse(rawContent);
-      } else {
-        lastErrText = await response.text();
-        console.warn(`xAI Grok model ${model} failed (${response.status}): ${lastErrText}. Trying next Grok model...`);
       }
+
+      if (rawText.toLowerCase().includes("incorrect api key") || response.status === 401) {
+        throw new Error("Invalid xAI API Key. Please generate a secret key starting with 'xai-' at https://console.x.ai and enter it in settings.");
+      }
+
+      lastErrText = rawText;
+      console.warn(`xAI Grok model ${model} failed (${response.status}): ${lastErrText}`);
     } catch (err: any) {
+      if (err.message.includes("Invalid xAI API Key")) throw err;
       lastErrText = err.message;
-      console.warn(`xAI Grok model ${model} error: ${err.message}. Trying next Grok model...`);
+      console.warn(`xAI Grok model ${model} error: ${err.message}`);
     }
   }
 
@@ -182,13 +200,12 @@ INPUT DETAILS:
 - Notes/Condition: ${notes || "No extra notes"}
 - Seller Sourcing Location: ${location || "General US Resale Market"}
 
-CRITICAL REQUIREMENT 1: 5-PART CUSTOMER-FRIENDLY DESCRIPTION
-Structure 'suggestedDescription' into these 5 explicit section headings:
-   • 📌 WHAT IT IS & ORIGINAL USE
-   • 💡 MODERN USES & STYLING / DECOR
-   • ⚠️ CONDITION & OBSERVED FACTS
-   • 📏 SPECS, MATERIALS & MEASUREMENTS
-   • 🚀 WHY THIS IS A GREAT DEAL & SELLER NOTE
+CRITICAL REQUIREMENT 1: 3-SECTION CLEAN SELLER DESCRIPTION
+Structure 'suggestedDescription' into these 3 clean section headings ONLY:
+   • 📌 1. WHAT IT IS
+   • 💡 2. DETAILS & USES
+   • ⚠️ 3. CONDITION
+Keep descriptions basic, concise, and focused purely on what the item is, basic details/uses, and physical condition. Do NOT include points 4 or 5 or marketing fluff.
 
 CRITICAL REQUIREMENT 2: INTEGRATED LOCAL FB MARKETPLACE & EBAY COMPS
 - Evaluates comps specifically for:
@@ -453,6 +470,97 @@ Generate a JSON response matching this schema strictly without markdown or forma
       error: "Failed to generate FB Marketplace listing.",
       details: error.message,
     });
+  }
+});
+
+// Dedicated Provider-Specific AI Description Generator Endpoint (xAI Grok vs Google Gemini)
+app.post("/api/generate-description", async (req, res) => {
+  const activeAi = getAiClient(req);
+  const xaiApiKey = getXaiApiKey(req);
+  const provider = req.body.provider || "grok";
+  const { name, category, notes, image, images } = req.body;
+
+  const imageList: string[] = images && Array.isArray(images) && images.length > 0 ? images : image ? [image] : [];
+  const itemTitle = name || "Identified Resell Item";
+
+  const systemPrompt = `You are ${provider === "grok" ? "xAI Grok 4.6" : "Google Gemini 2.5"}. Write a basic, clean 3-section seller description for Facebook Marketplace / reselling for this item:
+Item Title: ${itemTitle}
+Category: ${category || "General Inventory"}
+Condition Notes: ${notes || "Pre-owned in good functional condition"}
+
+CRITICAL FORMATTING INSTRUCTIONS:
+Structure strictly into these 3 sections ONLY with no points 4 or 5 and no marketing fluff:
+📌 1. WHAT IT IS
+💡 2. DETAILS & USES
+⚠️ 3. CONDITION`;
+
+  try {
+    if (provider === "grok" && xaiApiKey) {
+      console.log("⚡ Executing xAI Grok dedicated description API call...");
+      const messages: any[] = [];
+      if (imageList.length > 0) {
+        messages.push({
+          role: "user",
+          content: [
+            { type: "text", text: systemPrompt },
+            ...imageList.slice(0, 3).map((img) => ({
+              type: "image_url",
+              image_url: { url: img.startsWith("data:") ? img : `data:image/jpeg;base64,${img}` },
+            })),
+          ],
+        });
+      } else {
+        messages.push({ role: "user", content: systemPrompt });
+      }
+
+      const response = await fetch("https://api.x.ai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${xaiApiKey}`,
+        },
+        body: JSON.stringify({
+          model: "grok-4.6",
+          messages,
+          temperature: 0.7,
+        }),
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`xAI Grok API error (${response.status}): ${errText}`);
+      }
+
+      const data = await response.json();
+      const rawText = data.choices?.[0]?.message?.content || "";
+      return res.json({ description: rawText.trim(), provider: "grok" });
+    }
+
+    if (activeAi) {
+      console.log("✨ Executing Google Gemini dedicated description API call...");
+      const contents: any[] = [systemPrompt];
+      if (imageList.length > 0) {
+        contents.push({
+          inlineData: {
+            mimeType: "image/jpeg",
+            data: imageList[0].replace(/^data:image\/\w+;base64,/, ""),
+          },
+        });
+      }
+
+      const geminiRes = await activeAi.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents,
+      });
+
+      const rawText = geminiRes.text || "";
+      return res.json({ description: rawText.trim(), provider: "gemini" });
+    }
+
+    return res.status(400).json({ error: "Selected provider API key is not configured" });
+  } catch (err: any) {
+    console.error("Netlify Generate description error:", err);
+    return res.status(500).json({ error: err.message || "Failed to generate description" });
   }
 });
 

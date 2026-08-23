@@ -242,6 +242,7 @@ export default function App() {
   // AI Research states
   const [aiResult, setAiResult] = useState<AIResearchResult | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
+  const [activeResearchProvider, setActiveResearchProvider] = useState<"grok" | "gemini" | "dual" | null>(null);
   const [aiError, setAiError] = useState<string | null>(null);
   const [isOfflineVault, setIsOfflineVault] = useState(false);
 
@@ -531,6 +532,7 @@ export default function App() {
     }
 
     setAiLoading(true);
+    setActiveResearchProvider(targetProvider);
     setAiError(null);
     setAiResult(null);
 
@@ -560,7 +562,21 @@ export default function App() {
       }
 
       const result: AIResearchResult = await response.json();
-      setAiResult(result);
+        result.provider = targetProvider as any;
+        
+        setAiResult(prev => {
+          if (!prev) {
+            return {
+              ...result,
+              [targetProvider]: result
+            };
+          }
+          
+          const merged = { ...prev, ...result };
+          merged.grok = targetProvider === "grok" ? result : (prev.provider === "grok" ? prev : prev.grok);
+          merged.gemini = targetProvider === "gemini" ? result : (prev.provider === "gemini" ? prev : prev.gemini);
+          return merged;
+        });
 
       // Auto-fill Box 2 ("Add New Item") fields from Gemini AI identification
       if (result.suggestedTitle) {
@@ -609,6 +625,7 @@ export default function App() {
       setAiError(err.message || "Something went wrong while contacting the AI research center.");
     } finally {
       setAiLoading(false);
+      setActiveResearchProvider(null);
     }
   };
 
@@ -1418,67 +1435,7 @@ Available for local cash pickup or fast shipping. Message now to claim the bundl
           )}
 
         {/* PROMINENT PUBLIC FOR-SALE SHOWCASE BANNER FOR BUYERS */}
-        <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-3xl p-5 shadow-lg border border-indigo-500/30 flex flex-col md:flex-row items-start md:items-center justify-between gap-4" id="public-for-sale-banner">
-          <div className="space-y-1.5 max-w-xl">
-            <div className="flex items-center gap-2">
-              <span className="bg-emerald-500/20 text-emerald-300 text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full border border-emerald-400/30">
-                ● Public "For Sale" Page Active
-              </span>
-              <span className="text-xs text-indigo-300 font-semibold">Zero Private Cost / Profit Data Exposed</span>
-            </div>
-            <h3 className="text-base sm:text-lg font-black text-white flex items-center gap-2">
-              <ShoppingBag className="text-indigo-400" size={20} />
-              <span>Public Storefront & Catalog for Prospective Buyers</span>
-            </h3>
-            <p className="text-xs text-indigo-200/80 leading-relaxed">
-              Give this link to prospective buyers on Facebook Marketplace, Messenger, text, or Craigslist. Buyers can browse your full collection, view high-res picture galleries, and submit offers!
-            </p>
-            <div className="flex flex-wrap items-center gap-3 pt-1">
-              <span className="text-[11px] text-emerald-300 font-mono bg-black/40 px-3 py-1 rounded-xl border border-white/10 select-all truncate max-w-xs font-bold">
-                {window.location.origin}/catalog
-              </span>
-              <div className="flex items-center gap-1.5 bg-black/30 border border-indigo-400/30 px-2.5 py-1 rounded-xl">
-                <Smartphone size={12} className="text-emerald-400" />
-                <span className="text-[10px] font-bold text-slate-300">Your Cell Phone:</span>
-                <input
-                  type="text"
-                  value={sellerPhone}
-                  onChange={(e) => handleUpdateSellerPhone(e.target.value)}
-                  placeholder="Enter your phone..."
-                  className="bg-transparent text-xs font-mono font-bold text-white outline-none w-32 border-b border-indigo-500/50 focus:border-emerald-400"
-                  id="input-seller-phone-setting"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2.5 shrink-0 w-full md:w-auto">
-            <button
-              type="button"
-              onClick={() => switchAppMode("catalog")}
-              className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs rounded-xl transition shadow-md flex items-center justify-center gap-1.5 flex-1 md:flex-initial cursor-pointer active:scale-95"
-              id="btn-banner-open-catalog"
-            >
-              <ExternalLink size={14} />
-              <span>Open Public Page ↗</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                const url = `${window.location.origin}/catalog`;
-                navigator.clipboard.writeText(url);
-                setCopiedPublicStoreLink(true);
-                setTimeout(() => setCopiedPublicStoreLink(false), 2500);
-              }}
-              className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl transition shadow-md flex items-center justify-center gap-1.5 flex-1 md:flex-initial cursor-pointer active:scale-95"
-              id="btn-banner-copy-public-link"
-            >
-              {copiedPublicStoreLink ? <Check size={14} /> : <Copy size={14} />}
-              <span>{copiedPublicStoreLink ? "Link Copied!" : "Copy Link for Buyers"}</span>
-            </button>
-          </div>
-        </div>
+        
 
         {/* Live Finance Stats */}
         <StatsGrid items={items} />
@@ -1535,54 +1492,7 @@ Available for local cash pickup or fast shipping. Message now to claim the bundl
                   initialVideoUrl={videoUrl}
                 />
 
-                {/* Dual Engine Research Action Buttons (Grok vs Gemini) */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  <button
-                    type="button"
-                    disabled={aiLoading}
-                    onClick={() => handleAiResearch(undefined, undefined, "grok")}
-                    className="w-full py-3 px-3 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-amber-300 rounded-2xl text-xs font-black flex items-center justify-center gap-2 shadow-md transition cursor-pointer border border-amber-500/40 active:scale-95"
-                    id="btn-trigger-grok-research"
-                  >
-                    <Zap size={16} className="text-amber-400 fill-amber-400" />
-                    <span>⚡ Grok Find It!</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    disabled={aiLoading}
-                    onClick={() => handleAiResearch(undefined, undefined, "gemini")}
-                    className="w-full py-3 px-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-400 text-white rounded-2xl text-xs font-black flex items-center justify-center gap-2 shadow-md transition cursor-pointer border border-indigo-400/40 active:scale-95"
-                    id="btn-trigger-gemini-research"
-                  >
-                    <Sparkles size={16} className="text-indigo-200" />
-                    <span>✨ Gemini Find It!</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    disabled={aiLoading}
-                    onClick={() => handleAiResearch(undefined, undefined, "dual")}
-                    className="w-full py-3 px-3 bg-gradient-to-r from-purple-900 to-indigo-950 hover:from-purple-800 hover:to-indigo-900 disabled:bg-slate-400 text-white rounded-2xl text-xs font-black flex items-center justify-center gap-2 shadow-md transition cursor-pointer border border-purple-400/40 active:scale-95"
-                    id="btn-trigger-dual-research"
-                  >
-                    <Layers size={16} className="text-amber-400" />
-                    <span>🚀 Dual Comparison</span>
-                  </button>
-                </div>
-
-                {/* Conversational Valuation Chat & Research Panel View */}
-                <AIResearchView 
-                  research={aiResult} 
-                  photos={photos.length > 0 ? photos : photoUrl ? [photoUrl] : []}
-                  itemName={itemName}
-                  itemNotes={notes}
-                  onApplyAll={handleApplyAllAi} 
-                  onApplyField={handleApplyAiField}
-                  isLoading={aiLoading} 
-                  error={aiError} 
-                  onRunResearch={(provider) => handleAiResearch(undefined, undefined, provider)}
-                />
+                
               </div>
 
               {/* BOX 2: Add New Item Record (Auto-populated by Gemini) */}
@@ -2180,6 +2090,89 @@ Available for local cash pickup or fast shipping. Message now to claim the bundl
                   </div>
                 </div>
               </form>
+            </div>
+
+            {/* HORIZONTAL DIVIDER LINE BETWEEN INTAKE/FORM AND DUAL AI VALUATION ENGINES */}
+            <div className="relative my-8" id="valuation-section-divider">
+              <div className="absolute inset-0 flex items-center" aria-hidden="true">
+                <div className="w-full border-t-2 border-slate-200"></div>
+              </div>
+              <div className="relative flex justify-center">
+                <span className="bg-slate-900 text-amber-300 font-black text-xs uppercase tracking-widest px-4 py-1.5 rounded-full border border-amber-400/40 shadow-md flex items-center gap-2">
+                  <Zap size={14} className="text-amber-400 fill-amber-400 animate-pulse" />
+                  <span>Dual-Engine AI Valuation Section</span>
+                  <Sparkles size={14} className="text-indigo-400 animate-pulse" />
+                </span>
+              </div>
+            </div>
+
+            {/* BOTTOM VALUATION ROW: Grok Valuation (Left) & Gemini Valuation (Right) STARTING AT EXACT SAME TOP LEVEL */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch" id="dual-valuation-cards-row">
+              {/* LEFT COLUMN: Grok Trigger & Grok Valuation Engine Card (Starts at 0px top!) */}
+              <div className="lg:col-span-6 flex flex-col space-y-4 h-full">
+                <button
+                  type="button"
+                  disabled={aiLoading}
+                  onClick={() => handleAiResearch(undefined, undefined, "grok")}
+                  className={`w-full py-3.5 px-4 rounded-2xl text-xs font-black flex items-center justify-center gap-2 shadow-md transition cursor-pointer active:scale-95 ${
+                    aiLoading && activeResearchProvider === "grok"
+                      ? "bg-indigo-600 text-white border-2 border-indigo-300 ring-2 ring-indigo-400/50 animate-pulse"
+                        : aiLoading
+                        ? "bg-indigo-900/50 text-indigo-300/50 border border-indigo-950 cursor-not-allowed opacity-60"
+                        : "bg-indigo-600 hover:bg-indigo-700 text-white border border-indigo-400/40"
+                  }`}
+                  id="btn-trigger-grok-research"
+                >
+                  <Zap size={16} className={`text-indigo-200 fill-indigo-200 ${aiLoading && activeResearchProvider === "grok" ? "animate-spin" : ""}`} />
+                  <span>{aiLoading && activeResearchProvider === "grok" ? "⚡ Grok Inspecting Photos..." : "⚡ Grok Find It!"}</span>
+                </button>
+
+                <AIResearchView 
+                  research={aiResult} 
+                  photos={photos.length > 0 ? photos : photoUrl ? [photoUrl] : []}
+                  itemName={itemName}
+                  itemNotes={notes}
+                  onApplyAll={handleApplyAllAi} 
+                  onApplyField={handleApplyAiField}
+                  isLoading={aiLoading} 
+                  error={aiError} 
+                  onRunResearch={(provider) => handleAiResearch(undefined, undefined, provider)}
+                  engineFilter="grok"
+                />
+              </div>
+
+              {/* RIGHT COLUMN: Gemini Trigger, Gemini Valuation Engine Card (Starts at 0px top!) */}
+              <div className="lg:col-span-6 flex flex-col space-y-4 h-full">
+                <button
+                  type="button"
+                  disabled={aiLoading}
+                  onClick={() => handleAiResearch(undefined, undefined, "gemini")}
+                  className={`w-full py-3.5 px-4 rounded-2xl text-xs font-black flex items-center justify-center gap-2 shadow-md transition cursor-pointer active:scale-95 ${
+                    aiLoading && activeResearchProvider === "gemini"
+                      ? "bg-indigo-600 text-white border-2 border-indigo-300 ring-2 ring-indigo-400/50 animate-pulse"
+                      : aiLoading
+                      ? "bg-indigo-900/50 text-indigo-300/50 border border-indigo-950 cursor-not-allowed opacity-60"
+                      : "bg-indigo-600 hover:bg-indigo-700 text-white border border-indigo-400/40"
+                  }`}
+                  id="btn-trigger-gemini-research"
+                >
+                  <Sparkles size={16} className={`text-indigo-200 ${aiLoading && activeResearchProvider === "gemini" ? "animate-spin" : ""}`} />
+                  <span>{aiLoading && activeResearchProvider === "gemini" ? "✨ Gemini Inspecting Photos..." : "✨ Gemini Find It!"}</span>
+                </button>
+
+                <AIResearchView 
+                  research={aiResult} 
+                  photos={photos.length > 0 ? photos : photoUrl ? [photoUrl] : []}
+                  itemName={itemName}
+                  itemNotes={notes}
+                  onApplyAll={handleApplyAllAi} 
+                  onApplyField={handleApplyAiField}
+                  isLoading={aiLoading} 
+                  error={aiError} 
+                  onRunResearch={(provider) => handleAiResearch(undefined, undefined, provider)}
+                  engineFilter="gemini"
+                />
+              </div>
             </div>
           </div>
         )}
