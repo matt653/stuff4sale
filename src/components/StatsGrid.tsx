@@ -18,7 +18,6 @@ export default function StatsGrid({ items }: StatsGridProps) {
   const costOfSoldItems = soldItems.reduce((sum, item) => sum + (item.purchasePrice || 0), 0);
   const realizedNetProfit = totalSalesRevenue - costOfSoldItems;
 
-
   // Commission Calculations
   const commissionMap: Record<string, number> = {};
   soldItems.forEach(item => {
@@ -170,21 +169,23 @@ export default function StatsGrid({ items }: StatsGridProps) {
         </div>
       </div>
 
-      {/* Capital Invested Card */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col justify-between" id="stat-total-invested">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-xs font-semibold text-slate-500 tracking-wide uppercase">Capital Invested</span>
-          <div className="p-1.5 bg-amber-50 text-amber-600 rounded-lg">
-            <Package size={16} />
+      {/* Commission Leader Card */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col justify-between" id="stat-commission-leader">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold text-slate-500 tracking-wide uppercase">Commission Leader</span>
+            <div className="p-1.5 bg-indigo-50 text-indigo-600 rounded-lg">
+              <TrendingUp size={16} />
+            </div>
+          </div>
+          <div>
+            <span className="text-xl lg:text-2xl font-bold text-slate-800 tracking-tight">
+              {commissionLeaderName}
+            </span>
+            <p className="text-xs font-bold text-indigo-600 mt-1">
+              {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(commissionLeaderAmount)} <span className="font-normal text-[10px] text-slate-400">Earned</span>
+            </p>
           </div>
         </div>
-        <div>
-          <span className="text-xl lg:text-2xl font-bold text-slate-800 tracking-tight">
-            {formatCurrency(activeInventoryCostValue)}
-          </span>
-          <p className="text-[10px] text-slate-400 mt-1">Total purchase cost</p>
-        </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
