@@ -1,5 +1,6 @@
+import ErrorCodeDecoderModal from "./components/ErrorCodeDecoderModal";
 import React, { useState, useEffect } from "react";
-import { User, 
+import { User, AlertTriangle, 
   Plus, Search, Download, Sparkles, Filter, SlidersHorizontal, 
   X, Check, AlertCircle, RefreshCw, Layers, MapPin, Calendar, 
   Tag, Info, DollarSign, Archive, ShoppingBag, Eye, Star, LayoutGrid, LayoutList,
@@ -210,6 +211,7 @@ export default function App() {
   const [showInspector, setShowInspector] = useState(false);
   const [showMobileModal, setShowMobileModal] = useState(false);
   const [showFBHub, setShowFBHub] = useState(false);
+  const [showErrorDecoder, setShowErrorDecoder] = useState(false);
   const [fbHubTab, setFbHubTab] = useState<"connect" | "post" | "inbox" | "webhook">("post");
   const [fbSelectedItem, setFbSelectedItem] = useState<InventoryItem | null>(null);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
@@ -589,8 +591,8 @@ export default function App() {
           }
           
           const merged = { ...prev, ...result };
-          merged.grok = targetProvider === "grok" ? result : (prev.provider === "grok" ? prev : prev.grok);
-          merged.gemini = targetProvider === "gemini" ? result : (prev.provider === "gemini" ? prev : prev.gemini);
+          (merged as any).grok = targetProvider === "grok" ? result : (prev.provider === "grok" ? prev : (prev as any).grok);
+          (merged as any).gemini = targetProvider === "gemini" ? result : (prev.provider === "gemini" ? prev : (prev as any).gemini);
           return merged;
         });
 
@@ -1129,7 +1131,21 @@ Available for local cash pickup or fast shipping. Message now to claim the bundl
             <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
           </div>
 
-          {/* Forward-Facing Buyer Catalog Launcher & Link Copier */}
+          
+            {/* Error Code Decoder Button */}
+            <div className="flex items-center bg-rose-50 p-0.5 rounded-xl border border-rose-200 shadow-2xs">
+              <button
+                type="button"
+                onClick={() => setShowErrorDecoder(true)}
+                className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs rounded-lg transition flex items-center gap-1.5 shadow-2xs active:scale-95 cursor-pointer"
+                title="Decode Fault/Error Codes for Repair Estimates"
+              >
+                <AlertTriangle size={14} />
+                <span className="hidden sm:inline">Error Code Decoder</span>
+              </button>
+            </div>
+
+            {/* Forward-Facing Buyer Catalog Launcher & Link Copier */}
           <div className="flex items-center bg-emerald-50 p-0.5 rounded-xl border border-emerald-200 shadow-2xs">
             <button
               type="button"
@@ -2566,7 +2582,13 @@ Available for local cash pickup or fast shipping. Message now to claim the bundl
         )}
 
         {/* Mobile Connect & Free Deploy Modal */}
-        {showMobileModal && (
+        
+      <ErrorCodeDecoderModal
+        isOpen={showErrorDecoder}
+        onClose={() => setShowErrorDecoder(false)}
+      />
+
+      {showMobileModal && (
           <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" id="mobile-connect-modal">
             <div className="bg-white rounded-3xl border border-slate-150 shadow-2xl max-w-2xl w-full overflow-hidden flex flex-col max-h-[90vh] animate-fade-in">
               {/* Modal Header */}

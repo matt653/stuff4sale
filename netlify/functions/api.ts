@@ -412,6 +412,35 @@ Return a strictly valid JSON object matching this schema:
 });
 
 // Specialized Facebook Marketplace Ad Optimizer Endpoint
+
+// Specialized Error Code Decoder Endpoint
+app.post("/api/decode-error", async (req, res) => {
+  const activeAi = getAiClient(req);
+  const { make, code } = req.body;
+  if (!activeAi) {
+    return res.status(503).json({ error: "Google Gemini API key is missing. Please configure GEMINI_API_KEY." });
+  }
+
+  const prompt = `You are an expert diagnostic technician for cars, appliances, and electronics.
+A reseller is trying to buy a broken item to flip it. 
+Brand/Make: ${make || "Unknown"}
+Error/Fault Code: ${code || "Unknown"}
+
+Please provide a highly concise, factual diagnostic report containing:
+1. WHAT IT MEANS: Explain the error code simply.
+2. LIKELY BROKEN PART: What part needs to be replaced?
+3. ESTIMATED REPAIR COST: What is the average cost of the replacement part?
+4. FLIPPER ADVICE: Is this an easy, cheap fix (good flip) or a major nightmare (avoid)?`;
+
+  try {
+    const result = await callGeminiWithFallback(activeAi, [{ text: prompt }]);
+    res.json({ report: result.report || result });
+  } catch (error: any) {
+    console.error("Error decoding fault code:", error);
+    res.status(500).json({ error: "Failed to decode error code.", details: error.message });
+  }
+});
+
 app.post("/api/fb-optimize", async (req, res) => {
   const activeAi = getAiClient(req);
 
