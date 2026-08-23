@@ -32,7 +32,10 @@ export interface EbayCompsData {
   ebayTips?: string[];
 }
 
+export interface CommissionData { ownerName: string; splits: Array<{ name: string; percentage: number; }>; }
+
 export interface AIResearchResult {
+  commission?: CommissionData;
   estimatedValueMin: number;
   estimatedValueMax: number;
   suggestedTitle: string;

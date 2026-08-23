@@ -18,6 +18,30 @@ export default function StatsGrid({ items }: StatsGridProps) {
   const costOfSoldItems = soldItems.reduce((sum, item) => sum + (item.purchasePrice || 0), 0);
   const realizedNetProfit = totalSalesRevenue - costOfSoldItems;
 
+
+  // Commission Calculations
+  const commissionMap: Record<string, number> = {};
+  soldItems.forEach(item => {
+    const profit = (item.salePrice || 0) - (item.purchasePrice || 0);
+    if (profit > 0 && item.research?.commission?.splits) {
+      item.research.commission.splits.forEach(split => {
+        if (split.name) {
+          const amt = profit * ((split.percentage || 0) / 100);
+          commissionMap[split.name] = (commissionMap[split.name] || 0) + amt;
+        }
+      });
+    }
+  });
+  
+  let commissionLeaderName = "None";
+  let commissionLeaderAmount = 0;
+  for (const [name, amount] of Object.entries(commissionMap)) {
+    if (amount > commissionLeaderAmount) {
+      commissionLeaderAmount = amount;
+      commissionLeaderName = name;
+    }
+  }
+
   // Active items calculations
   const activeItems = items.filter((item) => item.status === "inventory" || item.status === "listed");
   const activeInventoryCostValue = activeItems.reduce((sum, item) => sum + (item.purchasePrice || 0), 0);

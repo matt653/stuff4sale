@@ -63,7 +63,7 @@ async function callXaiGrokFullResearch(
     }
   });
 
-  const grokModels = ["grok-4.6", "grok-build-0.1"];
+  const grokModels = ["grok-2-vision-1212", "grok-vision-beta"];
   let lastErrText = "";
 
   for (const model of grokModels) {
@@ -1027,7 +1027,7 @@ app.post("/api/generate-description", async (req, res) => {
   const imageList: string[] = images && Array.isArray(images) && images.length > 0 ? images : image ? [image] : [];
   const itemTitle = name || "Identified Resell Item";
 
-  const systemPrompt = `You are ${provider === "grok" ? "xAI Grok 4.6" : "Google Gemini 2.5"}. Write a basic, clean 3-section seller description for Facebook Marketplace / reselling for this item:
+  const systemPrompt = `You are ${provider === "grok" ? "xAI Grok" : "Google Gemini 2.5"}. Write a basic, clean 3-section seller description for Facebook Marketplace / reselling for this item:
 Item Title: ${itemTitle}
 Category: ${category || "General Inventory"}
 Condition Notes: ${notes || "Pre-owned in good functional condition"}
@@ -1064,7 +1064,7 @@ Structure strictly into these 3 sections ONLY with no points 4 or 5 and no marke
           Authorization: `Bearer ${xaiApiKey}`,
         },
         body: JSON.stringify({
-          model: "grok-4.6",
+          model: "grok-2-vision-1212",
           messages,
           temperature: 0.7,
         }),

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { 
+import { User, 
   Plus, Search, Download, Sparkles, Filter, SlidersHorizontal, 
   X, Check, AlertCircle, RefreshCw, Layers, MapPin, Calendar, 
   Tag, Info, DollarSign, Archive, ShoppingBag, Eye, Star, LayoutGrid, LayoutList,
@@ -222,6 +222,11 @@ export default function App() {
   const [bundledItemIds, setBundledItemIds] = useState<string[]>([]);
   const [showBundleDropdown, setShowBundleDropdown] = useState(false);
   const [purchasePrice, setPurchasePrice] = useState("0");
+  const [ownerName, setOwnerName] = useState("");
+  const [split1Name, setSplit1Name] = useState("");
+  const [split1Percent, setSplit1Percent] = useState("50");
+  const [split2Name, setSplit2Name] = useState("");
+  const [split2Percent, setSplit2Percent] = useState("50");
   const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().split("T")[0]);
   const [purchaseLocation, setPurchaseLocation] = useState("");
   const [notes, setNotes] = useState("");
@@ -467,6 +472,11 @@ export default function App() {
     setBundledItemIds([]);
     setShowBundleDropdown(false);
     setPurchasePrice("0");
+      setOwnerName("");
+      setSplit1Name("");
+      setSplit1Percent("50");
+      setSplit2Name("");
+      setSplit2Percent("50");
     setPurchaseDate(new Date().toISOString().split("T")[0]);
     setPurchaseLocation("");
     setNotes("");
@@ -495,6 +505,12 @@ export default function App() {
     setBundleTitle(item.bundleTitle || "");
     setBundledItemIds(Array.isArray(item.bundledItemIds) ? item.bundledItemIds : []);
     setPurchasePrice(item.purchasePrice !== undefined && item.purchasePrice !== null ? String(item.purchasePrice) : "0");
+      const cData = item.research?.commission || null;
+      setOwnerName(cData?.ownerName || "");
+      setSplit1Name(cData?.splits?.[0]?.name || "");
+      setSplit1Percent(cData?.splits?.[0]?.percentage ? String(cData.splits[0].percentage) : "50");
+      setSplit2Name(cData?.splits?.[1]?.name || "");
+      setSplit2Percent(cData?.splits?.[1]?.percentage ? String(cData.splits[1].percentage) : "50");
     setPurchaseDate(item.purchaseDate || new Date().toISOString().split("T")[0]);
     setPurchaseLocation(item.purchaseLocation || "");
     setNotes(item.notes || "");
