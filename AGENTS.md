@@ -93,6 +93,8 @@ Stuff4Sale is a full-stack AI-powered inventory management, item valuation, and 
 
 > **Mandatory Personal Facebook Page & Simplicity Rule ("Less is More")**: Agents MUST NOT implement or attempt background Meta Webhooks, Graph API syncs, or complex server push listeners that do NOT work natively with personal Facebook Marketplace accounts (e.g. personal profile listings). Personal Facebook accounts do NOT support external Webhook push APIs. Features MUST work natively, reliably, and seamlessly with personal Facebook Marketplace accounts without requiring Meta Business Page verification, developer apps, or complex background listeners. **Core Directive: Less is more, unless it works.**
 
+> **Mandatory Confidence Score Rule**: If an agent is diagnosing an issue, explaining a bug, or providing an answer, and the agent is NOT 100% absolutely certain (e.g. lacks direct server logs, DB access, or hard proof), the agent MUST explicitly provide a confidence score (0-99%) with its answer to indicate it is making an educated guess or hypothesis. 100% certainty is reserved ONLY for hard facts.
+
 ---
 
 ## Your Job
