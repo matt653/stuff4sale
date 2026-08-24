@@ -445,13 +445,34 @@ export default function App() {
     const channel = supabase
       .channel("public:Stuff4Sale")
       .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "Stuff4Sale" },
-        () => {
-          fetchSupabaseItems();
-        }
-      )
-      .subscribe();
+          "postgres_changes",
+          { event: "*", schema: "public", table: "Stuff4Sale" },
+          (payload) => {
+            // SURGICAL STATE UPDATES: Never re-fetch the whole database!
+            setItems(prevItems => {
+              if (payload.eventType === 'INSERT') {
+                if (prevItems.some(i => i.id === payload.new.id)) return prevItems;
+                return [payload.new as InventoryItem, ...prevItems];
+              }
+              if (payload.eventType === 'UPDATE') {
+                return prevItems.map(i => i.id === payload.new.id ? payload.new as InventoryItem : i);
+              }
+              if (payload.eventType === 'DELETE') {
+                return prevItems.filter(i => i.id !== payload.old.id);
+              }
+              return prevItems;
+            });
+            setTimeout(() => {
+              try {
+                setItems(current => {
+                  localStorage.setItem("stuff4sale_items_cache", JSON.stringify(current));
+                  return current;
+                });
+              } catch(e){}
+            }, 500);
+          }
+        )
+        .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
